@@ -99,20 +99,24 @@ export function evaluateCriticalFails(input: CriticalFailInput): CriticalFail[] 
     });
   }
 
-  const missingAbc = (['airway', 'breathing', 'circulation'] as const).filter(
-    (step) => !abcdeCompleted.includes(step)
+  const abcRequired = (['airway', 'breathing', 'circulation'] as const).filter((step) =>
+    call.requiredAbcdeOrder.includes(step)
   );
+  const missingAbc = abcRequired.filter((step) => !abcdeCompleted.includes(step));
   if (missingAbc.length > 0) {
     fails.push({
       id: 'incomplete_abc',
       sheet: 'both',
       label: 'Failure to adequately assess airway, breathing, and circulation',
-      detail: `Missed primary survey step(s): ${missingAbc.join(', ')}.`,
+      detail: `Missed required primary survey step(s): ${missingAbc.join(', ')}.`,
     });
   }
 
   const missedCriticalFindings = call.abcde.filter(
-    (f) => f.critical && !abcdeCompleted.includes(f.step)
+    (f) =>
+      f.critical &&
+      call.requiredAbcdeOrder.includes(f.step) &&
+      !abcdeCompleted.includes(f.step)
   );
   if (missedCriticalFindings.length > 0 && missingAbc.length === 0) {
     fails.push({

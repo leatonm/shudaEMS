@@ -24,7 +24,7 @@ import {
   showHazardDetails,
   showPhaseCoaching,
 } from '@/data/emt/difficulty';
-import { hazardsAreCleared } from '@/data/emt/engine';
+import { hazardsAreCleared, unresolvedSceneHazards } from '@/data/emt/engine';
 import { describeResourcesOnArrival } from '@/data/emt/resources';
 import { shuffleChoices } from '@/data/emt/walkthrough';
 import type { WalkthroughChoice, WalkthroughStep } from '@/data/emt/types';
@@ -44,6 +44,7 @@ export default function EmtCallScreen() {
   const safetyActions = useEmtStore((s) => s.safetyActions);
   const sceneEntered = useEmtStore((s) => s.sceneEntered);
   const enteredUnsafe = useEmtStore((s) => s.enteredUnsafe);
+  const sceneSecuredAfterDelay = useEmtStore((s) => s.sceneSecuredAfterDelay);
   const abcdeCompleted = useEmtStore((s) => s.abcdeCompleted);
   const historyCompleted = useEmtStore((s) => s.historyCompleted);
   const treatments = useEmtStore((s) => s.treatments);
@@ -91,7 +92,7 @@ export default function EmtCallScreen() {
     scene_safety:
       sceneEntered &&
       !enteredUnsafe &&
-      hazardsAreCleared(call, safetyActions),
+      (sceneSecuredAfterDelay || hazardsAreCleared(call, safetyActions)),
     primary_survey: call.requiredAbcdeOrder.every((item) =>
       abcdeCompleted.includes(item)
     ),
@@ -149,7 +150,14 @@ export default function EmtCallScreen() {
           />
 
           {step.development ? (
-            <SceneDevelopment development={step.development} accent={accent} />
+            <SceneDevelopment
+              development={step.development}
+              accent={accent}
+              delayed={sceneSecuredAfterDelay}
+              unresolved={unresolvedSceneHazards(call, safetyActions).map(
+                (hazard) => hazard.label
+              )}
+            />
           ) : null}
 
           {live && live.text !== '…' ? (
@@ -354,27 +362,43 @@ function CallStatusCard({
           style={styles.vitalsBlock}
         >
           <Text style={[styles.vitalsLabel, { color: accent }]}>LIVE VITALS</Text>
-          <View style={styles.vitalGrid}>
-            <VitalTile label="BP" value={vitals.bp} changed={vitals.bp !== call.vitals.bp} />
-            <VitalTile
-              label="HR"
-              value={String(vitals.hr)}
-              changed={vitals.hr !== call.vitals.hr}
-            />
-            <VitalTile
-              label="RR"
-              value={String(vitals.rr)}
-              changed={vitals.rr !== call.vitals.rr}
-            />
-            <VitalTile
-              label="SpO₂"
-              value={`${vitals.spo2}%`}
-              changed={vitals.spo2 !== call.vitals.spo2}
-            />
-          </View>
-          <Text style={styles.mentalStatus}>
-            Mental status: <Text style={styles.mentalStatusValue}>{vitals.mentalStatus}</Text>
-          </Text>
+          {call.archetypeId === 'cardiac_arrest' ||
+          (vitals.hr === 0 && vitals.rr === 0) ? (
+            <View style={styles.arrestBanner}>
+              <Text style={styles.arrestBannerTitle}>PULSELESS · APNEIC</Text>
+              <Text style={styles.arrestBannerText}>
+                No blood pressure to obtain. Confirm pulse ≤10 seconds, then start high-quality
+                CPR and apply the AED.
+              </Text>
+              <Text style={styles.mentalStatus}>
+                Status: <Text style={styles.mentalStatusValue}>{vitals.mentalStatus}</Text>
+              </Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.vitalGrid}>
+                <VitalTile label="BP" value={vitals.bp} changed={vitals.bp !== call.vitals.bp} />
+                <VitalTile
+                  label="HR"
+                  value={String(vitals.hr)}
+                  changed={vitals.hr !== call.vitals.hr}
+                />
+                <VitalTile
+                  label="RR"
+                  value={String(vitals.rr)}
+                  changed={vitals.rr !== call.vitals.rr}
+                />
+                <VitalTile
+                  label="SpO₂"
+                  value={`${vitals.spo2}%`}
+                  changed={vitals.spo2 !== call.vitals.spo2}
+                />
+              </View>
+              <Text style={styles.mentalStatus}>
+                Mental status: <Text style={styles.mentalStatusValue}>{vitals.mentalStatus}</Text>
+              </Text>
+            </>
+          )}
         </Animated.View>
       ) : null}
     </Animated.View>
@@ -403,20 +427,56 @@ function VitalTile({
 function SceneDevelopment({
   development,
   accent,
+  delayed,
+  unresolved,
 }: {
   development: NonNullable<WalkthroughStep['development']>;
   accent: string;
+  delayed: boolean;
+  unresolved: string[];
 }) {
+  const elapsed = development.elapsedMinutes + (delayed ? 9 : 0);
+  const headline = delayed
+    ? 'Scene secured after an avoidable delay'
+    : development.headline;
+  const lines = delayed
+    ? [
+        unresolved.length > 0
+          ? `${unresolved.join(', ')} remained uncontrolled when you chose to wait.`
+          : 'Required scene-safety actions were incomplete when you chose to wait.',
+        'Dispatch eventually escalated the response and the scene was secured.',
+        'Patient contact was delayed; expect the patient’s condition to have worsened.',
+      ]
+    : development.lines;
+
   return (
-    <Animated.View entering={enterUp(0)} style={[styles.development, { borderColor: accent }]}>
+    <Animated.View
+      entering={enterUp(0)}
+      style={[
+        styles.development,
+        { borderColor: delayed ? theme.colors.error : accent },
+      ]}
+    >
       <View style={styles.developmentHeader}>
-        <Text style={[styles.developmentLabel, { color: accent }]}>SCENE DEVELOPMENT</Text>
-        <Text style={styles.developmentTime}>+{development.elapsedMinutes} MIN</Text>
+        <Text
+          style={[
+            styles.developmentLabel,
+            { color: delayed ? theme.colors.error : accent },
+          ]}
+        >
+          SCENE DEVELOPMENT
+        </Text>
+        <Text style={styles.developmentTime}>+{elapsed} MIN</Text>
       </View>
-      <Text style={styles.developmentHeadline}>{development.headline}</Text>
-      {development.lines.map((line) => (
+      <Text style={styles.developmentHeadline}>{headline}</Text>
+      {lines.map((line) => (
         <View key={line} style={styles.developmentRow}>
-          <View style={[styles.developmentDot, { backgroundColor: accent }]} />
+          <View
+            style={[
+              styles.developmentDot,
+              { backgroundColor: delayed ? theme.colors.error : accent },
+            ]}
+          />
           <Text style={styles.developmentText}>{line}</Text>
         </View>
       ))}
@@ -608,8 +668,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: theme.spacing.md,
-    paddingVertical: 10,
-    paddingHorizontal: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.md,
     borderWidth: 1,
@@ -618,11 +678,11 @@ const styles = StyleSheet.create({
   phaseRailItem: {
     flex: 1,
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
   phaseRailDot: {
-    width: 7,
-    height: 7,
+    width: 8,
+    height: 8,
     borderRadius: 4,
     backgroundColor: theme.colors.border,
   },
@@ -640,8 +700,11 @@ const styles = StyleSheet.create({
   score: {
     color: theme.colors.accent,
     fontFamily: 'BebasNeue',
-    fontSize: fs(22),
+    fontSize: fs(26),
     letterSpacing: 1,
+    textShadowColor: theme.colors.amberGlow,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
   },
   examBadge: {
     color: theme.colors.accent,
@@ -655,10 +718,14 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderLeftWidth: 3,
+    borderLeftWidth: 4,
     borderLeftColor: theme.colors.critical,
     padding: theme.spacing.md,
     marginBottom: theme.spacing.md,
+    shadowColor: theme.colors.critical,
+    shadowOpacity: 0.25,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 0 },
   },
   statusHeader: {
     flexDirection: 'row',
@@ -721,6 +788,26 @@ const styles = StyleSheet.create({
     fontFamily: 'IBMPlexMonoBold',
     fontSize: fs(10),
     letterSpacing: 1.2,
+    marginBottom: 8,
+  },
+  arrestBanner: {
+    backgroundColor: theme.colors.dangerGlow,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.critical,
+    padding: theme.spacing.md,
+  },
+  arrestBannerTitle: {
+    color: theme.colors.critical,
+    fontFamily: 'BebasNeue',
+    fontSize: fs(28),
+    letterSpacing: 1.5,
+    marginBottom: 4,
+  },
+  arrestBannerText: {
+    color: theme.colors.text,
+    fontSize: fs(13),
+    lineHeight: fs(19),
     marginBottom: 8,
   },
   vitalGrid: {

@@ -24,11 +24,35 @@ export const cardiacArrest: ScenarioArchetype = {
   hazardPool: [HAZARD_LIBRARY.bystanders, HAZARD_LIBRARY.unknown_meds],
   hazardPickCount: [0, 1],
   abcde: [
-    { step: 'airway', label: 'Airway', clue: 'Not protected — patient unresponsive.', critical: true },
-    { step: 'breathing', label: 'Breathing', clue: 'Apneic. No chest rise.', critical: true },
-    { step: 'circulation', label: 'Circulation', clue: 'No pulse. Begin high-quality CPR.', critical: true },
-    { step: 'disability', label: 'Disability', clue: 'Unresponsive (U on AVPU).' },
-    { step: 'exposure', label: 'Exposure', clue: 'No obvious trauma. Check for reversible clues if time allows.' },
+    {
+      step: 'airway',
+      label: 'Airway',
+      clue: 'Not protected — patient unresponsive. Open the airway.',
+      critical: true,
+    },
+    {
+      step: 'breathing',
+      label: 'Breathing',
+      clue: 'Apneic. No chest rise or respiratory effort.',
+      critical: true,
+    },
+    {
+      step: 'circulation',
+      label: 'Pulse check (≤10 sec)',
+      clue:
+        'No carotid pulse. Begin high-quality CPR immediately — do not delay for a blood pressure.',
+      critical: true,
+    },
+    {
+      step: 'disability',
+      label: 'Disability',
+      clue: 'Unresponsive (U on AVPU). Detailed neuro exam can wait once CPR is underway.',
+    },
+    {
+      step: 'exposure',
+      label: 'Exposure',
+      clue: 'No obvious trauma. Look for reversible clues only if it does not interrupt compressions.',
+    },
   ],
   history: [
     { id: 'events', framework: 'SAMPLE', label: 'Events', clue: 'Sudden collapse. Bystander started compressions.' },
@@ -40,11 +64,12 @@ export const cardiacArrest: ScenarioArchetype = {
     hr: [0],
     rr: [0],
     spo2: [0],
-    mentalStatus: ['unresponsive'],
+    mentalStatus: ['unresponsive / pulseless'],
   },
   safetyActions: ['don_ppe', 'request_als', 'enter_scene'],
   requiredSafety: ['don_ppe'],
-  requiredAbcdeOrder: [...ABCDE_BASE],
+  /** NC adult arrest: airway + breathing + brief pulse check. Disability/exposure optional. */
+  requiredAbcdeOrder: ['airway', 'breathing', 'circulation'],
   treatmentActions: [
     'cpr',
     'aed',

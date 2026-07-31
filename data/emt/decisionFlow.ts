@@ -263,19 +263,31 @@ export function buildDecisionFlow(call: EmtCall): WalkthroughStep[] {
   );
 
   const abcdeChoices: WalkthroughChoice[] = (
-    call.requiredAbcdeOrder.length
-      ? call.requiredAbcdeOrder
-      : (['airway', 'breathing', 'circulation', 'disability', 'exposure'] as AbcdeStep[])
+    call.abcde.length
+      ? call.abcde.map((finding) => finding.step)
+      : call.requiredAbcdeOrder.length
+        ? call.requiredAbcdeOrder
+        : (['airway', 'breathing', 'circulation', 'disability', 'exposure'] as AbcdeStep[])
   ).map((step) => {
     const finding = call.abcde.find((item) => item.step === step);
+    const required = call.requiredAbcdeOrder.includes(step);
+    const arrestPulse =
+      call.archetypeId === 'cardiac_arrest' && step === 'circulation';
     return {
       id: `primary_${step}`,
-      label: `Assess ${finding?.label ?? step}`,
+      label: arrestPulse
+        ? 'Brief pulse check (≤10 seconds)'
+        : `Assess ${finding?.label ?? step}`,
       correct: true,
+      tip: required
+        ? arrestPulse
+          ? 'NC adult arrest: check carotid pulse ≤10 seconds, then start CPR. Do not obtain a BP first.'
+          : undefined
+        : 'Optional for this presentation — not required before moving to treatment.',
       actionKind: 'abcde',
       payload: step,
       advance: 'stay',
-      scoreDelta: finding?.critical ? 16 : 12,
+      scoreDelta: required ? (finding?.critical ? 16 : 12) : 6,
       message: finding?.clue ?? `${step} assessed.`,
       severity: 'good',
       skill: 'assessment',

@@ -50,10 +50,20 @@ export function hazardsAreCleared(
   }
 
   const requiredMet = call.requiredSafety.every((id) => effective.includes(id));
-  const hazardsCleared = call.hazards.every((hazard) =>
-    hazard.clearWith.some((id) => effective.includes(id))
+  return requiredMet && unresolvedSceneHazards(call, safetyActionsTaken).length === 0;
+}
+
+export function unresolvedSceneHazards(
+  call: EmtCall,
+  safetyActionsTaken: string[]
+) {
+  const effective = mergeWithOnSceneActions(
+    call.resourcesOnScene ?? [],
+    safetyActionsTaken
   );
-  return requiredMet && hazardsCleared;
+  return call.hazards.filter(
+    (hazard) => !hazard.clearWith.some((id) => effective.includes(id))
+  );
 }
 
 export function evaluateSafetyAction(
@@ -204,7 +214,10 @@ function shiftBloodPressure(bp: string, systolicDelta: number, diastolicDelta: n
   return `${Math.max(60, systolic + systolicDelta)}/${Math.max(35, diastolic + diastolicDelta)}`;
 }
 
-function delayedCareVitals(call: EmtCall, vitals: EmtVitals): Partial<EmtVitals> {
+export function delayedCareVitals(
+  call: EmtCall,
+  vitals: EmtVitals
+): Partial<EmtVitals> {
   switch (call.archetypeId) {
     case 'respiratory_distress':
     case 'anaphylaxis':

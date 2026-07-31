@@ -180,6 +180,10 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     padding: theme.spacing.lg,
     marginBottom: theme.spacing.lg,
+    shadowColor: theme.colors.emsBlue,
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 0 },
   },
   shiftLabel: {
     color: theme.colors.emsBlue,
@@ -187,6 +191,9 @@ const styles = StyleSheet.create({
     fontSize: fs(11),
     letterSpacing: 1.5,
     marginBottom: theme.spacing.sm,
+    textShadowColor: theme.colors.cadGlow,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
   },
   shiftPrompt: {
     color: theme.colors.text,

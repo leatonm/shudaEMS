@@ -80,13 +80,13 @@ const styles = StyleSheet.create({
   wordmark: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',
-    fontSize: fs(64),
-    lineHeight: fs(68),
+    fontSize: fs(72),
+    lineHeight: fs(76),
     letterSpacing: 2,
     textAlign: 'center',
     textShadowColor: theme.colors.cadGlowStrong,
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 18,
+    textShadowRadius: 24,
   },
   subRow: {
     flexDirection: 'row',

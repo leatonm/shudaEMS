@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import {
   applyVitals,
   createInitialSkills,
+  delayedCareVitals,
   evaluateAbcdeStep,
   evaluateTreatmentAction,
   hazardsAreCleared,
@@ -36,6 +37,7 @@ interface EmtStore {
   safetyActions: string[];
   sceneEntered: boolean;
   enteredUnsafe: boolean;
+  sceneSecuredAfterDelay: boolean;
   abcdeCompleted: AbcdeStep[];
   historyCompleted: string[];
   treatments: string[];
@@ -135,6 +137,7 @@ const emptyState = {
   safetyActions: [] as string[],
   sceneEntered: false,
   enteredUnsafe: false,
+  sceneSecuredAfterDelay: false,
   abcdeCompleted: [] as AbcdeStep[],
   historyCompleted: [] as string[],
   treatments: [] as string[],
@@ -191,6 +194,7 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
     let safetyActions = [...state.safetyActions];
     let sceneEntered = state.sceneEntered;
     let enteredUnsafe = state.enteredUnsafe;
+    let sceneSecuredAfterDelay = state.sceneSecuredAfterDelay;
     let abcdeCompleted = [...state.abcdeCompleted];
     let historyCompleted = [...state.historyCompleted];
     let treatments = [...state.treatments];
@@ -230,7 +234,8 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
     }
 
     if (kind === 'enter_scene') {
-      const safe = hazardsAreCleared(state.call, safetyActions);
+      const safe =
+        sceneSecuredAfterDelay || hazardsAreCleared(state.call, safetyActions);
       if (!safe) {
         enteredUnsafe = true;
         scoreDelta = Math.min(scoreDelta, -30);
@@ -355,13 +360,20 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
         (item) => !abcdeCompleted.includes(item)
       );
       if (missing.length > 0) {
+        const labels = missing.map((step) => {
+          const finding = state.call!.abcde.find((item) => item.step === step);
+          return finding?.label ?? step;
+        });
         scoreDelta = -6 * missing.length;
-        message = `You moved on with ${missing.length} primary assessment item${missing.length === 1 ? '' : 's'} incomplete: ${missing.join(', ')}. Continue care, but reassess these threats.`;
+        message = `You moved on with ${missing.length} required primary assessment item${missing.length === 1 ? '' : 's'} incomplete: ${labels.join(', ')}. Continue care, but reassess these threats.`;
         severity = 'bad';
         skill = 'assessment';
         flowMiss = true;
       } else {
-        message = 'Primary survey complete. Move into focused patient care.';
+        message =
+          state.call.archetypeId === 'cardiac_arrest'
+            ? 'Airway, breathing, and pulse check complete. Move immediately to CPR and AED.'
+            : 'Primary survey complete. Move into focused patient care.';
         severity = 'good';
       }
     }
@@ -369,13 +381,14 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
     if (kind === 'proceed' && payload === 'await_scene_clear') {
       const safe = hazardsAreCleared(state.call, safetyActions);
       if (!safe) {
-        advance = 'stay';
-        scoreDelta = -8;
+        sceneSecuredAfterDelay = true;
+        scoreDelta = -22;
         message =
-          'You stage, but the scene remains unsafe. Arrange the required controls before returning.';
-        severity = 'warn';
+          'You staged without arranging effective scene control. Dispatch eventually escalates the response, but patient contact is significantly delayed.';
+        severity = 'bad';
         skill = 'scene_safety';
         flowMiss = true;
+        vitals = applyVitals(vitals, delayedCareVitals(state.call, vitals));
       } else {
         const development = state.steps[state.stepIndex + 1]?.development;
         message = development
@@ -451,6 +464,7 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
         safetyActions,
         sceneEntered,
         enteredUnsafe,
+        sceneSecuredAfterDelay,
         abcdeCompleted,
         historyCompleted,
         treatments,
@@ -478,6 +492,7 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       safetyActions,
       sceneEntered,
       enteredUnsafe,
+      sceneSecuredAfterDelay,
       abcdeCompleted,
       historyCompleted,
       treatments,

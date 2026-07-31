@@ -1,12 +1,14 @@
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
 
+import { ScreenScroll } from '@/components/ui/ScreenScroll';
 import { ShiftButton } from '@/components/ui/ShiftUI';
 import { StarRating } from '@/components/ui/StarRating';
 import { PopIn, PulseOrb, enterUp } from '@/components/ui/motion';
+import { fs } from '@/constants/layout';
 import { categoryColor, theme } from '@/constants/theme';
 import { useEmtStore } from '@/store/emtStore';
 
@@ -51,7 +53,7 @@ export default function EmtDebriefScreen() {
         top={-90}
         right={-90}
       />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScreenScroll>
         <Animated.Text entering={enterUp(0)} style={styles.header}>
           Debrief
         </Animated.Text>
@@ -167,7 +169,7 @@ export default function EmtDebriefScreen() {
         />
         <ShiftButton label="RANDOM CALL" onPress={() => handleNext()} variant="secondary" />
         <ShiftButton label="END SESSION" onPress={handleHome} variant="secondary" />
-      </ScrollView>
+      </ScreenScroll>
     </SafeAreaView>
   );
 }
@@ -247,19 +249,18 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.cadGlow,
     opacity: 0.35,
   },
-  content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xl },
   centered: { flex: 1, justifyContent: 'center', padding: theme.spacing.lg },
   header: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',
-    fontSize: 42,
+    fontSize: fs(42),
     letterSpacing: 1.5,
-    lineHeight: 44,
+    lineHeight: fs(44),
   },
   subheader: {
     color: theme.colors.textMuted,
     fontFamily: 'IBMPlexMono',
-    fontSize: 11,
+    fontSize: fs(11),
     letterSpacing: 0.5,
     marginBottom: theme.spacing.md,
     marginTop: 4,
@@ -281,19 +282,19 @@ const styles = StyleSheet.create({
   },
   sheetKicker: {
     color: theme.colors.textMuted,
-    fontSize: 10,
+    fontSize: fs(10),
     fontWeight: '800',
     letterSpacing: 1.4,
   },
-  sheetResult: { fontSize: 32, fontWeight: '900', marginTop: 4 },
+  sheetResult: { fontSize: fs(32), fontWeight: '900', marginTop: 4 },
   passText: { color: theme.colors.success },
   failText: { color: theme.colors.critical },
   sheetHint: {
     color: theme.colors.textMuted,
-    fontSize: 12,
+    fontSize: fs(12),
     textAlign: 'center',
     marginTop: 4,
-    lineHeight: 17,
+    lineHeight: fs(17),
   },
   summary: {
     backgroundColor: theme.colors.surface,
@@ -305,8 +306,13 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: theme.spacing.md,
   },
-  outcome: { color: theme.colors.accentLight, fontWeight: '700' },
-  summaryText: { color: theme.colors.text, textAlign: 'center', lineHeight: 21 },
+  outcome: { color: theme.colors.accentLight, fontWeight: '700', fontSize: fs(14) },
+  summaryText: {
+    color: theme.colors.text,
+    textAlign: 'center',
+    lineHeight: fs(21),
+    fontSize: fs(14),
+  },
   critCard: {
     backgroundColor: theme.colors.dangerGlow,
     borderRadius: theme.radius.md,
@@ -315,8 +321,13 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     marginBottom: 8,
   },
-  critLabel: { color: theme.colors.critical, fontWeight: '800', marginBottom: 4 },
-  critDetail: { color: theme.colors.text, lineHeight: 19, fontSize: 13 },
+  critLabel: {
+    color: theme.colors.critical,
+    fontWeight: '800',
+    marginBottom: 4,
+    fontSize: fs(14),
+  },
+  critDetail: { color: theme.colors.text, lineHeight: fs(19), fontSize: fs(13) },
   skills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: theme.spacing.md },
   skillChip: {
     backgroundColor: theme.colors.surfaceLight,
@@ -328,20 +339,25 @@ const styles = StyleSheet.create({
     minWidth: 64,
     alignItems: 'center',
   },
-  skillLabel: { color: theme.colors.textMuted, fontSize: 10, fontWeight: '700' },
-  skillValue: { color: theme.colors.text, fontWeight: '800', fontFamily: 'SpaceMono' },
+  skillLabel: { color: theme.colors.textMuted, fontSize: fs(10), fontWeight: '700' },
+  skillValue: {
+    color: theme.colors.text,
+    fontWeight: '800',
+    fontFamily: 'SpaceMono',
+    fontSize: fs(14),
+  },
   section: { marginBottom: theme.spacing.md },
   sectionTitle: {
     color: theme.colors.emsBlue,
-    fontSize: 12,
+    fontSize: fs(12),
     fontWeight: '800',
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom: 8,
   },
   bulletRow: { flexDirection: 'row', marginBottom: 6 },
-  bulletIcon: { width: 18, fontWeight: '800' },
-  bulletText: { color: theme.colors.text, flex: 1, lineHeight: 20 },
+  bulletIcon: { width: fs(18), fontWeight: '800', fontSize: fs(14) },
+  bulletText: { color: theme.colors.text, flex: 1, lineHeight: fs(20), fontSize: fs(14) },
   pearl: {
     backgroundColor: theme.colors.amberGlow,
     borderRadius: theme.radius.md,
@@ -352,21 +368,21 @@ const styles = StyleSheet.create({
   },
   pearlLabel: {
     color: theme.colors.accent,
-    fontSize: 10,
+    fontSize: fs(10),
     fontWeight: '800',
     letterSpacing: 1,
     marginBottom: 4,
   },
-  pearlText: { color: theme.colors.text, lineHeight: 21 },
+  pearlText: { color: theme.colors.text, lineHeight: fs(21), fontSize: fs(14) },
   timelineRow: {
     borderLeftWidth: 2,
     borderLeftColor: theme.colors.border,
     paddingLeft: 12,
     marginBottom: 12,
   },
-  time: { color: theme.colors.textMuted, fontFamily: 'SpaceMono', fontSize: 11 },
-  timelineLabel: { color: theme.colors.text, fontWeight: '700' },
-  timelineMsg: { color: theme.colors.textMuted, lineHeight: 18 },
+  time: { color: theme.colors.textMuted, fontFamily: 'SpaceMono', fontSize: fs(11) },
+  timelineLabel: { color: theme.colors.text, fontWeight: '700', fontSize: fs(14) },
+  timelineMsg: { color: theme.colors.textMuted, lineHeight: fs(18), fontSize: fs(13) },
   disclaimer: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.md,
@@ -375,7 +391,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
-  disclaimerTitle: { color: theme.colors.warning, fontWeight: '800', marginBottom: 4 },
-  disclaimerText: { color: theme.colors.textMuted, fontSize: 12, lineHeight: 18 },
-  muted: { color: theme.colors.textMuted, textAlign: 'center', marginBottom: 16 },
+  disclaimerTitle: {
+    color: theme.colors.warning,
+    fontWeight: '800',
+    marginBottom: 4,
+    fontSize: fs(14),
+  },
+  disclaimerText: { color: theme.colors.textMuted, fontSize: fs(12), lineHeight: fs(18) },
+  muted: {
+    color: theme.colors.textMuted,
+    textAlign: 'center',
+    marginBottom: 16,
+    fontSize: fs(14),
+  },
 });

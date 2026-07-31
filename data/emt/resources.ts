@@ -84,38 +84,13 @@ export function pickResourcesOnScene(input: {
 export function describeResourcesOnArrival(
   resourcesOnScene: OnSceneResource[]
 ): { headline: string; lines: string[] } {
-  const hasFire = resourcesOnScene.includes('fire');
-  const hasAls = resourcesOnScene.includes('als');
-  const hasPd = resourcesOnScene.includes('pd');
-
-  if (!hasFire && !hasAls && !hasPd) {
-    return {
-      headline: 'You are first on scene',
-      lines: [
-        'No fire, ALS, or PD present yet — request what the size-up and patient acuity require.',
-      ],
-    };
-  }
-
-  const lines: string[] = [];
-  if (hasFire) {
-    lines.push('Fire / Engine already on scene — coordinate; do not re-request fire.');
-  } else {
-    lines.push('Fire not on scene — request if extrication, fire, or rescue support is needed.');
-  }
-  if (hasAls) {
-    lines.push('ALS already on scene — work with the paramedic crew.');
-  } else {
-    lines.push('ALS not on scene — request intercept if the patient needs advanced care.');
-  }
-  if (hasPd) {
-    lines.push('Law enforcement already on scene.');
-  } else if (resourcesOnScene.length > 0) {
-    // only mention PD absence when something else is present and PD might matter
-  }
-
   return {
-    headline: 'Resources on arrival',
-    lines,
+    headline: resourcesOnScene.length === 0 ? 'You are first on scene' : 'Resource status',
+    lines: (Object.keys(ON_SCENE_LABELS) as OnSceneResource[]).map(
+      (resource) =>
+        `${ON_SCENE_LABELS[resource]} — ${
+          resourcesOnScene.includes(resource) ? 'ON SCENE' : 'NOT ON SCENE'
+        }`
+    ),
   };
 }

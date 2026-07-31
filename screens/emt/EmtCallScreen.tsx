@@ -1,10 +1,11 @@
 import { useEffect, useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
 
 import { ChoiceButton } from '@/components/ui/ChoiceButton';
+import { ScreenScroll } from '@/components/ui/ScreenScroll';
 import { ShiftButton } from '@/components/ui/ShiftUI';
 import {
   LiveDot,
@@ -15,6 +16,7 @@ import {
   enterUp,
   exitStepOut,
 } from '@/components/ui/motion';
+import { fs } from '@/constants/layout';
 import { categoryColor, theme } from '@/constants/theme';
 import {
   formatLiveFeedback,
@@ -25,7 +27,7 @@ import {
 import { hazardsAreCleared } from '@/data/emt/engine';
 import { describeResourcesOnArrival } from '@/data/emt/resources';
 import { shuffleChoices } from '@/data/emt/walkthrough';
-import type { WalkthroughChoice } from '@/data/emt/types';
+import type { WalkthroughChoice, WalkthroughStep } from '@/data/emt/types';
 import { useEmtStore } from '@/store/emtStore';
 
 export default function EmtCallScreen() {
@@ -110,23 +112,21 @@ export default function EmtCallScreen() {
         delay={800}
       />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.headerRow}>
-          <LiveDot color={accent} />
-          <Text style={[styles.phase, { color: accent }]}>{step.title}</Text>
+      <ScreenScroll>
+        <View style={styles.topBar}>
+          <View style={styles.topBarLeft}>
+            <LiveDot color={accent} />
+            <Text style={styles.unit}>
+              {call.unit} · P{call.priority} · {difficulty.toUpperCase()}
+            </Text>
+          </View>
+          {showScore ? <Text style={styles.score}>{totalScore} PTS</Text> : null}
         </View>
-        <Text style={styles.unit}>
-          {call.unit} · Priority {call.priority} · {difficulty.toUpperCase()}
-        </Text>
 
         <PhaseRail phase={step.phase} accent={accent} completed={phaseCompletion} />
 
         <View style={styles.progressWrap}>
           <ProgressTrack progress={progress} color={accent} />
-          <View style={styles.progressMeta}>
-            <Text style={styles.progress}>PROVIDER DECISION BOARD</Text>
-            {showScore ? <Text style={styles.score}>{totalScore} PTS</Text> : null}
-          </View>
         </View>
 
         {difficulty === 'exam' ? (
@@ -141,16 +141,15 @@ export default function EmtCallScreen() {
           <SituationStrip
             reveal={step.reveal}
             call={call}
+            vitals={vitals}
+            showVitals={step.phase !== 'dispatch' && step.phase !== 'scene_safety'}
             hazardDetail={hazardDetail}
             accent={accent}
           />
 
-          <PatientStatus
-            call={call}
-            vitals={vitals}
-            showVitals={step.phase !== 'dispatch' && step.phase !== 'scene_safety'}
-            accent={accent}
-          />
+          {step.development ? (
+            <SceneDevelopment development={step.development} accent={accent} />
+          ) : null}
 
           {live && live.text !== '…' ? (
             <Animated.View
@@ -176,8 +175,8 @@ export default function EmtCallScreen() {
             </Animated.View>
           ) : null}
 
-          <View style={[styles.promptCard, { borderLeftColor: accent }]}>
-            <Text style={[styles.promptLabel, { color: accent }]}>YOU ARE LEADING THIS CALL</Text>
+          <View style={styles.promptBlock}>
+            <Text style={[styles.promptEyebrow, { color: accent }]}>{step.title}</Text>
             <Text style={styles.prompt}>{step.prompt}</Text>
             {coach && step.coachTip ? (
               <Text style={styles.hint}>{step.coachTip}</Text>
@@ -185,8 +184,13 @@ export default function EmtCallScreen() {
           </View>
 
           {groups.map((group) => (
-            <View key={group.label} style={styles.choiceGroup}>
-              <Text style={styles.choiceGroupLabel}>{group.label}</Text>
+            <View
+              key={group.label || 'forward'}
+              style={group.forward ? styles.forwardGroup : styles.choiceGroup}
+            >
+              {group.label ? (
+                <Text style={styles.choiceGroupLabel}>{group.label}</Text>
+              ) : null}
               {group.choices.map((choice, index) => {
                 const completed = isChoiceCompleted(choice, {
                   safetyActions,
@@ -200,20 +204,20 @@ export default function EmtCallScreen() {
                 return (
                   <ChoiceButton
                     key={choice.id}
-                    label={completed ? `✓ ${choice.label}` : choice.label}
-                    subtitle={completed ? 'Completed' : tips ? choice.tip : undefined}
+                    label={choice.label}
+                    subtitle={completed ? undefined : tips ? choice.tip : undefined}
                     onPress={() => chooseNext(choice.id)}
                     index={index}
                     accentColor={accent}
-                    variant={completed ? 'success' : 'default'}
-                    disabled={completed}
+                    variant={group.forward && !completed ? 'primary' : 'task'}
+                    completed={completed}
                   />
                 );
               })}
             </View>
           ))}
         </Animated.View>
-      </ScrollView>
+      </ScreenScroll>
     </SafeAreaView>
   );
 }
@@ -271,15 +275,21 @@ function PhaseRail({
   );
 }
 
-function PatientStatus({
+/**
+ * Single source of truth for the call: the CAD line, who the patient is, and their
+ * current vitals once they've been assessed.
+ */
+function CallStatusCard({
   call,
   vitals,
   showVitals,
+  prominent,
   accent,
 }: {
   call: NonNullable<ReturnType<typeof useEmtStore.getState>['call']>;
   vitals: NonNullable<ReturnType<typeof useEmtStore.getState>['vitals']>;
   showVitals: boolean;
+  prominent: boolean;
   accent: string;
 }) {
   const changed =
@@ -291,23 +301,38 @@ function PatientStatus({
 
   return (
     <Animated.View
-      key={`${vitals.bp}-${vitals.hr}-${vitals.rr}-${vitals.spo2}-${vitals.mentalStatus}`}
       entering={enterFade(0)}
-      style={[styles.patientStatus, changed && { borderColor: accent }]}
+      style={[styles.statusCard, changed && showVitals && { borderColor: accent }]}
     >
-      <View style={styles.patientStatusHeader}>
-        <Text style={[styles.patientStatusLabel, { color: accent }]}>LIVE PATIENT STATUS</Text>
-        {changed ? <Text style={styles.patientChanged}>PATIENT RESPONSE</Text> : null}
+      <View style={styles.statusHeader}>
+        <View style={styles.statusHeaderLeft}>
+          <LiveDot color={theme.colors.critical} size={7} />
+          <Text style={styles.cad}>CAD DISPATCH · {call.category.toUpperCase()}</Text>
+        </View>
+        {showVitals ? (
+          changed ? <Text style={styles.patientChanged}>PATIENT RESPONSE</Text> : null
+        ) : (
+          <Text style={styles.vitalsPending}>VITALS PENDING</Text>
+        )}
       </View>
-      {!showVitals ? (
-        <>
-          <Text style={styles.patientStatusSummary}>{call.patientSummary}</Text>
-          <Text style={styles.patientNotAssessed}>
-            Vital signs not yet obtained—complete the primary survey.
-          </Text>
-        </>
-      ) : (
-        <>
+
+      <Text
+        style={[
+          prominent ? styles.dispatchHero : styles.dispatchLine,
+          prominent && { textShadowColor: accent },
+        ]}
+      >
+        {call.dispatch}
+      </Text>
+      <Text style={styles.patientSummary}>{call.patientSummary}</Text>
+
+      {showVitals ? (
+        <Animated.View
+          key={`${vitals.bp}-${vitals.hr}-${vitals.rr}-${vitals.spo2}-${vitals.mentalStatus}`}
+          entering={enterFade(0)}
+          style={styles.vitalsBlock}
+        >
+          <Text style={[styles.vitalsLabel, { color: accent }]}>LIVE VITALS</Text>
           <View style={styles.vitalGrid}>
             <VitalTile label="BP" value={vitals.bp} changed={vitals.bp !== call.vitals.bp} />
             <VitalTile
@@ -329,8 +354,8 @@ function PatientStatus({
           <Text style={styles.mentalStatus}>
             Mental status: <Text style={styles.mentalStatusValue}>{vitals.mentalStatus}</Text>
           </Text>
-        </>
-      )}
+        </Animated.View>
+      ) : null}
     </Animated.View>
   );
 }
@@ -354,40 +379,93 @@ function VitalTile({
   );
 }
 
-function groupChoices(choices: WalkthroughChoice[]) {
-  const groups: Array<{ label: string; choices: WalkthroughChoice[] }> = [];
+function SceneDevelopment({
+  development,
+  accent,
+}: {
+  development: NonNullable<WalkthroughStep['development']>;
+  accent: string;
+}) {
+  return (
+    <Animated.View entering={enterUp(0)} style={[styles.development, { borderColor: accent }]}>
+      <View style={styles.developmentHeader}>
+        <Text style={[styles.developmentLabel, { color: accent }]}>SCENE DEVELOPMENT</Text>
+        <Text style={styles.developmentTime}>+{development.elapsedMinutes} MIN</Text>
+      </View>
+      <Text style={styles.developmentHeadline}>{development.headline}</Text>
+      {development.lines.map((line) => (
+        <View key={line} style={styles.developmentRow}>
+          <View style={[styles.developmentDot, { backgroundColor: accent }]} />
+          <Text style={styles.developmentText}>{line}</Text>
+        </View>
+      ))}
+    </Animated.View>
+  );
+}
+
+interface ChoiceGroup {
+  label: string;
+  choices: WalkthroughChoice[];
+  /** Ends the step — rendered last as a solid call to action. */
+  forward: boolean;
+}
+
+/** Ordered so the work to do reads top-down and the exit is always at the bottom. */
+const GROUP_ORDER = [
+  'PROTECT YOURSELF',
+  'SCENE CONTROL',
+  'ON-SCENE ACTIONS',
+  'PRIMARY ASSESSMENT',
+  'FOCUSED QUESTIONS',
+  'INTERVENTIONS',
+  'CHOOSE ONE',
+  '',
+];
+
+function groupLabel(choice: WalkthroughChoice): string {
+  switch (choice.actionKind) {
+    case 'respond':
+    case 'enter_scene':
+    case 'proceed':
+      return '';
+    case 'ppe':
+    case 'stage':
+      return 'PROTECT YOURSELF';
+    case 'verbalize_safe':
+    case 'safety_request':
+      return 'SCENE CONTROL';
+    case 'abcde':
+      return 'PRIMARY ASSESSMENT';
+    case 'history':
+    case 'check_allergies':
+      return 'FOCUSED QUESTIONS';
+    case 'treatment':
+      return 'INTERVENTIONS';
+    case 'transport_priority':
+    case 'transport_destination':
+      return 'CHOOSE ONE';
+    default:
+      return 'ON-SCENE ACTIONS';
+  }
+}
+
+function groupChoices(choices: WalkthroughChoice[]): ChoiceGroup[] {
   const labels = new Map<string, WalkthroughChoice[]>();
 
   for (const choice of choices) {
-    let label = 'AVAILABLE ACTIONS';
-    if (choice.actionKind === 'abcde') label = 'PRIMARY ASSESSMENT';
-    if (choice.actionKind === 'history' || choice.actionKind === 'check_allergies') {
-      label = 'FOCUSED QUESTIONS';
-    }
-    if (choice.actionKind === 'treatment') label = 'INTERVENTIONS';
-    if (
-      choice.actionKind === 'enter_scene' ||
-      choice.actionKind === 'proceed' ||
-      choice.actionKind === 'trap_early_treat' ||
-      choice.actionKind === 'trap_load_go'
-    ) {
-      label = 'MOVE THE CALL FORWARD';
-    }
-    if (
-      choice.actionKind === 'transport_priority' ||
-      choice.actionKind === 'transport_destination'
-    ) {
-      label = 'CHOOSE ONE';
-    }
+    const label = groupLabel(choice);
     const group = labels.get(label) ?? [];
     group.push(choice);
     labels.set(label, group);
   }
 
-  for (const [label, groupedChoices] of labels) {
-    groups.push({ label, choices: groupedChoices });
-  }
-  return groups;
+  return [...labels.entries()]
+    .map(([label, groupedChoices]) => ({
+      label,
+      choices: groupedChoices,
+      forward: label === '',
+    }))
+    .sort((a, b) => GROUP_ORDER.indexOf(a.label) - GROUP_ORDER.indexOf(b.label));
 }
 
 function isChoiceCompleted(
@@ -429,35 +507,30 @@ function isChoiceCompleted(
 function SituationStrip({
   reveal,
   call,
+  vitals,
+  showVitals,
   hazardDetail,
   accent,
 }: {
   reveal: 'dispatch' | 'scene' | 'vitals' | 'none';
   call: NonNullable<ReturnType<typeof useEmtStore.getState>['call']>;
+  vitals: NonNullable<ReturnType<typeof useEmtStore.getState>['vitals']>;
+  showVitals: boolean;
   hazardDetail: boolean;
   accent: string;
 }) {
-  const dispatchCard =
-    reveal === 'dispatch' ? (
-      <Animated.View entering={enterFade(0)} style={styles.card}>
-        <Text style={styles.cad}>CAD DISPATCH · {call.category.toUpperCase()}</Text>
-        <Text style={[styles.dispatch, { textShadowColor: accent }]}>{call.dispatch}</Text>
-        <Text style={styles.patient}>{call.patientSummary}</Text>
-      </Animated.View>
-    ) : (
-      <View style={styles.dispatchSticky}>
-        <Text style={styles.cad}>CAD DISPATCH · {call.category.toUpperCase()}</Text>
-        <Text style={styles.dispatchStickyText}>{call.dispatch}</Text>
-        <Text style={styles.patientSticky}>{call.patientSummary}</Text>
-      </View>
-    );
+  const statusCard = (
+    <CallStatusCard
+      call={call}
+      vitals={vitals}
+      showVitals={showVitals}
+      prominent={reveal === 'dispatch'}
+      accent={accent}
+    />
+  );
 
-  if (reveal === 'dispatch' || reveal === 'none') {
-    return dispatchCard;
-  }
-
-  if (reveal === 'vitals') {
-    return dispatchCard;
+  if (reveal !== 'scene') {
+    return statusCard;
   }
 
   const resources = describeResourcesOnArrival(call.resourcesOnScene ?? []);
@@ -465,13 +538,14 @@ function SituationStrip({
 
   return (
     <View style={styles.situation}>
-      {dispatchCard}
+      {statusCard}
+
+      <Text style={styles.sceneSectionLabel}>WHAT YOU SEE ON ARRIVAL</Text>
 
       <Animated.View
         entering={enterFade(0)}
         style={[styles.resources, first ? styles.resourcesFirst : styles.resourcesPresent]}
       >
-        <Text style={styles.resourcesLabel}>RESOURCES ON ARRIVAL</Text>
         <Text style={styles.resourcesHeadline}>{resources.headline}</Text>
         {resources.lines.map((line) => (
           <Text key={line} style={styles.resourcesLine}>
@@ -497,20 +571,17 @@ function SituationStrip({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.background },
-  content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xl },
   centered: { flex: 1, justifyContent: 'center', padding: theme.spacing.lg },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  phase: {
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: 11,
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
+  topBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   unit: {
     color: theme.colors.textMuted,
-    marginTop: 4,
     fontFamily: 'IBMPlexMono',
-    fontSize: 12,
+    fontSize: fs(12),
   },
   phaseRail: {
     flexDirection: 'row',
@@ -537,7 +608,7 @@ const styles = StyleSheet.create({
   phaseRailText: {
     color: theme.colors.textMuted,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: 8,
+    fontSize: fs(8),
     letterSpacing: 0.5,
     textAlign: 'center',
   },
@@ -545,115 +616,91 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.md,
   },
-  progressMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  progress: {
-    color: theme.colors.textMuted,
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: 10,
-    letterSpacing: 1.2,
-  },
   score: {
     color: theme.colors.accent,
     fontFamily: 'BebasNeue',
-    fontSize: 22,
+    fontSize: fs(22),
     letterSpacing: 1,
   },
   examBadge: {
     color: theme.colors.accent,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: 11,
+    fontSize: fs(11),
     letterSpacing: 0.8,
     marginBottom: theme.spacing.sm,
   },
-  card: {
+  statusCard: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.md,
-  },
-  cad: {
-    color: theme.colors.critical,
-    fontFamily: 'IBMPlexMonoBold',
-    letterSpacing: 1.5,
-    fontSize: 11,
-    marginBottom: theme.spacing.sm,
-  },
-  dispatch: {
-    color: theme.colors.text,
-    fontFamily: 'BebasNeue',
-    fontSize: 36,
-    letterSpacing: 1,
-    lineHeight: 38,
-    marginBottom: 8,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 14,
-  },
-  patient: { color: theme.colors.accentLight, fontSize: 16 },
-  dispatchSticky: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderLeftWidth: 3,
     borderLeftColor: theme.colors.critical,
     padding: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-  },
-  dispatchStickyText: {
-    color: theme.colors.text,
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 21,
-    marginTop: 4,
-  },
-  patientSticky: {
-    color: theme.colors.accentLight,
-    fontSize: 13,
-    marginTop: 4,
-    lineHeight: 18,
-  },
-  patientStatus: {
-    backgroundColor: theme.colors.backgroundAlt,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    padding: theme.spacing.md,
     marginBottom: theme.spacing.md,
   },
-  patientStatusHeader: {
+  statusHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: theme.spacing.sm,
   },
-  patientStatusLabel: {
+  statusHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  cad: {
+    color: theme.colors.critical,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: 10,
-    letterSpacing: 1.2,
+    letterSpacing: 1.5,
+    fontSize: fs(11),
+  },
+  dispatchHero: {
+    color: theme.colors.text,
+    fontFamily: 'BebasNeue',
+    fontSize: fs(36),
+    letterSpacing: 1,
+    lineHeight: fs(38),
+    marginBottom: 6,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 14,
+  },
+  dispatchLine: {
+    color: theme.colors.text,
+    fontSize: fs(15),
+    fontWeight: '700',
+    lineHeight: fs(21),
+  },
+  patientSummary: {
+    color: theme.colors.accentLight,
+    fontSize: fs(14),
+    lineHeight: fs(20),
+    marginTop: 4,
   },
   patientChanged: {
     color: theme.colors.accent,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: 9,
+    fontSize: fs(9),
     letterSpacing: 0.8,
   },
-  patientStatusSummary: {
-    color: theme.colors.text,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  patientNotAssessed: {
+  vitalsPending: {
     color: theme.colors.textMuted,
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 4,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(9),
+    letterSpacing: 0.8,
+  },
+  vitalsBlock: {
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  vitalsLabel: {
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(10),
+    letterSpacing: 1.2,
+    marginBottom: 8,
   },
   vitalGrid: {
     flexDirection: 'row',
@@ -662,7 +709,7 @@ const styles = StyleSheet.create({
   vitalTile: {
     flex: 1,
     minWidth: 58,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.backgroundAlt,
     borderRadius: theme.radius.sm,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -676,12 +723,12 @@ const styles = StyleSheet.create({
   vitalTileLabel: {
     color: theme.colors.textMuted,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: 9,
+    fontSize: fs(9),
   },
   vitalTileValue: {
     color: theme.colors.text,
     fontFamily: 'SpaceMono',
-    fontSize: 13,
+    fontSize: fs(13),
     marginTop: 2,
   },
   vitalTileValueChanged: {
@@ -689,7 +736,7 @@ const styles = StyleSheet.create({
   },
   mentalStatus: {
     color: theme.colors.textMuted,
-    fontSize: 12,
+    fontSize: fs(12),
     marginTop: 10,
   },
   mentalStatusValue: {
@@ -697,37 +744,82 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   situation: { marginBottom: theme.spacing.md },
-  promptCard: {
-    backgroundColor: theme.colors.surface,
+  development: {
+    backgroundColor: theme.colors.cadGlow,
     borderRadius: theme.radius.lg,
     borderWidth: 1,
-    borderLeftWidth: 4,
-    borderColor: theme.colors.border,
     padding: theme.spacing.md,
     marginBottom: theme.spacing.md,
   },
-  promptLabel: {
+  developmentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  developmentLabel: {
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: 10,
+    fontSize: fs(10),
     letterSpacing: 1.4,
+  },
+  developmentTime: {
+    color: theme.colors.textMuted,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(10),
+    letterSpacing: 0.8,
+  },
+  developmentHeadline: {
+    color: theme.colors.text,
+    fontSize: fs(20),
+    fontWeight: '800',
+    marginBottom: 10,
+  },
+  developmentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 5,
+  },
+  developmentDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 7,
+  },
+  developmentText: {
+    color: theme.colors.text,
+    flex: 1,
+    fontSize: fs(14),
+    lineHeight: fs(20),
+  },
+  promptBlock: {
+    marginBottom: theme.spacing.lg,
+    marginTop: theme.spacing.sm,
+  },
+  promptEyebrow: {
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(10),
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
     marginBottom: 6,
   },
   prompt: {
     color: theme.colors.text,
-    fontSize: 18,
-    fontWeight: '800',
-    lineHeight: 24,
+    fontSize: fs(22),
+    fontWeight: '700',
+    lineHeight: fs(28),
   },
   hint: {
     color: theme.colors.textMuted,
     marginTop: 8,
-    lineHeight: 20,
-    fontSize: 13,
+    lineHeight: fs(20),
+    fontSize: fs(13),
   },
   body: {
     color: theme.colors.textMuted,
     marginBottom: theme.spacing.sm,
-    lineHeight: 20,
+    lineHeight: fs(20),
+    fontSize: fs(14),
   },
   hazard: {
     backgroundColor: theme.colors.surface,
@@ -737,8 +829,8 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     marginBottom: theme.spacing.sm,
   },
-  hazardLabel: { color: theme.colors.warning, fontWeight: '800' },
-  hazardDesc: { color: theme.colors.text, marginTop: 2 },
+  hazardLabel: { color: theme.colors.warning, fontWeight: '800', fontSize: fs(14) },
+  hazardDesc: { color: theme.colors.text, marginTop: 2, fontSize: fs(14), lineHeight: fs(20) },
   resources: {
     borderRadius: theme.radius.md,
     borderWidth: 1,
@@ -753,34 +845,37 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.cadGlow,
     borderColor: theme.colors.emsBlue,
   },
-  resourcesLabel: {
+  sceneSectionLabel: {
     color: theme.colors.textMuted,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: 10,
+    fontSize: fs(10),
     letterSpacing: 1.2,
-    marginBottom: 4,
+    marginBottom: 7,
   },
   resourcesHeadline: {
     color: theme.colors.text,
     fontWeight: '800',
-    fontSize: 16,
-    marginBottom: 6,
+    fontSize: fs(15),
+    marginBottom: 4,
   },
   resourcesLine: {
     color: theme.colors.text,
-    fontSize: 13,
-    lineHeight: 19,
-    marginBottom: 4,
+    fontSize: fs(13),
+    lineHeight: fs(19),
   },
   choiceGroup: {
+    marginBottom: theme.spacing.lg,
+  },
+  forwardGroup: {
+    marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.md,
   },
   choiceGroupLabel: {
     color: theme.colors.textMuted,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: 10,
+    fontSize: fs(10),
     letterSpacing: 1.2,
-    marginBottom: 7,
+    marginBottom: 4,
   },
   feedback: {
     padding: theme.spacing.md,
@@ -803,10 +898,15 @@ const styles = StyleSheet.create({
   feedbackLabel: {
     color: theme.colors.textMuted,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: 9,
+    fontSize: fs(9),
     letterSpacing: 1.1,
     marginBottom: 5,
   },
-  feedbackText: { color: theme.colors.text, lineHeight: 20 },
-  muted: { color: theme.colors.textMuted, textAlign: 'center', marginBottom: 16 },
+  feedbackText: { color: theme.colors.text, lineHeight: fs(20), fontSize: fs(14) },
+  muted: {
+    color: theme.colors.textMuted,
+    textAlign: 'center',
+    marginBottom: 16,
+    fontSize: fs(14),
+  },
 });

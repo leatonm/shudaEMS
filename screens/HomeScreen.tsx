@@ -1,11 +1,13 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
 
+import { ScreenScroll } from '@/components/ui/ScreenScroll';
 import { ShiftButton } from '@/components/ui/ShiftUI';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { PressScale, PulseOrb, enterUp } from '@/components/ui/motion';
+import { fs } from '@/constants/layout';
 import { categoryColor, theme } from '@/constants/theme';
 import { CALL_CATEGORIES } from '@/data/emt/categories';
 import { DIFFICULTY_OPTIONS } from '@/data/emt/difficulty';
@@ -45,10 +47,7 @@ export default function HomeScreen() {
         delay={1200}
       />
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScreenScroll>
         <BrandMark />
 
         <Animated.View entering={enterUp(3)} style={styles.disclaimer}>
@@ -79,10 +78,6 @@ export default function HomeScreen() {
 
         <Animated.View entering={enterUp(5)} style={styles.shiftCard}>
           <Text style={styles.shiftLabel}>CHOOSE A CATEGORY</Text>
-          <Text style={styles.shiftPrompt}>
-            Step-by-step skills-sheet walkthrough. Correct and incorrect options at each
-            decision — stay in order like the NREMT sheet.
-          </Text>
 
           {CALL_CATEGORIES.map((cat, index) => (
             <View key={cat.id}>
@@ -119,7 +114,7 @@ export default function HomeScreen() {
             accentColor={theme.colors.accent}
           />
         </Animated.View>
-      </ScrollView>
+      </ScreenScroll>
     </SafeAreaView>
   );
 }
@@ -159,7 +154,6 @@ function DifficultyChip({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.background },
-  content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xl },
   disclaimer: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.md,
@@ -172,12 +166,12 @@ const styles = StyleSheet.create({
     color: theme.colors.warning,
     fontWeight: '800',
     marginBottom: 4,
-    fontSize: 12,
+    fontSize: fs(12),
   },
   disclaimerText: {
     color: theme.colors.textMuted,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: fs(12),
+    lineHeight: fs(18),
   },
   shiftCard: {
     backgroundColor: theme.colors.surface,
@@ -190,14 +184,14 @@ const styles = StyleSheet.create({
   shiftLabel: {
     color: theme.colors.emsBlue,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: 11,
+    fontSize: fs(11),
     letterSpacing: 1.5,
     marginBottom: theme.spacing.sm,
   },
   shiftPrompt: {
     color: theme.colors.text,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: fs(15),
+    lineHeight: fs(22),
     marginBottom: theme.spacing.lg,
   },
   diffRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
@@ -218,21 +212,21 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.accent,
     backgroundColor: theme.colors.amberGlow,
   },
-  chipText: { color: theme.colors.textMuted, fontWeight: '700', fontSize: 13 },
+  chipText: { color: theme.colors.textMuted, fontWeight: '700', fontSize: fs(13) },
   chipTextSelected: { color: theme.colors.accentLight },
   chipTextExam: { color: theme.colors.accent },
   diffHelp: {
     color: theme.colors.textMuted,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: fs(12),
+    lineHeight: fs(18),
     marginBottom: 4,
   },
   examples: {
     color: theme.colors.textMuted,
-    fontSize: 12,
+    fontSize: fs(12),
     marginTop: 6,
     marginBottom: 4,
-    lineHeight: 17,
+    lineHeight: fs(17),
   },
   spacer: { height: theme.spacing.sm },
 });

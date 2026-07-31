@@ -116,10 +116,10 @@ export default function ScenarioScreen() {
               return (
                 <ChoiceButton
                   key={option.id}
-                  label={done ? `✓ ${option.label}` : `[ ${option.label} ]`}
+                  label={option.label}
                   onPress={() => performAssessment(option.id)}
-                  variant={done ? 'success' : 'default'}
-                  disabled={done}
+                  variant="task"
+                  completed={done}
                 />
               );
             })}
@@ -173,11 +173,11 @@ export default function ScenarioScreen() {
               return (
                 <ChoiceButton
                   key={action.id}
-                  label={applied ? `✓ ${action.name}` : action.name}
+                  label={action.name}
                   subtitle={action.description}
                   onPress={() => applyTreatment(action.id)}
-                  variant={applied ? 'success' : 'default'}
-                  disabled={applied}
+                  variant="task"
+                  completed={applied}
                 />
               );
             })}

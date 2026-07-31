@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
 
@@ -7,14 +7,16 @@ import {
   LEADERBOARD_NOTE,
   LEADERBOARD_SEASON,
 } from '@/data/emt/leaderboard';
+import { ScreenScroll } from '@/components/ui/ScreenScroll';
 import { PulseOrb, enterUp } from '@/components/ui/motion';
+import { fs } from '@/constants/layout';
 import { theme } from '@/constants/theme';
 
 export default function LeaderboardScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <PulseOrb color={theme.colors.amberGlow} size={260} top={-80} left={-70} />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScreenScroll>
         <Animated.Text entering={enterUp(0)} style={styles.kicker}>
           {LEADERBOARD_SEASON}
         </Animated.Text>
@@ -54,7 +56,7 @@ export default function LeaderboardScreen() {
           Standings are sample data for the soft launch. Your runs will join the board in a later
           update.
         </Text>
-      </ScrollView>
+      </ScreenScroll>
     </SafeAreaView>
   );
 }
@@ -64,29 +66,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  content: {
-    padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xl,
-  },
   kicker: {
     color: theme.colors.emsBlue,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: 10,
+    fontSize: fs(10),
     letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
   title: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',
-    fontSize: 48,
+    fontSize: fs(48),
     letterSpacing: 2,
-    lineHeight: 50,
+    lineHeight: fs(50),
     marginTop: 2,
   },
   subtitle: {
     color: theme.colors.textMuted,
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: fs(13),
+    lineHeight: fs(19),
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
   },
@@ -100,7 +98,7 @@ const styles = StyleSheet.create({
   },
   headerText: {
     color: theme.colors.textMuted,
-    fontSize: 10,
+    fontSize: fs(10),
     fontWeight: '800',
     letterSpacing: 1,
   },
@@ -118,10 +116,11 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.sm,
   },
   colRank: {
-    width: 28,
+    width: fs(28),
     color: theme.colors.textMuted,
     fontFamily: 'SpaceMono',
     fontWeight: '700',
+    fontSize: fs(14),
   },
   topRank: {
     color: theme.colors.accent,
@@ -132,26 +131,26 @@ const styles = StyleSheet.create({
   },
   handle: {
     color: theme.colors.text,
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: '700',
   },
   meta: {
     color: theme.colors.textMuted,
-    fontSize: 11,
+    fontSize: fs(11),
     marginTop: 2,
   },
   colScore: {
-    width: 56,
+    width: fs(56),
     textAlign: 'right',
     color: theme.colors.accentLight,
     fontFamily: 'SpaceMono',
     fontWeight: '800',
-    fontSize: 14,
+    fontSize: fs(14),
   },
   footer: {
     color: theme.colors.textMuted,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: fs(12),
+    lineHeight: fs(18),
     marginTop: theme.spacing.lg,
     textAlign: 'center',
   },

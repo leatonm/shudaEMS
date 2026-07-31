@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { fs } from '@/constants/layout';
 import { theme } from '@/constants/theme';
 import { PressScale, enterUp } from '@/components/ui/motion';
 
@@ -92,12 +93,12 @@ const styles = StyleSheet.create({
   },
   title: {
     color: theme.colors.textMuted,
-    fontSize: 13,
+    fontSize: fs(13),
     fontWeight: '600',
   },
   count: {
     color: theme.colors.text,
-    fontSize: 13,
+    fontSize: fs(13),
     fontWeight: '800',
     fontFamily: 'SpaceMono',
   },
@@ -131,7 +132,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#041218',
-    fontSize: 16,
+    fontSize: fs(16),
     fontWeight: '800',
     letterSpacing: 1,
   },

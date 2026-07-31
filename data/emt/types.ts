@@ -160,6 +160,12 @@ export interface WalkthroughStep {
   coachTip?: string;
   /** What situational info to show */
   reveal: 'dispatch' | 'scene' | 'vitals' | 'none';
+  /** A timed narrative beat shown after staging for an unsafe scene. */
+  development?: {
+    elapsedMinutes: number;
+    headline: string;
+    lines: string[];
+  };
   choices: WalkthroughChoice[];
 }
 

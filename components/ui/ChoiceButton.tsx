@@ -1,13 +1,21 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { fs } from '@/constants/layout';
 import { theme } from '@/constants/theme';
 import { PressScale, enterUp } from '@/components/ui/motion';
+
+/**
+ * `task` reads as a checklist item you tick off, `primary` as the one action that
+ * ends the step. Keeping them visually unrelated is what makes the board scannable.
+ */
+export type ChoiceVariant = 'primary' | 'task' | 'default';
 
 interface ChoiceButtonProps {
   label: string;
   subtitle?: string;
   onPress: () => void;
-  variant?: 'default' | 'success' | 'error';
+  variant?: ChoiceVariant;
+  completed?: boolean;
   disabled?: boolean;
   /** Position in the list — drives the stagger-in delay */
   index?: number;
@@ -19,33 +27,52 @@ export function ChoiceButton({
   subtitle,
   onPress,
   variant = 'default',
+  completed = false,
   disabled = false,
   index = 0,
   accentColor,
 }: ChoiceButtonProps) {
-  const barColor =
-    accentColor ??
-    (variant === 'success'
-      ? theme.colors.success
-      : variant === 'error'
-        ? theme.colors.error
-        : theme.colors.emsBlue);
+  const accent = accentColor ?? theme.colors.emsBlue;
+
+  if (variant === 'primary') {
+    return (
+      <PressScale
+        onPress={onPress}
+        disabled={disabled}
+        entering={enterUp(index)}
+        style={[styles.cta, { backgroundColor: accent }, disabled && styles.disabled]}
+      >
+        <View style={styles.ctaBody}>
+          <Text style={styles.ctaLabel}>{label}</Text>
+          {subtitle ? <Text style={styles.ctaSubtitle}>{subtitle}</Text> : null}
+        </View>
+        <Text style={styles.ctaArrow}>›</Text>
+      </PressScale>
+    );
+  }
 
   return (
     <PressScale
       onPress={onPress}
-      disabled={disabled}
+      disabled={disabled || completed}
       entering={enterUp(index)}
       style={[
-        styles.button,
-        variant === 'success' && styles.success,
-        variant === 'error' && styles.error,
-        disabled && styles.disabled,
+        styles.row,
+        completed && styles.rowCompleted,
+        disabled && !completed && styles.disabled,
       ]}
     >
-      <View style={[styles.accentBar, { backgroundColor: barColor }]} />
-      <View style={styles.body}>
-        <Text style={styles.label}>{label}</Text>
+      <View
+        style={[
+          styles.marker,
+          { borderColor: completed ? theme.colors.success : accent },
+          completed && styles.markerDone,
+        ]}
+      >
+        {completed ? <Text style={styles.markerTick}>✓</Text> : null}
+      </View>
+      <View style={styles.rowBody}>
+        <Text style={[styles.label, completed && styles.labelCompleted]}>{label}</Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
     </PressScale>
@@ -53,43 +80,85 @@ export function ChoiceButton({
 }
 
 const styles = StyleSheet.create({
-  button: {
+  row: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.surfaceLight,
-    borderColor: theme.colors.border,
-    borderWidth: 1,
-    borderRadius: theme.radius.md,
-    marginBottom: theme.spacing.sm,
-    overflow: 'hidden',
-  },
-  accentBar: {
-    width: 4,
-  },
-  body: {
-    flex: 1,
+    alignItems: 'flex-start',
+    gap: theme.spacing.sm,
+    backgroundColor: 'transparent',
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
     paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xs,
   },
-  success: {
-    borderColor: theme.colors.success,
+  rowCompleted: {
+    opacity: 0.55,
+  },
+  marker: {
+    width: fs(20),
+    height: fs(20),
+    borderRadius: fs(10),
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  markerDone: {
     backgroundColor: theme.colors.successGlow,
   },
-  error: {
-    borderColor: theme.colors.error,
-    backgroundColor: theme.colors.dangerGlow,
+  markerTick: {
+    color: theme.colors.success,
+    fontSize: fs(11),
+    fontWeight: '900',
+    lineHeight: fs(13),
   },
-  disabled: {
-    opacity: 0.5,
+  rowBody: {
+    flex: 1,
   },
   label: {
     color: theme.colors.text,
-    fontSize: 16,
+    fontSize: fs(16),
     fontWeight: '600',
+    lineHeight: fs(21),
+  },
+  labelCompleted: {
+    textDecorationLine: 'line-through',
+    color: theme.colors.textMuted,
   },
   subtitle: {
     color: theme.colors.textMuted,
-    fontSize: 13,
-    marginTop: theme.spacing.xs,
-    lineHeight: 18,
+    fontSize: fs(13),
+    marginTop: 2,
+    lineHeight: fs(18),
+  },
+  cta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: theme.radius.md,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
+  },
+  ctaBody: {
+    flex: 1,
+  },
+  ctaLabel: {
+    color: '#041218',
+    fontSize: fs(16),
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  ctaSubtitle: {
+    color: 'rgba(4, 18, 24, 0.7)',
+    fontSize: fs(13),
+    marginTop: 2,
+  },
+  ctaArrow: {
+    color: '#041218',
+    fontSize: fs(26),
+    fontWeight: '800',
+    marginLeft: theme.spacing.sm,
+  },
+  disabled: {
+    opacity: 0.4,
   },
 });

@@ -190,6 +190,7 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
     let severity = choice.severity ?? (choice.correct ? 'good' : 'warn');
     let skill = choice.skill;
     let flowMiss = Boolean(choice.flowMiss);
+    let advance = choice.advance;
 
     const kind = choice.actionKind;
     const payload = choice.payload;
@@ -241,6 +242,11 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
     }
 
     if (kind === 'trap_ignore_hazards') {
+      enteredUnsafe = true;
+      sceneEntered = true;
+      if (!safetyActions.includes('enter_scene')) {
+        safetyActions.push('enter_scene');
+      }
       flowMiss = true;
     }
 
@@ -347,6 +353,24 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       }
     }
 
+    if (kind === 'proceed' && payload === 'await_scene_clear') {
+      const safe = hazardsAreCleared(state.call, safetyActions);
+      if (!safe) {
+        advance = 'stay';
+        scoreDelta = -8;
+        message =
+          'You stage, but the scene remains unsafe. Arrange the required controls before returning.';
+        severity = 'warn';
+        skill = 'scene_safety';
+        flowMiss = true;
+      } else {
+        const development = state.steps[state.stepIndex + 1]?.development;
+        message = development
+          ? `You stage for ${development.elapsedMinutes} minutes while the scene is secured.`
+          : 'You hold at a safe location while the scene is secured.';
+      }
+    }
+
     if (kind === 'proceed' && payload === 'choose_transport') {
       const missingPrimary = state.call.requiredAbcdeOrder.filter(
         (item) => !abcdeCompleted.includes(item)
@@ -432,7 +456,7 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
     const nextIndex = resolveAdvanceIndex(
       state.steps,
       state.stepIndex,
-      choice.advance
+      advance
     );
     const nextStep = state.steps[nextIndex];
 

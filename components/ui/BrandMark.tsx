@@ -8,6 +8,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { fs } from '@/constants/layout';
 import { theme } from '@/constants/theme';
 import { enterDown, enterUp } from '@/components/ui/motion';
 
@@ -52,10 +53,6 @@ export function BrandMark({ compact = false }: BrandMarkProps) {
         <Animated.View style={[styles.subRule, ruleStyle]} />
         <Text style={styles.simulator}>SIMULATOR</Text>
       </Animated.View>
-
-      <Animated.Text entering={enterUp(2)} style={styles.tagline}>
-        Size up. Assess. Decide. Wrong options are there on purpose — stay in order.
-      </Animated.Text>
     </View>
   );
 }
@@ -83,8 +80,8 @@ const styles = StyleSheet.create({
   wordmark: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',
-    fontSize: 64,
-    lineHeight: 68,
+    fontSize: fs(64),
+    lineHeight: fs(68),
     letterSpacing: 2,
     textAlign: 'center',
     textShadowColor: theme.colors.cadGlowStrong,
@@ -102,7 +99,7 @@ const styles = StyleSheet.create({
   emt: {
     color: theme.colors.emsBlue,
     fontFamily: 'BebasNeue',
-    fontSize: 28,
+    fontSize: fs(28),
     letterSpacing: 3,
   },
   subRule: {
@@ -113,15 +110,8 @@ const styles = StyleSheet.create({
   simulator: {
     color: theme.colors.textMuted,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: 11,
+    fontSize: fs(11),
     letterSpacing: 2,
-  },
-  tagline: {
-    color: theme.colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
-    maxWidth: 340,
-    textAlign: 'center',
   },
   compactWrap: {
     alignItems: 'flex-start',
@@ -146,13 +136,13 @@ const styles = StyleSheet.create({
   headerChannel: {
     color: theme.colors.emsBlue,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: 9,
+    fontSize: fs(9),
     letterSpacing: 1.4,
   },
   headerTitle: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',
-    fontSize: 22,
+    fontSize: fs(22),
     letterSpacing: 1.5,
     marginTop: -1,
   },

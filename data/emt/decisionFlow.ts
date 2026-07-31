@@ -29,6 +29,39 @@ function neededRequests(call: EmtCall): string[] {
   return [...requests];
 }
 
+function sceneDevelopment(call: EmtCall): NonNullable<WalkthroughStep['development']> {
+  const elapsedMinutes =
+    3 +
+    [...call.id].reduce((total, character) => total + character.charCodeAt(0), 0) % 6;
+  const lines = call.hazards.map((hazard) => {
+    switch (hazard.id) {
+      case 'bystanders':
+        return 'Law enforcement secures the crowd and confirms a safe path to the patient.';
+      case 'traffic':
+        return 'Traffic is stopped and a protected work area is established.';
+      case 'leaking_fluid':
+      case 'smoke':
+        return 'Fire / Rescue controls the immediate hazard and clears EMS to enter.';
+      case 'unstable_surface':
+        return 'A safer access route is identified around the unstable ground.';
+      case 'structural_damage':
+        return 'Fire / Rescue marks a stable access route through the debris.';
+      case 'multiple_patients':
+        return 'Command and incoming units establish scene organization and assignments.';
+      case 'unknown_meds':
+        return 'No additional threat develops; PPE remains in place for patient contact.';
+      default:
+        return `${hazard.label} is controlled and the entry route is reassessed.`;
+    }
+  });
+
+  return {
+    elapsedMinutes,
+    headline: 'Scene secured',
+    lines: [...new Set(lines)],
+  };
+}
+
 function flowTrap(
   id: string,
   label: string,
@@ -59,6 +92,7 @@ function flowTrap(
 export function buildDecisionFlow(call: EmtCall): WalkthroughStep[] {
   const requests = neededRequests(call);
   const hasBystanders = call.hazards.some((hazard) => hazard.id === 'bystanders');
+  const hasUnsafeScene = call.hazards.length > 0;
 
   const sceneChoices: WalkthroughChoice[] = [
     {
@@ -146,8 +180,37 @@ export function buildDecisionFlow(call: EmtCall): WalkthroughStep[] {
     }
   }
 
-  sceneChoices.push(
-    {
+  if (hasUnsafeScene) {
+    sceneChoices.push(
+      {
+        id: 'scene_await_update',
+        label: 'Hold position and await a scene update',
+        correct: true,
+        tip: 'Stage until the hazards you identified are controlled.',
+        actionKind: 'proceed',
+        payload: 'await_scene_clear',
+        advance: 'next',
+        scoreDelta: 8,
+        message: 'You hold at a safe location while the scene is secured.',
+        severity: 'good',
+        skill: 'scene_safety',
+      },
+      {
+        id: 'scene_enter_unsafe',
+        label: 'Approach the patient before the scene is secured',
+        correct: false,
+        actionKind: 'trap_ignore_hazards',
+        payload: 'enter_scene',
+        advance: 'jump_primary',
+        scoreDelta: -30,
+        message: 'You entered before the scene was secured — provider risk.',
+        severity: 'bad',
+        skill: 'scene_safety',
+        flowMiss: true,
+      }
+    );
+  } else {
+    sceneChoices.push({
       id: 'scene_enter',
       label: 'Approach the patient and begin the primary survey',
       correct: true,
@@ -158,7 +221,10 @@ export function buildDecisionFlow(call: EmtCall): WalkthroughStep[] {
       message: 'You move to the patient and begin the primary survey.',
       severity: 'good',
       skill: 'scene_safety',
-    },
+    });
+  }
+
+  sceneChoices.push(
     flowTrap(
       'scene_treat_early',
       'Start treatment before completing the size-up',
@@ -328,8 +394,8 @@ export function buildDecisionFlow(call: EmtCall): WalkthroughStep[] {
       id: 'dispatch',
       phase: 'dispatch',
       title: 'Dispatch',
-      prompt: 'Review the call and choose your response.',
-      coachTip: 'Acknowledge the call, then form an initial plan while responding.',
+      prompt: 'Review the CAD, then get yourself en route.',
+      coachTip: 'Acknowledge now. More information comes while responding and on arrival.',
       reveal: 'dispatch',
       choices: [
         {
@@ -343,18 +409,6 @@ export function buildDecisionFlow(call: EmtCall): WalkthroughStep[] {
           severity: 'good',
           skill: 'communication',
         },
-        {
-          id: 'dispatch_delay',
-          label: 'Wait for more information before responding',
-          correct: false,
-          actionKind: 'proceed',
-          advance: 'stay',
-          scoreDelta: -4,
-          message: 'Respond now; gather additional information while en route and on arrival.',
-          severity: 'warn',
-          skill: 'communication',
-          flowMiss: true,
-        },
       ],
     },
     {
@@ -366,6 +420,33 @@ export function buildDecisionFlow(call: EmtCall): WalkthroughStep[] {
       reveal: 'scene',
       choices: sceneChoices,
     },
+    ...(hasUnsafeScene
+      ? [
+          {
+            id: 'scene_development',
+            phase: 'scene_safety' as const,
+            title: 'Scene update',
+            prompt: 'Conditions have changed. Re-enter and continue to patient contact.',
+            coachTip: 'Reassess before moving in; scene safety remains an ongoing process.',
+            reveal: 'none' as const,
+            development: sceneDevelopment(call),
+            choices: [
+              {
+                id: 'scene_return',
+                label: 'Return to the scene and approach the patient',
+                correct: true,
+                actionKind: 'enter_scene' as const,
+                payload: 'enter_scene',
+                advance: 'jump_primary' as const,
+                scoreDelta: 15,
+                message: 'You re-enter the secured scene and begin the primary survey.',
+                severity: 'good' as const,
+                skill: 'scene_safety' as const,
+              },
+            ],
+          },
+        ]
+      : []),
     {
       id: 'primary_board',
       phase: 'primary_survey',

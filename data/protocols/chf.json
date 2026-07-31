@@ -1,0 +1,42 @@
+{
+  "id": "chf",
+  "name": "CHF / Pulmonary Edema",
+  "protocolCode": "UP12 Cardiac Pulmonary Edema",
+  "keyIndicators": [
+    "Bilateral rales",
+    "Orthopnea",
+    "JVD",
+    "Pink frothy sputum",
+    "Peripheral edema",
+    "CHF history"
+  ],
+  "recognition": {
+    "adultSIRS": {
+      "temperatureHigh": 100.4,
+      "temperatureLow": 96.8,
+      "heartRate": 90,
+      "respRate": 20,
+      "etco2": 25
+    },
+    "qSOFA": {
+      "sbp": 100,
+      "respRate": 22,
+      "mentalStatusChange": true
+    }
+  },
+  "interventions": [
+    "CPAP",
+    "Nitroglycerin Paste (preferred with CPAP — titratable afterload reduction)",
+    "Nitroglycerin SL (mild decompensation without CPAP; SBP must allow)",
+    "Enalapril",
+    "Cardiac Monitor",
+    "12-Lead ECG"
+  ],
+  "fluidProtocol": {
+    "adultBolus": 0,
+    "maxLiters": 0,
+    "targetSBP": 90,
+    "targetMAP": 65
+  },
+  "neutralActions": ["cardiac_monitor", "twelve_lead", "oxygen", "iv_access"]
+}

@@ -1,0 +1,19 @@
+{
+  "protocolIds": [
+    "sepsis",
+    "chf",
+    "cardiogenic_shock",
+    "respiratory",
+    "seizure",
+    "hypoglycemia",
+    "eclampsia",
+    "stemi",
+    "stroke",
+    "anaphylaxis",
+    "monomorphic_vt",
+    "torsades",
+    "angina",
+    "pulmonary_embolism"
+  ],
+  "scenarioFiles": ["sepsis_calls", "chf_calls", "respiratory_calls", "seizure_calls", "stemi_calls"]
+}

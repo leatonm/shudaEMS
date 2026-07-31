@@ -1,0 +1,344 @@
+[
+  {
+    "id": "shift_001",
+    "protocolId": "sepsis",
+    "dispatchCard": {
+      "unit": "Engine 4",
+      "priority": 2,
+      "chiefComplaint": "General Weakness",
+      "patientSummary": "72yo Female",
+      "eta": "4 min"
+    },
+    "dispatchNotes": "Caller reports weakness and fever since this morning. Patient confused.",
+    "scene": {
+      "appearance": [
+        "Patient appears flushed.",
+        "Skin warm and diaphoretic.",
+        "Confused — oriented x1.",
+        "Speaking slowly."
+      ]
+    },
+    "assessmentOptions": [
+      {
+        "id": "vitals",
+        "label": "Obtain Vitals",
+        "clue": "BP 84/50 · HR 118 · RR 24 · Temp 102.2°F · SpO2 94%"
+      },
+      {
+        "id": "lung_sounds",
+        "label": "Lung Sounds",
+        "clue": "Clear bilaterally. No wheezing or crackles."
+      },
+      {
+        "id": "history",
+        "label": "Medical History",
+        "clue": "Recent UTI treated 5 days ago. No known cardiac history."
+      },
+      {
+        "id": "ecg",
+        "label": "ECG",
+        "clue": "Sinus tachycardia at 118. No ST elevation or depression."
+      },
+      {
+        "id": "blood_sugar",
+        "label": "Blood Sugar",
+        "clue": "148 mg/dL — mildly elevated, non-diagnostic."
+      }
+    ],
+    "assessment": {
+      "bp": "84/50",
+      "hr": 118,
+      "rr": 24,
+      "temp": 102.2,
+      "mentalStatus": "confused"
+    },
+    "correctProtocol": "sepsis",
+    "correctActions": ["iv_access", "fluid_bolus", "notify_facility"],
+    "protocolChoices": ["chf", "sepsis", "cardiogenic_shock"],
+    "treatmentActions": [
+      "cardiac_monitor",
+      "etco2",
+      "iv_access",
+      "fluid_bolus",
+      "notify_facility",
+      "nitroglycerin",
+      "albuterol"
+    ],
+    "treatmentEffects": {
+      "cardiac_monitor": { "message": "Cardiac monitor applied. Sinus tachycardia at 118." },
+      "etco2": { "message": "EtCO2 26 mmHg — decreased perfusion." },
+      "iv_access": { "message": "IV established." },
+      "fluid_bolus": [
+        { "bp": "92/58", "hr": 110, "message": "BP improved from 84/50 to 92/58." },
+        { "bp": "102/64", "hr": 98, "mentalStatus": "alert", "message": "BP improved to 102/64. MAP now above 65." }
+      ],
+      "notify_facility": { "message": "Sepsis alert activated. Receiving facility notified." },
+      "nitroglycerin": { "message": "Nitroglycerin given — no improvement in perfusion." },
+      "albuterol": { "message": "Albuterol administered — no bronchospasm noted." }
+    },
+    "deterioration": {
+      "bp": "78/42",
+      "hr": 132,
+      "rr": 28,
+      "temp": 102.4,
+      "mentalStatus": "lethargic",
+      "message": "Patient becoming increasingly lethargic. BP now 78/42."
+    },
+    "endings": {
+      "perfect_save": {
+        "title": "Patient Stabilized",
+        "message": "Patient condition improved en route. Handoff complete."
+      },
+      "partial_success": {
+        "title": "Improved — Incomplete Handoff",
+        "message": "Patient improved but critical alert was not transmitted to receiving."
+      },
+      "delayed_treatment": {
+        "title": "Patient Deteriorating",
+        "message": "Hypotension persists. Patient becoming lethargic."
+      },
+      "wrong_protocol": {
+        "title": "Critical Miss",
+        "message": "Wrong pathway selected. Patient crashing."
+      }
+    },
+    "debrief": {
+      "primaryCondition": "Sepsis",
+      "protocolUsed": "UP15 Suspected Sepsis",
+      "keyIndicators": ["Fever", "Tachycardia", "Hypotension", "Altered mental status"],
+      "correctTreatment": ["IV Access", "500mL LR Bolus", "Notify Receiving Facility"]
+    },
+    "protocolInsight": {
+      "title": "Classic SIRS Presentation",
+      "body": "Fever, tachycardia, tachypnea, and hypotension with altered mental status strongly suggest sepsis. Two or more SIRS criteria with suspected infection should trigger the sepsis pathway immediately."
+    }
+  },
+  {
+    "id": "shift_002",
+    "protocolId": "sepsis",
+    "dispatchCard": {
+      "unit": "Medic 7",
+      "priority": 2,
+      "chiefComplaint": "Weakness",
+      "patientSummary": "65yo Male",
+      "eta": "6 min"
+    },
+    "dispatchNotes": "Wife reports increased fatigue and sleeping more than usual. No trauma.",
+    "scene": {
+      "appearance": [
+        "Patient sitting upright on couch.",
+        "Mildly tachypneic.",
+        "Skin pale but warm.",
+        "Alert but fatigued."
+      ]
+    },
+    "assessmentOptions": [
+      {
+        "id": "vitals",
+        "label": "Obtain Vitals",
+        "clue": "BP 96/60 · HR 112 · RR 26 · Temp 100.8°F · SpO2 91%"
+      },
+      {
+        "id": "lung_sounds",
+        "label": "Lung Sounds",
+        "clue": "Coarse crackles at right base. Productive cough noted."
+      },
+      {
+        "id": "history",
+        "label": "Medical History",
+        "clue": "Recent pneumonia — finished antibiotics 3 days ago. Type 2 diabetes."
+      },
+      {
+        "id": "ecg",
+        "label": "ECG",
+        "clue": "Sinus tachycardia. No acute ischemic changes."
+      },
+      {
+        "id": "blood_sugar",
+        "label": "Blood Sugar",
+        "clue": "198 mg/dL — elevated, may reflect stress response."
+      }
+    ],
+    "assessment": {
+      "bp": "96/60",
+      "hr": 112,
+      "rr": 26,
+      "temp": 100.8,
+      "mentalStatus": "alert"
+    },
+    "correctProtocol": "sepsis",
+    "correctActions": ["iv_access", "fluid_bolus", "notify_facility"],
+    "protocolChoices": ["chf", "sepsis", "cardiogenic_shock"],
+    "treatmentActions": [
+      "cardiac_monitor",
+      "etco2",
+      "iv_access",
+      "fluid_bolus",
+      "notify_facility",
+      "nitroglycerin",
+      "albuterol"
+    ],
+    "treatmentEffects": {
+      "cardiac_monitor": { "message": "Monitor shows sinus tachycardia. No acute ST changes." },
+      "etco2": { "message": "EtCO2 27 mmHg — early septic physiology." },
+      "iv_access": { "message": "IV established." },
+      "fluid_bolus": [
+        { "bp": "104/68", "hr": 102, "message": "BP improved from 96/60 to 104/68 after 500mL LR." },
+        { "bp": "112/72", "hr": 94, "message": "Second bolus brings MAP above 65. Perfusion improving." }
+      ],
+      "notify_facility": { "message": "Sepsis alert transmitted. ED preparing sepsis bundle." },
+      "nitroglycerin": { "message": "Nitroglycerin given — no chest pain relief." },
+      "albuterol": { "message": "Albuterol given — minimal wheezing, no significant change." }
+    },
+    "deterioration": {
+      "bp": "82/48",
+      "hr": 124,
+      "rr": 30,
+      "temp": 101.2,
+      "mentalStatus": "confused",
+      "message": "Without fluid resuscitation, BP drops to 82/48. Patient now confused."
+    },
+    "endings": {
+      "perfect_save": {
+        "title": "Patient Stabilized",
+        "message": "Early recognition paid off. Patient stable on arrival."
+      },
+      "partial_success": {
+        "title": "Improved — Incomplete Handoff",
+        "message": "Hemodynamics improved but receiving was not alerted."
+      },
+      "delayed_treatment": {
+        "title": "Patient Deteriorating",
+        "message": "Hypotension persists despite correct diagnosis. Shock developing."
+      },
+      "wrong_protocol": {
+        "title": "Critical Miss",
+        "message": "Treated as respiratory or cardiac complaint. Patient worsening."
+      }
+    },
+    "debrief": {
+      "primaryCondition": "Sepsis",
+      "protocolUsed": "UP15 Suspected Sepsis",
+      "keyIndicators": ["Recent infection", "Tachypnea", "Borderline hypotension", "Low-grade fever"],
+      "correctTreatment": ["IV Access", "500mL LR Bolus", "Notify Receiving Facility"]
+    },
+    "protocolInsight": {
+      "title": "Subtle Sepsis Clues",
+      "body": "Sepsis may present with only low-grade fever and vague weakness. A recent pneumonia with tachypnea and borderline hypotension should raise suspicion even when the patient appears alert."
+    }
+  },
+  {
+    "id": "shift_003",
+    "protocolId": "sepsis",
+    "dispatchCard": {
+      "unit": "Engine 2",
+      "priority": 1,
+      "chiefComplaint": "Altered Mental Status",
+      "patientSummary": "81yo Female",
+      "eta": "3 min"
+    },
+    "dispatchNotes": "Caregiver found patient on floor. Unable to stand. Baseline dementia.",
+    "scene": {
+      "appearance": [
+        "Patient on floor, assisted to chair.",
+        "Skin cool at extremities, warm core.",
+        "Confused — not at baseline per caregiver.",
+        "No obvious trauma."
+      ]
+    },
+    "assessmentOptions": [
+      {
+        "id": "vitals",
+        "label": "Obtain Vitals",
+        "clue": "BP 88/54 · HR 104 · RR 24 · Temp 96.2°F · SpO2 93%"
+      },
+      {
+        "id": "lung_sounds",
+        "label": "Lung Sounds",
+        "clue": "Diminished at bases. No wheezing."
+      },
+      {
+        "id": "history",
+        "label": "Medical History",
+        "clue": "Nursing home resident. Indwelling Foley. No documented fever today."
+      },
+      {
+        "id": "ecg",
+        "label": "ECG",
+        "clue": "Sinus tachycardia. No STEMI."
+      },
+      {
+        "id": "blood_sugar",
+        "label": "Blood Sugar",
+        "clue": "112 mg/dL — within normal limits."
+      }
+    ],
+    "assessment": {
+      "bp": "88/54",
+      "hr": 104,
+      "rr": 24,
+      "temp": 96.2,
+      "mentalStatus": "confused"
+    },
+    "correctProtocol": "sepsis",
+    "correctActions": ["iv_access", "fluid_bolus", "notify_facility"],
+    "protocolChoices": ["chf", "sepsis", "cardiogenic_shock"],
+    "treatmentActions": [
+      "cardiac_monitor",
+      "etco2",
+      "iv_access",
+      "fluid_bolus",
+      "notify_facility",
+      "nitroglycerin",
+      "stroke_assessment"
+    ],
+    "treatmentEffects": {
+      "cardiac_monitor": { "message": "Cardiac monitor applied. Narrow-complex tachycardia." },
+      "etco2": { "message": "EtCO2 24 mmHg — consistent with vasodilation." },
+      "iv_access": { "message": "IV established." },
+      "fluid_bolus": [
+        { "bp": "96/62", "hr": 98, "message": "BP improved from 88/54 to 96/62 after fluid bolus." },
+        { "bp": "106/68", "hr": 92, "mentalStatus": "alert", "message": "BP improved to 106/68. Mental status beginning to clear." }
+      ],
+      "notify_facility": { "message": "Sepsis alert activated. Receiving facility notified." },
+      "nitroglycerin": { "message": "Nitroglycerin given — BP drops to 82/50." },
+      "stroke_assessment": { "message": "Stroke scale negative for acute focal deficit." }
+    },
+    "deterioration": {
+      "bp": "76/40",
+      "hr": 118,
+      "rr": 26,
+      "temp": 95.8,
+      "mentalStatus": "obtunded",
+      "message": "Patient becoming obtunded. BP 76/40."
+    },
+    "endings": {
+      "perfect_save": {
+        "title": "Patient Stabilized",
+        "message": "Occult sepsis recognized. Patient stabilized en route."
+      },
+      "partial_success": {
+        "title": "Improved — Incomplete Handoff",
+        "message": "Fluids helped but facility alert was never sent."
+      },
+      "delayed_treatment": {
+        "title": "Patient Deteriorating",
+        "message": "Hypothermic presentation worsening. Trending toward shock."
+      },
+      "wrong_protocol": {
+        "title": "Critical Miss",
+        "message": "AMS attributed to stroke. Critical window lost."
+      }
+    },
+    "debrief": {
+      "primaryCondition": "Sepsis",
+      "protocolUsed": "UP15 Suspected Sepsis",
+      "keyIndicators": ["Hypothermia", "Hypotension", "AMS", "Indwelling catheter"],
+      "correctTreatment": ["IV Access", "500mL LR Bolus", "Notify Receiving Facility"]
+    },
+    "protocolInsight": {
+      "title": "Hypothermic Sepsis",
+      "body": "Septic patients may present with hypothermia instead of fever — especially elderly and nursing home residents. A temperature below 96.8°F with hypotension and AMS is sepsis until proven otherwise."
+    }
+  }
+]

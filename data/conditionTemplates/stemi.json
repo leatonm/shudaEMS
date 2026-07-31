@@ -1,0 +1,188 @@
+{
+  "conditionId": "stemi",
+  "protocolId": "stemi",
+  "units": ["Medic 10", "Medic 15", "Engine 12", "Medic 1"],
+  "ages": [52, 58, 62, 67, 71],
+  "sexes": ["Male", "Female"],
+  "priorities": [1, 1, 2],
+  "etas": ["3 min", "4 min", "5 min", "8 min"],
+  "profiles": [
+    {
+      "id": "classic_stemi",
+      "weight": 4,
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Chest Pain",
+          "notes": "Crushing chest pain radiating to left arm. Diaphoretic."
+        },
+        {
+          "chiefComplaint": "Chest Pain",
+          "notes": "Severe substernal pressure. Patient clutching chest."
+        },
+        {
+          "chiefComplaint": "Chest Pain",
+          "notes": "Central chest pain 8/10. History of cardiac risk factors."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["Hypertension", "Hyperlipidemia"],
+          "clue": "Hypertension and hyperlipidemia. No prior MI."
+        },
+        {
+          "history": ["Diabetes", "Hypertension"],
+          "clue": "Type 2 diabetes and HTN. Prior angina episodes."
+        },
+        {
+          "history": ["Smoking"],
+          "clue": "30 pack-year smoker. Family history of early MI."
+        }
+      ],
+      "scenePool": [
+        [
+          "Clutching chest.",
+          "Diaphoretic and pale.",
+          "Obvious distress.",
+          "Pain 9/10."
+        ],
+        [
+          "Sitting forward, unable to get comfortable.",
+          "Diaphoresis visible.",
+          "Pain radiating to left arm.",
+          "Nauseated."
+        ]
+      ],
+      "lungSoundsClue": "Clear bilaterally.",
+      "ecgClue": "Sinus rhythm. Obtain 12-lead.",
+      "bloodSugarClue": "{{glucose}} mg/dL.",
+      "useTwelveLead": true,
+      "twelveLeadClue": "STEMI — ST elevation in {{leadGroup}}.",
+      "vitals": {
+        "bpSystolic": [138, 162],
+        "bpDiastolic": [82, 96],
+        "hr": [92, 112],
+        "rr": [18, 24],
+        "temp": [98.0, 98.6],
+        "spo2": [94, 98],
+        "mentalStatus": ["anxious", "alert"]
+      },
+      "correctActions": ["aspirin", "nitroglycerin", "stemi_alert"],
+      "debriefIndicators": ["Crushing chest pain", "Radiation to arm", "Diaphoresis", "ST elevation on 12-lead"],
+      "debriefPrimaryCondition": "STEMI",
+      "debriefCorrectTreatment": ["Aspirin", "Nitroglycerin", "STEMI Alert"],
+      "insight": {
+        "title": "Obvious STEMI",
+        "body": "Classic crushing chest pain with diaphoresis and ST elevation requires aspirin, nitroglycerin if BP allows, and immediate STEMI alert activation."
+      }
+    },
+    {
+      "id": "atypical_stemi",
+      "weight": 3,
+      "ages": [58, 62, 67, 71, 74],
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Weakness / Nausea",
+          "notes": "Patient reports nausea and weakness. No chest pain per caller."
+        },
+        {
+          "chiefComplaint": "Nausea",
+          "notes": "Elderly female weak and nauseated. Denies chest pain."
+        },
+        {
+          "chiefComplaint": "Chest Pain",
+          "notes": "Jaw pain and epigastric discomfort. Atypical presentation."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["Diabetes", "Hypertension"],
+          "clue": "Diabetes and hypertension. Jaw pain started 30 minutes ago."
+        },
+        {
+          "history": ["Diabetes"],
+          "clue": "Diabetic female — epigastric pain and fatigue. Denies classic chest pain."
+        },
+        {
+          "history": ["Hypertension"],
+          "clue": "Hypertension. Upper back pain and nausea since this morning."
+        }
+      ],
+      "scenePool": [
+        [
+          "Pale and diaphoretic.",
+          "Complains of jaw pain.",
+          "Denies chest pain initially.",
+          "Weak and nauseated."
+        ],
+        [
+          "Slumped in chair.",
+          "Epigastric discomfort.",
+          "Mild diaphoresis.",
+          "Looks unwell despite soft-spoken complaints."
+        ]
+      ],
+      "lungSoundsClue": "Mild bibasilar crackles.",
+      "ecgClue": "Non-specific ST changes — 12-lead required.",
+      "bloodSugarClue": "{{glucose}} mg/dL.",
+      "useTwelveLead": true,
+      "twelveLeadClue": "Anterior ST elevation V2-V4. STEMI despite atypical symptoms.",
+      "vitals": {
+        "bpSystolic": [148, 168],
+        "bpDiastolic": [86, 98],
+        "hr": [98, 118],
+        "rr": [20, 26],
+        "temp": [97.8, 98.4],
+        "spo2": [93, 97],
+        "mentalStatus": ["weak", "anxious", "alert"]
+      },
+      "correctActions": ["aspirin", "nitroglycerin", "stemi_alert", "twelve_lead"],
+      "debriefIndicators": ["Jaw or epigastric pain", "Nausea", "Weakness", "Diaphoresis", "Anterior ST elevation"],
+      "debriefPrimaryCondition": "STEMI — Atypical Presentation",
+      "debriefCorrectTreatment": ["12-Lead ECG", "Aspirin", "Nitroglycerin", "STEMI Alert"],
+      "insight": {
+        "title": "Women Present Atypically",
+        "body": "Women and diabetics often present with nausea, weakness, and jaw pain instead of classic chest pain. Always obtain a 12-lead when ischemia is suspected."
+      }
+    }
+  ],
+  "scenarioSkeleton": {
+    "correctProtocol": "stemi",
+    "correctActions": ["aspirin", "nitroglycerin", "stemi_alert"],
+    "protocolChoices": ["stemi", "angina", "pulmonary_embolism", "chf", "sepsis"],
+    "treatmentActions": [
+      "aspirin",
+      "nitroglycerin",
+      "stemi_alert",
+      "twelve_lead",
+      "cardiac_monitor",
+      "oxygen",
+      "iv_access"
+    ],
+    "treatmentEffects": {
+      "aspirin": { "message": "Aspirin 324mg chewed and swallowed." },
+      "nitroglycerin": { "message": "Nitroglycerin SL given. Pain improving.", "bp": "138/82" },
+      "stemi_alert": { "message": "STEMI alert activated. Cath lab notified." },
+      "twelve_lead": { "message": "12-lead confirms STEMI." },
+      "cardiac_monitor": { "message": "Monitor applied." },
+      "oxygen": { "message": "Oxygen applied." },
+      "iv_access": { "message": "IV established." }
+    },
+    "deterioration": {
+      "hr": 48,
+      "rr": 24,
+      "mentalStatus": "obtunded",
+      "message": "STEMI progressing to cardiogenic shock."
+    },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "STEMI treated and alerted appropriately." },
+      "partial_success": { "title": "Improved — Incomplete Handoff", "message": "STEMI recognized but alert delayed." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "STEMI treatment delayed." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "STEMI missed. Door-to-balloon time lost." }
+    },
+    "debrief": {
+      "primaryCondition": "STEMI",
+      "protocolUsed": "UP11 Chest Pain / STEMI",
+      "correctTreatment": ["Aspirin", "Nitroglycerin", "STEMI Alert"]
+    }
+  }
+}

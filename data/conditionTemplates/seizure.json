@@ -1,0 +1,182 @@
+{
+  "conditionId": "seizure",
+  "protocolId": "seizure",
+  "units": ["Medic 4", "Engine 3", "Medic 8", "Medic 6"],
+  "ages": [22, 30, 35, 42, 55, 28],
+  "sexes": ["Male", "Female"],
+  "priorities": [1, 1, 2],
+  "etas": ["2 min", "3 min", "4 min", "5 min"],
+  "profiles": [
+    {
+      "id": "postictal",
+      "weight": 4,
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Seizure",
+          "notes": "Seizure reportedly stopped before your arrival. Known epileptic."
+        },
+        {
+          "chiefComplaint": "Altered Mental Status",
+          "notes": "Witnessed seizure now resolved. Patient confused."
+        },
+        {
+          "chiefComplaint": "Seizure",
+          "notes": "Family reports single generalized seizure. No active movement now."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["Epilepsy"],
+          "clue": "Known epilepsy — missed last two doses of Keppra."
+        },
+        {
+          "history": ["Epilepsy"],
+          "clue": "Seizure disorder — ran out of anticonvulsant refill."
+        },
+        {
+          "history": ["Epilepsy", "Depression"],
+          "clue": "Epilepsy on lamotrigine. Medication non-compliance suspected."
+        }
+      ],
+      "scenePool": [
+        [
+          "Postictal — confused and lethargic.",
+          "Incontinence noted.",
+          "No active seizure activity.",
+          "Minor tongue laceration."
+        ],
+        [
+          "Sleepy and disoriented.",
+          "Responds to painful stimuli.",
+          "No tonic-clonic activity.",
+          "Bitten tongue noted."
+        ]
+      ],
+      "lungSoundsClue": "Clear bilaterally.",
+      "ecgClue": "Sinus rhythm. No arrhythmia.",
+      "bloodSugarClue": "Pending — not yet checked.",
+      "vitals": {
+        "bpSystolic": [118, 138],
+        "bpDiastolic": [70, 82],
+        "hr": [88, 104],
+        "rr": [14, 20],
+        "temp": [98.0, 99.0],
+        "spo2": [94, 98],
+        "mentalStatus": ["postictal", "confused", "lethargic"]
+      },
+      "correctActions": ["blood_glucose_check", "cardiac_monitor"],
+      "debriefIndicators": ["Seizure stopped prior to arrival", "Postictal", "Known epileptic", "Medication non-compliance"],
+      "debriefPrimaryCondition": "Postictal State — Known Epilepsy",
+      "debriefCorrectTreatment": ["Blood Glucose Check", "Cardiac Monitor"],
+      "insight": {
+        "title": "Always Check Glucose",
+        "body": "Every postictal patient needs a blood glucose check and monitoring — even known epileptics. Hypoglycemia can mimic or trigger seizures."
+      }
+    },
+    {
+      "id": "active_seizure",
+      "weight": 3,
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Seizure",
+          "notes": "Active generalized seizure ongoing approximately 2 minutes."
+        },
+        {
+          "chiefComplaint": "Seizure",
+          "notes": "Caller reports continuous shaking. Unresponsive."
+        },
+        {
+          "chiefComplaint": "Altered Mental Status",
+          "notes": "Patient found seizing. Duration unknown — at least 90 seconds."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["Unknown"],
+          "clue": "No known seizure disorder. No epilepsy medications."
+        },
+        {
+          "history": ["Epilepsy"],
+          "clue": "Known epilepsy — breakthrough seizure despite medication."
+        },
+        {
+          "history": ["Head injury"],
+          "clue": "Recent fall with head strike 2 days ago. First seizure per family."
+        }
+      ],
+      "scenePool": [
+        [
+          "Generalized tonic-clonic activity ongoing.",
+          "Incontinence.",
+          "Tongue biting.",
+          "No response to verbal stimuli."
+        ],
+        [
+          "Rhythmic jerking of all extremities.",
+          "Eyes deviated.",
+          "Cyanosis around lips.",
+          "No purposeful movement."
+        ]
+      ],
+      "lungSoundsClue": "Clear — airway maintained.",
+      "ecgClue": "Tachycardia during seizure activity.",
+      "bloodSugarClue": "Unable to obtain during active seizure.",
+      "vitals": {
+        "bpSystolic": [132, 158],
+        "bpDiastolic": [82, 96],
+        "hr": [124, 148],
+        "rr": [20, 28],
+        "temp": [98.8, 100.2],
+        "spo2": [88, 93],
+        "mentalStatus": ["seizing"]
+      },
+      "correctActions": ["midazolam"],
+      "debriefIndicators": ["Generalized tonic-clonic activity", "Ongoing seizure", "No response to stimuli"],
+      "debriefPrimaryCondition": "Active Generalized Seizure",
+      "debriefCorrectTreatment": ["Midazolam"],
+      "insight": {
+        "title": "Terminate Active Seizures",
+        "body": "Prolonged generalized tonic-clonic activity requires benzodiazepine administration. Protect the airway and treat underlying causes once the seizure stops."
+      }
+    }
+  ],
+  "scenarioSkeleton": {
+    "correctProtocol": "seizure",
+    "correctActions": ["midazolam"],
+    "protocolChoices": ["seizure", "hypoglycemia", "eclampsia", "sepsis", "stemi"],
+    "treatmentActions": [
+      "midazolam",
+      "blood_glucose_check",
+      "cardiac_monitor",
+      "oxygen",
+      "iv_access",
+      "d10"
+    ],
+    "treatmentEffects": {
+      "midazolam": { "message": "Midazolam administered. Seizure activity stopping.", "mentalStatus": "postictal" },
+      "blood_glucose_check": { "message": "Blood glucose checked after intervention." },
+      "cardiac_monitor": { "message": "Monitor applied." },
+      "oxygen": { "message": "Oxygen applied." },
+      "iv_access": { "message": "IV established." },
+      "d10": { "message": "D10 given only if hypoglycemia confirmed." }
+    },
+    "deterioration": {
+      "hr": 148,
+      "rr": 28,
+      "temp": 100.4,
+      "mentalStatus": "seizing",
+      "message": "Status epilepticus — seizure continuing beyond 5 minutes."
+    },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "Seizure pathway followed appropriately." },
+      "partial_success": { "title": "Improved — Incomplete Treatment", "message": "Patient stable but incomplete workup." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Prolonged seizure activity or missed reversible cause." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Wrong pathway for seizure patient." }
+    },
+    "debrief": {
+      "primaryCondition": "Seizure",
+      "protocolUsed": "UP04 Seizure",
+      "correctTreatment": ["Midazolam"]
+    }
+  }
+}

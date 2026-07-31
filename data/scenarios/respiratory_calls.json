@@ -1,0 +1,241 @@
+[
+  {
+    "id": "resp_easy_001",
+    "protocolId": "respiratory",
+    "dispatchCard": { "unit": "Medic 5", "priority": 2, "chiefComplaint": "Difficulty Breathing", "patientSummary": "19yo Female", "eta": "4 min" },
+    "dispatchNotes": "Caller reports patient cannot catch breath. History of asthma.",
+    "scene": { "appearance": ["Tripoding.", "Audible expiratory wheezing.", "Using accessory muscles.", "Speaking in short phrases."] },
+    "assessmentOptions": [
+      { "id": "vitals", "label": "Obtain Vitals", "clue": "BP 132/84 · HR 118 · RR 28 · SpO2 92% · Temp 98.6°F" },
+      { "id": "lung_sounds", "label": "Lung Sounds", "clue": "Diffuse expiratory wheezing bilaterally." },
+      { "id": "history", "label": "Medical History", "clue": "Known asthma — ran out of albuterol inhaler yesterday." },
+      { "id": "ecg", "label": "ECG", "clue": "Sinus tachycardia. No ST changes." },
+      { "id": "blood_sugar", "label": "Blood Sugar", "clue": "102 mg/dL." }
+    ],
+    "assessment": { "bp": "132/84", "hr": 118, "rr": 28, "temp": 98.6, "mentalStatus": "anxious", "spo2": 92 },
+    "correctProtocol": "respiratory",
+    "correctActions": ["albuterol", "duoneb", "steroid"],
+    "harmfulActions": ["nitroglycerin"],
+    "protocolChoices": ["respiratory", "chf", "sepsis", "stemi", "seizure"],
+    "treatmentActions": ["albuterol", "duoneb", "steroid", "oxygen", "epinephrine_im", "nitroglycerin", "cardiac_monitor"],
+    "treatmentEffects": {
+      "albuterol": { "message": "Albuterol nebulizer started. Wheezing improving.", "spo2": 94, "rr": 24 },
+      "duoneb": { "message": "DuoNeb administered. Bronchospasm easing.", "spo2": 96, "rr": 22 },
+      "steroid": { "message": "Steroid given IM per protocol.", "spo2": 96 },
+      "oxygen": { "message": "Oxygen applied.", "spo2": 93 },
+      "epinephrine_im": { "message": "Epinephrine IM — not yet indicated at this severity.", "hr": 124 },
+      "nitroglycerin": { "message": "Nitroglycerin given — no bronchospasm relief. Patient confused.", "spo2": 90, "rr": 30 },
+      "cardiac_monitor": { "message": "Monitor applied." }
+    },
+    "deterioration": { "bp": "128/80", "hr": 132, "rr": 34, "temp": 98.6, "mentalStatus": "distressed", "spo2": 84, "message": "Bronchospasm worsening. SpO2 84%." },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "Classic asthma treated appropriately." },
+      "partial_success": { "title": "Improved — Incomplete Treatment", "message": "Partial bronchospasm relief." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Respiratory distress worsening." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Wrong pathway. Patient desaturating." }
+    },
+    "debrief": {
+      "primaryCondition": "Acute Asthma Exacerbation",
+      "protocolUsed": "UP08 Bronchospasm",
+      "keyIndicators": ["Expiratory wheezing", "Accessory muscle use", "Asthma history", "Tachypnea"],
+      "correctTreatment": ["Albuterol", "DuoNeb", "Steroid"]
+    },
+    "protocolInsight": {
+      "title": "Classic Asthma",
+      "body": "Young patient with expiratory wheezing and accessory muscle use responds to albuterol, DuoNeb, and steroids. Nitroglycerin has no role in bronchospasm."
+    }
+  },
+  {
+    "id": "resp_easy_002",
+    "protocolId": "respiratory",
+    "dispatchCard": { "unit": "Engine 8", "priority": 2, "chiefComplaint": "Shortness of Breath", "patientSummary": "68yo Male", "eta": "6 min" },
+    "dispatchNotes": "Patient on home oxygen. Increased work of breathing today.",
+    "scene": { "appearance": ["On home O2 via nasal cannula.", "Prolonged expiratory phase.", "Barrel chest.", "Productive cough."] },
+    "assessmentOptions": [
+      { "id": "vitals", "label": "Obtain Vitals", "clue": "BP 146/88 · HR 112 · RR 26 · SpO2 88% on 2L · Temp 98.4°F" },
+      { "id": "lung_sounds", "label": "Lung Sounds", "clue": "Diffuse wheezing with prolonged expiration." },
+      { "id": "history", "label": "Medical History", "clue": "COPD — 40 pack-year smoker. Home oxygen 2L continuous." },
+      { "id": "ecg", "label": "ECG", "clue": "Sinus tachycardia. Old LVH pattern." },
+      { "id": "blood_sugar", "label": "Blood Sugar", "clue": "118 mg/dL." }
+    ],
+    "assessment": { "bp": "146/88", "hr": 112, "rr": 26, "temp": 98.4, "mentalStatus": "alert", "spo2": 88 },
+    "correctProtocol": "respiratory",
+    "correctActions": ["albuterol", "duoneb"],
+    "protocolChoices": ["respiratory", "chf", "sepsis", "stemi", "pulmonary_embolism"],
+    "treatmentActions": ["albuterol", "duoneb", "steroid", "oxygen", "cpap", "nitroglycerin", "cardiac_monitor"],
+    "treatmentEffects": {
+      "albuterol": { "message": "Albuterol neb — wheezing improving.", "spo2": 91, "rr": 24 },
+      "duoneb": { "message": "DuoNeb given. Work of breathing decreased.", "spo2": 93, "rr": 22 },
+      "steroid": { "message": "Steroid administered.", "spo2": 93 },
+      "oxygen": { "message": "Oxygen increased to 4L.", "spo2": 90 },
+      "cpap": { "message": "CPAP attempted — patient fighting mask. Consider COPD vs CHF.", "spo2": 86 },
+      "nitroglycerin": { "message": "Nitroglycerin given — no improvement.", "spo2": 87 },
+      "cardiac_monitor": { "message": "Monitor applied." }
+    },
+    "deterioration": { "bp": "152/92", "hr": 124, "rr": 32, "temp": 98.4, "mentalStatus": "confused", "spo2": 80, "message": "COPD exacerbation worsening. SpO2 80%." },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "COPD exacerbation improving en route." },
+      "partial_success": { "title": "Improved — Incomplete Treatment", "message": "Some relief but incomplete protocol." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Hypoxia worsening." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Wrong diagnosis. Respiratory failure developing." }
+    },
+    "debrief": {
+      "primaryCondition": "COPD Exacerbation",
+      "protocolUsed": "UP08 Bronchospasm",
+      "keyIndicators": ["Home oxygen use", "Smoking history", "Wheezing", "Prolonged expiration"],
+      "correctTreatment": ["Albuterol", "DuoNeb"]
+    },
+    "protocolInsight": {
+      "title": "COPD on Home O2",
+      "body": "COPD patients on chronic oxygen who develop increased wheezing and work of breathing need bronchodilator therapy. Distinguish from CHF — COPD patients are often hypertensive, not hypotensive with rales."
+    }
+  },
+  {
+    "id": "resp_medium_001",
+    "protocolId": "respiratory",
+    "dispatchCard": { "unit": "Medic 11", "priority": 2, "chiefComplaint": "Difficulty Breathing", "patientSummary": "62yo Female", "eta": "5 min" },
+    "dispatchNotes": "Audible wheezing reported. Patient cannot lie flat.",
+    "scene": { "appearance": ["Sitting upright — refuses to recline.", "Bilateral leg edema.", "Audible wheezing.", "Tripoding."] },
+    "assessmentOptions": [
+      { "id": "vitals", "label": "Obtain Vitals", "clue": "BP 184/96 · HR 116 · RR 30 · SpO2 87% · Temp 98.2°F" },
+      { "id": "lung_sounds", "label": "Lung Sounds", "clue": "Wheezing AND bilateral rales — mixed picture." },
+      { "id": "history", "label": "Medical History", "clue": "Orthopnea — sleeps on 3 pillows. CHF and COPD on chart." },
+      { "id": "ecg", "label": "ECG", "clue": "Sinus tachycardia with LVH. No STEMI." },
+      { "id": "blood_sugar", "label": "Blood Sugar", "clue": "134 mg/dL." }
+    ],
+    "assessment": { "bp": "184/96", "hr": 116, "rr": 30, "temp": 98.2, "mentalStatus": "anxious", "spo2": 87 },
+    "correctProtocol": "chf",
+    "correctActions": ["cpap", "nitro_paste"],
+    "harmfulActions": ["albuterol", "duoneb", "nitroglycerin"],
+    "protocolChoices": ["respiratory", "chf", "sepsis", "stemi", "pulmonary_embolism"],
+    "treatmentActions": ["albuterol", "duoneb", "cpap", "nitroglycerin", "nitro_paste", "oxygen", "steroid", "fluid_bolus"],
+    "treatmentEffects": {
+      "albuterol": { "message": "Wheezing slightly better — rales worsening. SpO2 82%.", "spo2": 82, "rr": 34 },
+      "duoneb": { "message": "Bronchodilator given — pulmonary edema worsening.", "spo2": 80, "rr": 36 },
+      "cpap": { "message": "CPAP applied. Rales improving.", "spo2": 92, "rr": 24 },
+      "nitroglycerin": {
+        "message": "Nitroglycerin SL with CPAP on — hypotension without reliable absorption.",
+        "bp": "152/70",
+        "spo2": 88,
+        "mentalStatus": "distressed"
+      },
+      "nitro_paste": {
+        "message": "Nitroglycerin paste applied. BP 168/88 with CPAP.",
+        "bp": "168/88",
+        "spo2": 94
+      },
+      "oxygen": { "message": "High-flow oxygen.", "spo2": 89 },
+      "steroid": { "message": "Steroid given — minimal benefit.", "spo2": 86 },
+      "fluid_bolus": { "message": "Fluid bolus — patient crashing. SpO2 76%.", "spo2": 76, "rr": 38 }
+    },
+    "deterioration": { "bp": "192/102", "hr": 128, "rr": 38, "temp": 98.2, "mentalStatus": "obtunded", "spo2": 72, "message": "Treated as asthma. Pulmonary edema worsening." },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "Wheezing with rales correctly identified as CHF." },
+      "partial_success": { "title": "Improved — Incomplete Treatment", "message": "Partial treatment only." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Cardiogenic pulmonary edema worsening." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Wheezing led to wrong pathway." }
+    },
+    "debrief": {
+      "primaryCondition": "CHF / Pulmonary Edema",
+      "protocolUsed": "UP12 Cardiac Pulmonary Edema",
+      "keyIndicators": ["Wheezing WITH rales", "Orthopnea", "Leg swelling", "Hypertension"],
+      "correctTreatment": ["CPAP", "Nitroglycerin Paste"]
+    },
+    "protocolInsight": {
+      "title": "Not All Wheezing Is Asthma",
+      "body": "Wheezing with bilateral rales, orthopnea, and peripheral edema is pulmonary edema until proven otherwise. Bronchodilators alone will not fix cardiogenic wheezing. With CPAP on, use nitroglycerin paste — not SL."
+    }
+  },
+  {
+    "id": "resp_medium_002",
+    "protocolId": "respiratory",
+    "dispatchCard": { "unit": "Medic 2", "priority": 1, "chiefComplaint": "Difficulty Breathing", "patientSummary": "28yo Male", "eta": "2 min" },
+    "dispatchNotes": "Patient unable to speak in full sentences. Severe respiratory distress.",
+    "scene": { "appearance": ["Severe accessory muscle use.", "Silent chest on auscultation.", "Agitated and hypoxic.", "Cannot complete sentences."] },
+    "assessmentOptions": [
+      { "id": "vitals", "label": "Obtain Vitals", "clue": "BP 138/82 · HR 142 · RR 38 · SpO2 85% · Temp 98.8°F" },
+      { "id": "lung_sounds", "label": "Lung Sounds", "clue": "Diminished air movement — near silent chest." },
+      { "id": "history", "label": "Medical History", "clue": "Asthma — multiple ED visits. No inhaler available." },
+      { "id": "ecg", "label": "ECG", "clue": "Sinus tachycardia at 142." },
+      { "id": "blood_sugar", "label": "Blood Sugar", "clue": "96 mg/dL." }
+    ],
+    "assessment": { "bp": "138/82", "hr": 142, "rr": 38, "temp": 98.8, "mentalStatus": "agitated", "spo2": 85 },
+    "correctProtocol": "respiratory",
+    "correctActions": ["albuterol", "epinephrine_im", "magnesium_sulfate", "steroid"],
+    "protocolChoices": ["respiratory", "chf", "sepsis", "stemi", "pulmonary_embolism"],
+    "treatmentActions": ["albuterol", "duoneb", "epinephrine_im", "magnesium_sulfate", "steroid", "oxygen", "nitroglycerin", "cpap"],
+    "treatmentEffects": {
+      "albuterol": { "message": "Continuous albuterol started.", "spo2": 88, "rr": 34 },
+      "duoneb": { "message": "DuoNeb added.", "spo2": 90, "rr": 32 },
+      "epinephrine_im": { "message": "Epinephrine IM given. Bronchospasm breaking.", "spo2": 92, "hr": 130, "rr": 28 },
+      "magnesium_sulfate": { "message": "Magnesium sulfate IV. Air entry improving.", "spo2": 94, "rr": 26 },
+      "steroid": { "message": "High-dose steroid administered.", "spo2": 94 },
+      "oxygen": { "message": "High-flow oxygen.", "spo2": 86 },
+      "nitroglycerin": { "message": "Nitroglycerin — no benefit.", "spo2": 84 },
+      "cpap": { "message": "CPAP — patient fighting. Likely asthma not CHF.", "spo2": 83 }
+    },
+    "deterioration": { "bp": "130/78", "hr": 156, "rr": 42, "temp": 98.8, "mentalStatus": "obtunded", "spo2": 72, "message": "Near-fatal asthma. Silent chest progressing to arrest." },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "Severe asthma escalated appropriately." },
+      "partial_success": { "title": "Improved — Incomplete Treatment", "message": "Improving but key agents missed." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Status asthmaticus worsening." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Wrong pathway in near-fatal asthma." }
+    },
+    "debrief": {
+      "primaryCondition": "Severe Asthma / Status Asthmaticus",
+      "protocolUsed": "UP08 Bronchospasm — Severe",
+      "keyIndicators": ["Unable to speak sentences", "HR > 140", "RR > 30", "SpO2 < 90%", "Silent chest"],
+      "correctTreatment": ["Albuterol", "Epinephrine IM", "Magnesium Sulfate", "Steroid"]
+    },
+    "protocolInsight": {
+      "title": "Escalate Severe Asthma",
+      "body": "When the patient cannot speak in full sentences with a silent chest, add epinephrine IM and magnesium sulfate to continuous bronchodilators and steroids."
+    }
+  },
+  {
+    "id": "resp_hard_001",
+    "protocolId": "respiratory",
+    "dispatchCard": { "unit": "Medic 14", "priority": 1, "chiefComplaint": "Difficulty Breathing", "patientSummary": "34yo Female", "eta": "3 min" },
+    "dispatchNotes": "High-pitched breathing sounds. Severe distress. No asthma history per caller.",
+    "scene": { "appearance": ["Inspiratory stridor audible without stethoscope.", "Tripoding.", "Drooling.", "No expiratory wheezing."] },
+    "assessmentOptions": [
+      { "id": "vitals", "label": "Obtain Vitals", "clue": "BP 142/86 · HR 126 · RR 32 · SpO2 89% · Temp 99.1°F" },
+      { "id": "lung_sounds", "label": "Lung Sounds", "clue": "Inspiratory stridor. Diminished air entry. No wheezing." },
+      { "id": "history", "label": "Medical History", "clue": "Recent dental procedure yesterday. No asthma history." },
+      { "id": "ecg", "label": "ECG", "clue": "Sinus tachycardia." },
+      { "id": "blood_sugar", "label": "Blood Sugar", "clue": "108 mg/dL." }
+    ],
+    "assessment": { "bp": "142/86", "hr": 126, "rr": 32, "temp": 99.1, "mentalStatus": "panicked", "spo2": 89 },
+    "correctProtocol": "respiratory",
+    "correctActions": ["nebulized_epinephrine"],
+    "harmfulActions": ["albuterol", "duoneb", "steroid"],
+    "protocolChoices": ["respiratory", "chf", "sepsis", "stemi", "seizure"],
+    "treatmentActions": ["nebulized_epinephrine", "albuterol", "duoneb", "steroid", "oxygen", "epinephrine_im", "cardiac_monitor"],
+    "treatmentEffects": {
+      "nebulized_epinephrine": { "message": "Racemic epinephrine nebulized. Stridor improving.", "spo2": 93, "rr": 26, "mentalStatus": "anxious" },
+      "albuterol": { "message": "Albuterol given — no improvement. Stridor persists.", "spo2": 87, "rr": 34 },
+      "duoneb": { "message": "Bronchodilator — wrong pathway for upper airway obstruction.", "spo2": 85 },
+      "steroid": { "message": "Steroid given — stridor unchanged.", "spo2": 88 },
+      "oxygen": { "message": "Oxygen applied.", "spo2": 90 },
+      "epinephrine_im": { "message": "IM epinephrine — consider after nebulized epinephrine for stridor.", "spo2": 91 },
+      "cardiac_monitor": { "message": "Monitor applied." }
+    },
+    "deterioration": { "bp": "138/80", "hr": 140, "rr": 8, "temp": 99.1, "mentalStatus": "unresponsive", "spo2": 68, "message": "Upper airway obstruction progressing to complete obstruction." },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "Stridor recognized and treated appropriately." },
+      "partial_success": { "title": "Improved — Incomplete Treatment", "message": "Partial airway improvement." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Treated as asthma. Airway closing." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Upper airway emergency missed." }
+    },
+    "debrief": {
+      "primaryCondition": "Upper Airway Obstruction / Stridor",
+      "protocolUsed": "UP08 Airway — Stridor",
+      "keyIndicators": ["Inspiratory stridor", "No expiratory wheezing", "Drooling", "Recent airway procedure"],
+      "correctTreatment": ["Nebulized Epinephrine"]
+    },
+    "protocolInsight": {
+      "title": "Stridor Is Not Asthma",
+      "body": "Inspiratory stridor without expiratory wheezing suggests upper airway obstruction — not bronchospasm. Nebulized epinephrine is the treatment, not albuterol."
+    }
+  }
+]

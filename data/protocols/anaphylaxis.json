@@ -1,0 +1,25 @@
+{
+  "id": "anaphylaxis",
+  "name": "Allergic Reaction / Anaphylaxis",
+  "protocolCode": "AM1 Allergic Reaction / Anaphylaxis",
+  "keyIndicators": [
+    "Hives",
+    "Facial or lip swelling",
+    "Wheezing or stridor",
+    "Hypotension",
+    "Exposure history"
+  ],
+  "recognition": {
+    "adultSIRS": { "temperatureHigh": 100.4, "temperatureLow": 96.8, "heartRate": 90, "respRate": 20, "etco2": 25 },
+    "qSOFA": { "sbp": 100, "respRate": 22, "mentalStatusChange": true }
+  },
+  "interventions": [
+    "Epinephrine IM",
+    "Albuterol",
+    "Fluid Bolus",
+    "Steroids",
+    "Airway Management"
+  ],
+  "fluidProtocol": { "adultBolus": 500, "maxLiters": 2, "targetSBP": 90, "targetMAP": 65 },
+  "neutralActions": ["oxygen", "iv_access", "cardiac_monitor"]
+}

@@ -1,0 +1,230 @@
+[
+  {
+    "id": "stemi_easy_001",
+    "protocolId": "stemi",
+    "dispatchCard": { "unit": "Medic 10", "priority": 1, "chiefComplaint": "Chest Pain", "patientSummary": "58yo Male", "eta": "3 min" },
+    "dispatchNotes": "Crushing chest pain radiating to left arm. Diaphoretic.",
+    "scene": { "appearance": ["Clutching chest.", "Diaphoretic and pale.", "Obvious distress.", "Pain 9/10."] },
+    "assessmentOptions": [
+      { "id": "vitals", "label": "Obtain Vitals", "clue": "BP 148/88 · HR 98 · RR 20 · SpO2 96% · Temp 98.2°F" },
+      { "id": "twelve_lead", "label": "12-Lead ECG", "clue": "INFERIOR STEMI — ST elevation II, III, aVF." },
+      { "id": "history", "label": "Medical History", "clue": "Hypertension and hyperlipidemia. No prior MI." },
+      { "id": "lung_sounds", "label": "Lung Sounds", "clue": "Clear bilaterally." },
+      { "id": "blood_sugar", "label": "Blood Sugar", "clue": "142 mg/dL." }
+    ],
+    "assessment": { "bp": "148/88", "hr": 98, "rr": 20, "temp": 98.2, "mentalStatus": "anxious", "spo2": 96 },
+    "correctProtocol": "stemi",
+    "correctActions": ["aspirin", "nitroglycerin", "stemi_alert"],
+    "protocolChoices": ["stemi", "angina", "pulmonary_embolism", "chf", "sepsis"],
+    "treatmentActions": ["aspirin", "nitroglycerin", "stemi_alert", "twelve_lead", "cardiac_monitor", "oxygen", "iv_access"],
+    "treatmentEffects": {
+      "aspirin": { "message": "Aspirin 324mg chewed and swallowed." },
+      "nitroglycerin": { "message": "Nitroglycerin SL given. Pain 6/10.", "bp": "138/82" },
+      "stemi_alert": { "message": "STEMI alert activated. Cath lab notified." },
+      "twelve_lead": { "message": "12-lead confirms inferior STEMI." },
+      "cardiac_monitor": { "message": "Monitor applied." },
+      "oxygen": { "message": "Oxygen applied.", "spo2": 97 },
+      "iv_access": { "message": "IV established." }
+    },
+    "deterioration": { "bp": "92/58", "hr": 48, "rr": 24, "temp": 98.2, "mentalStatus": "obtunded", "spo2": 88, "message": "Inferior STEMI progressing to cardiogenic shock." },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "Obvious STEMI treated and alerted." },
+      "partial_success": { "title": "Improved — Incomplete Handoff", "message": "STEMI recognized but alert delayed." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "STEMI treatment delayed." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "STEMI missed. Door-to-balloon time lost." }
+    },
+    "debrief": {
+      "primaryCondition": "Inferior STEMI",
+      "protocolUsed": "UP11 Chest Pain / STEMI",
+      "keyIndicators": ["Crushing chest pain", "Radiation to left arm", "Diaphoresis", "ST elevation inferior leads"],
+      "correctTreatment": ["Aspirin", "Nitroglycerin", "STEMI Alert"]
+    },
+    "protocolInsight": {
+      "title": "Obvious STEMI",
+      "body": "Classic crushing chest pain with diaphoresis and ST elevation requires aspirin, nitroglycerin if BP allows, and immediate STEMI alert activation."
+    }
+  },
+  {
+    "id": "stemi_easy_002",
+    "protocolId": "stemi",
+    "dispatchCard": { "unit": "Medic 15", "priority": 1, "chiefComplaint": "Weakness / Nausea", "patientSummary": "67yo Female", "eta": "4 min" },
+    "dispatchNotes": "Patient reports nausea and weakness. No chest pain per caller.",
+    "scene": { "appearance": ["Pale and diaphoretic.", "Complains of jaw pain.", "Denies chest pain initially.", "Weak and nauseated."] },
+    "assessmentOptions": [
+      { "id": "vitals", "label": "Obtain Vitals", "clue": "BP 156/92 · HR 104 · RR 22 · SpO2 95% · Temp 98.0°F" },
+      { "id": "twelve_lead", "label": "12-Lead ECG", "clue": "Anterior ST elevation V2-V4. STEMI." },
+      { "id": "history", "label": "Medical History", "clue": "Diabetes and hypertension. Jaw pain started 30 minutes ago." },
+      { "id": "lung_sounds", "label": "Lung Sounds", "clue": "Mild bibasilar crackles." },
+      { "id": "blood_sugar", "label": "Blood Sugar", "clue": "188 mg/dL." }
+    ],
+    "assessment": { "bp": "156/92", "hr": 104, "rr": 22, "temp": 98.0, "mentalStatus": "weak", "spo2": 95 },
+    "correctProtocol": "stemi",
+    "correctActions": ["aspirin", "nitroglycerin", "stemi_alert", "twelve_lead"],
+    "protocolChoices": ["stemi", "angina", "sepsis", "chf", "hypoglycemia"],
+    "treatmentActions": ["twelve_lead", "aspirin", "nitroglycerin", "stemi_alert", "cardiac_monitor", "oxygen", "iv_access"],
+    "treatmentEffects": {
+      "twelve_lead": { "message": "12-lead reveals anterior STEMI — atypical presentation confirmed." },
+      "aspirin": { "message": "Aspirin given." },
+      "nitroglycerin": { "message": "Nitroglycerin SL. Jaw pain improving.", "bp": "142/84" },
+      "stemi_alert": { "message": "STEMI alert activated." },
+      "cardiac_monitor": { "message": "Monitor applied." },
+      "oxygen": { "message": "Oxygen applied.", "spo2": 96 },
+      "iv_access": { "message": "IV established." }
+    },
+    "deterioration": { "bp": "88/54", "hr": 112, "rr": 28, "temp": 98.0, "mentalStatus": "obtunded", "spo2": 89, "message": "Atypical STEMI missed. Patient in cardiogenic shock." },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "Atypical female STEMI recognized." },
+      "partial_success": { "title": "Improved — Incomplete Handoff", "message": "STEMI found but incomplete protocol." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Atypical presentation led to delay." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Jaw pain and nausea dismissed. STEMI missed." }
+    },
+    "debrief": {
+      "primaryCondition": "Anterior STEMI — Atypical Presentation",
+      "protocolUsed": "UP11 Chest Pain / STEMI",
+      "keyIndicators": ["Jaw pain", "Nausea", "Weakness", "Diaphoresis", "Anterior ST elevation"],
+      "correctTreatment": ["12-Lead ECG", "Aspirin", "Nitroglycerin", "STEMI Alert"]
+    },
+    "protocolInsight": {
+      "title": "Women Present Atypically",
+      "body": "Women often present with nausea, weakness, and jaw pain instead of classic chest pain. Always obtain a 12-lead in diabetic females with these symptoms."
+    }
+  },
+  {
+    "id": "stemi_medium_001",
+    "protocolId": "stemi",
+    "dispatchCard": { "unit": "Engine 12", "priority": 2, "chiefComplaint": "Chest Pain", "patientSummary": "52yo Male", "eta": "8 min" },
+    "dispatchNotes": "Chest pain after mowing lawn. Pain resolved with rest before arrival.",
+    "scene": { "appearance": ["Comfortable sitting in kitchen.", "Pain resolved after 10 minutes rest.", "Mild residual pressure.", "No diaphoresis now."] },
+    "assessmentOptions": [
+      { "id": "vitals", "label": "Obtain Vitals", "clue": "BP 138/82 · HR 76 · RR 16 · SpO2 98% · Temp 98.4°F" },
+      { "id": "twelve_lead", "label": "12-Lead ECG", "clue": "No ST elevation. T-wave flattening lateral leads. No STEMI." },
+      { "id": "history", "label": "Medical History", "clue": "Chest pain with exertion — resolved with rest. Exertional pattern." },
+      { "id": "lung_sounds", "label": "Lung Sounds", "clue": "Clear." },
+      { "id": "blood_sugar", "label": "Blood Sugar", "clue": "112 mg/dL." }
+    ],
+    "assessment": { "bp": "138/82", "hr": 76, "rr": 16, "temp": 98.4, "mentalStatus": "alert", "spo2": 98 },
+    "correctProtocol": "angina",
+    "correctActions": ["aspirin", "nitroglycerin", "twelve_lead"],
+    "harmfulActions": ["stemi_alert"],
+    "protocolChoices": ["angina", "stemi", "pulmonary_embolism", "chf", "respiratory"],
+    "treatmentActions": ["twelve_lead", "aspirin", "nitroglycerin", "stemi_alert", "cardiac_monitor", "oxygen", "iv_access"],
+    "treatmentEffects": {
+      "twelve_lead": { "message": "12-lead negative for STEMI. Stable angina pattern." },
+      "aspirin": { "message": "Aspirin given per chest pain protocol." },
+      "nitroglycerin": { "message": "Nitroglycerin SL. Residual pressure resolved.", "bp": "128/76" },
+      "stemi_alert": { "message": "STEMI alert activated — 12-lead shows no ST elevation. Over-triage." },
+      "cardiac_monitor": { "message": "Monitor applied." },
+      "oxygen": { "message": "Room air adequate.", "spo2": 98 },
+      "iv_access": { "message": "IV established." }
+    },
+    "deterioration": { "bp": "134/80", "hr": 82, "rr": 18, "temp": 98.4, "mentalStatus": "alert", "spo2": 97, "message": "Stable angina — patient remains comfortable with treatment." },
+    "endings": {
+      "perfect_save": { "title": "Appropriate Care", "message": "Exertional angina managed without over-triage." },
+      "partial_success": { "title": "Acceptable — Overtreated", "message": "Patient fine but STEMI alert unnecessarily activated." },
+      "delayed_treatment": { "title": "Undertreated", "message": "Chest pain workup incomplete." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Missed unstable angina or STEMI equivalent." }
+    },
+    "debrief": {
+      "primaryCondition": "Stable Angina",
+      "protocolUsed": "UP11 Chest Pain — Non-STEMI",
+      "keyIndicators": ["Exertional chest pain", "Pain resolved with rest", "No ST elevation", "Stable vitals"],
+      "correctTreatment": ["12-Lead ECG", "Aspirin", "Nitroglycerin — NOT STEMI Alert"]
+    },
+    "protocolInsight": {
+      "title": "Not Every Chest Pain Is STEMI",
+      "body": "Exertional chest pain that resolves with rest without ST elevation is angina — not STEMI. Treat with aspirin and nitroglycerin, but do not activate the cath lab."
+    }
+  },
+  {
+    "id": "stemi_medium_002",
+    "protocolId": "stemi",
+    "dispatchCard": { "unit": "Medic 18", "priority": 1, "chiefComplaint": "Chest Pain / SOB", "patientSummary": "48yo Female", "eta": "4 min" },
+    "dispatchNotes": "Sudden onset chest pain and shortness of breath. Recent knee surgery 1 week ago.",
+    "scene": { "appearance": ["Sudden onset distress.", "Tachypneic.", "Chest pain pleuritic quality.", "Recent surgical incision visible on knee."] },
+    "assessmentOptions": [
+      { "id": "vitals", "label": "Obtain Vitals", "clue": "BP 118/72 · HR 118 · RR 28 · SpO2 91% · Temp 99.0°F" },
+      { "id": "twelve_lead", "label": "12-Lead ECG", "clue": "Sinus tachycardia. S1Q3T3 pattern. No ST elevation." },
+      { "id": "history", "label": "Medical History", "clue": "Knee replacement 1 week ago. On enoxaparin at home." },
+      { "id": "lung_sounds", "label": "Lung Sounds", "clue": "Clear. Tachypneic." },
+      { "id": "blood_sugar", "label": "Blood Sugar", "clue": "104 mg/dL." }
+    ],
+    "assessment": { "bp": "118/72", "hr": 118, "rr": 28, "temp": 99.0, "mentalStatus": "anxious", "spo2": 91 },
+    "correctProtocol": "pulmonary_embolism",
+    "correctActions": ["oxygen", "iv_access", "notify_facility", "twelve_lead"],
+    "protocolChoices": ["pulmonary_embolism", "stemi", "angina", "respiratory", "sepsis"],
+    "treatmentActions": ["oxygen", "iv_access", "notify_facility", "twelve_lead", "aspirin", "nitroglycerin", "stemi_alert", "cardiac_monitor"],
+    "treatmentEffects": {
+      "oxygen": { "message": "High-flow oxygen. SpO2 improving.", "spo2": 94 },
+      "iv_access": { "message": "IV established." },
+      "notify_facility": { "message": "PE alert transmitted to receiving facility." },
+      "twelve_lead": { "message": "12-lead shows S1Q3T3 — PE suspicion supported." },
+      "aspirin": { "message": "Aspirin given — not primary PE treatment.", "spo2": 93 },
+      "nitroglycerin": { "message": "Nitroglycerin — minimal benefit for PE.", "bp": "108/66", "spo2": 92 },
+      "stemi_alert": { "message": "STEMI alert activated inappropriately — no ST elevation." },
+      "cardiac_monitor": { "message": "Monitor applied. Tachycardia persists." }
+    },
+    "deterioration": { "bp": "86/52", "hr": 132, "rr": 32, "temp": 99.2, "mentalStatus": "obtunded", "spo2": 82, "message": "Massive PE suspected. Hemodynamic collapse." },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "PE recognized and facility alerted." },
+      "partial_success": { "title": "Improved — Incomplete Handoff", "message": "PE suspected but incomplete workup." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Treated as ACS. PE worsening." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Chest pain assumed cardiac. PE missed." }
+    },
+    "debrief": {
+      "primaryCondition": "Suspected Pulmonary Embolism",
+      "protocolUsed": "UP11 Chest Pain — PE Suspicion",
+      "keyIndicators": ["Sudden dyspnea", "Pleuritic chest pain", "Recent surgery", "Tachycardia", "S1Q3T3"],
+      "correctTreatment": ["Oxygen", "IV Access", "Notify Receiving Facility", "12-Lead ECG"]
+    },
+    "protocolInsight": {
+      "title": "Not All Chest Pain Is Cardiac",
+      "body": "Sudden pleuritic chest pain with tachycardia after recent surgery is pulmonary embolism until proven otherwise. Do not activate STEMI protocol without ST elevation."
+    }
+  },
+  {
+    "id": "stemi_hard_001",
+    "protocolId": "stemi",
+    "dispatchCard": { "unit": "Medic 20", "priority": 1, "chiefComplaint": "Chest Pain", "patientSummary": "64yo Male", "eta": "3 min" },
+    "dispatchNotes": "Crushing chest pain. Wife reports patient took Viagra 2 hours ago.",
+    "scene": { "appearance": ["Crushing chest pain.", "Diaphoretic.", "BP adequate.", "Wife confirms sildenafil 2 hours ago."] },
+    "assessmentOptions": [
+      { "id": "vitals", "label": "Obtain Vitals", "clue": "BP 132/78 · HR 92 · RR 20 · SpO2 95% · Temp 98.2°F" },
+      { "id": "twelve_lead", "label": "12-Lead ECG", "clue": "INFERIOR STEMI — ST elevation II, III, aVF." },
+      { "id": "history", "label": "Medical History", "clue": "Took sildenafil (Viagra) 2 hours ago for ED." },
+      { "id": "lung_sounds", "label": "Lung Sounds", "clue": "Clear." },
+      { "id": "blood_sugar", "label": "Blood Sugar", "clue": "128 mg/dL." }
+    ],
+    "assessment": { "bp": "132/78", "hr": 92, "rr": 20, "temp": 98.2, "mentalStatus": "anxious", "spo2": 95 },
+    "correctProtocol": "stemi",
+    "correctActions": ["aspirin", "twelve_lead", "stemi_alert"],
+    "harmfulActions": ["nitroglycerin"],
+    "protocolChoices": ["stemi", "angina", "pulmonary_embolism", "chf", "sepsis"],
+    "treatmentActions": ["aspirin", "nitroglycerin", "stemi_alert", "twelve_lead", "cardiac_monitor", "oxygen", "iv_access"],
+    "treatmentEffects": {
+      "aspirin": { "message": "Aspirin 324mg given." },
+      "nitroglycerin": { "message": "Nitroglycerin given — BP drops to 82/48. Sildenafil interaction.", "bp": "82/48", "hr": 112, "mentalStatus": "obtunded" },
+      "stemi_alert": { "message": "STEMI alert activated. Cath lab notified." },
+      "twelve_lead": { "message": "12-lead confirms inferior STEMI." },
+      "cardiac_monitor": { "message": "Monitor applied." },
+      "oxygen": { "message": "Oxygen applied.", "spo2": 96 },
+      "iv_access": { "message": "IV established." }
+    },
+    "deterioration": { "bp": "72/40", "hr": 118, "rr": 26, "temp": 98.2, "mentalStatus": "unresponsive", "spo2": 84, "message": "Nitroglycerin after PDE-5 inhibitor — profound hypotension." },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "STEMI treated without nitroglycerin. Viagra trap avoided." },
+      "partial_success": { "title": "Improved — Risk Taken", "message": "STEMI alert sent but nitroglycerin contraindication missed." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Nitroglycerin given after sildenafil. Profound hypotension." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "STEMI missed entirely." }
+    },
+    "debrief": {
+      "primaryCondition": "Inferior STEMI",
+      "protocolUsed": "UP11 Chest Pain / STEMI",
+      "keyIndicators": ["Inferior ST elevation", "Crushing chest pain", "Sildenafil within 24 hours", "Diaphoresis"],
+      "correctTreatment": ["Aspirin", "12-Lead ECG", "STEMI Alert", "NO Nitroglycerin"]
+    },
+    "protocolInsight": {
+      "title": "The Viagra Trap",
+      "body": "Nitroglycerin is absolutely contraindicated within 24 hours of sildenafil (Viagra). The combination causes profound hypotension that can kill your STEMI patient before they reach the cath lab."
+    }
+  }
+]

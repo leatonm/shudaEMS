@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "protocolapp",
-    "slug": "protocolapp",
+    "name": "Shuda EMS",
+    "slug": "shuda-ems",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "protocolapp",
+    "scheme": "shudaems",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true

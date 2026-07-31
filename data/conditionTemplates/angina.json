@@ -1,0 +1,176 @@
+{
+  "conditionId": "angina",
+  "protocolId": "angina",
+  "units": ["Engine 12", "Medic 15", "Medic 18"],
+  "ages": [48, 52, 58, 62, 68],
+  "sexes": ["Male", "Female"],
+  "priorities": [2, 2, 3],
+  "etas": ["6 min", "8 min", "10 min"],
+  "profiles": [
+    {
+      "id": "exertional",
+      "weight": 4,
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Chest Pain",
+          "notes": "Chest pain after mowing lawn. Pain resolved with rest before arrival."
+        },
+        {
+          "chiefComplaint": "Chest Pain",
+          "notes": "Exertional chest pressure while walking upstairs. Resting now."
+        },
+        {
+          "chiefComplaint": "Chest Pain",
+          "notes": "Intermittent substernal pressure with activity. Currently pain-free."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["Hypertension", "Hyperlipidemia"],
+          "clue": "Chest pain with exertion — resolved with rest. Exertional pattern."
+        },
+        {
+          "history": ["Smoking", "Hypertension"],
+          "clue": "Known angina — nitroglycerin helped at home. Pain started during yard work."
+        },
+        {
+          "history": ["Diabetes"],
+          "clue": "Type 2 diabetes. Pressure-like chest discomfort with walking, gone at rest."
+        }
+      ],
+      "scenePool": [
+        [
+          "Comfortable sitting in kitchen.",
+          "Pain resolved after 10 minutes rest.",
+          "Mild residual pressure.",
+          "No diaphoresis now."
+        ],
+        [
+          "Resting in chair, color good.",
+          "Denies current chest pain.",
+          "Reports earlier exertional symptoms.",
+          "Anxious but hemodynamically stable."
+        ]
+      ],
+      "lungSoundsClue": "Clear bilaterally.",
+      "ecgClue": "Normal sinus rhythm on monitor.",
+      "bloodSugarClue": "{{glucose}} mg/dL.",
+      "useTwelveLead": true,
+      "twelveLeadClue": "No ST elevation. T-wave flattening in lateral leads. No STEMI.",
+      "vitals": {
+        "bpSystolic": [128, 148],
+        "bpDiastolic": [76, 88],
+        "hr": [72, 88],
+        "rr": [14, 18],
+        "temp": [98.0, 98.6],
+        "spo2": [96, 99],
+        "mentalStatus": ["alert", "anxious"]
+      },
+      "correctActions": ["aspirin", "nitroglycerin", "twelve_lead"],
+      "harmfulActions": ["stemi_alert"],
+      "debriefIndicators": ["Exertional chest pain", "Pain resolved with rest", "No ST elevation", "Stable vitals"],
+      "debriefPrimaryCondition": "Stable Angina",
+      "debriefCorrectTreatment": ["12-Lead ECG", "Aspirin", "Nitroglycerin — NOT STEMI Alert"],
+      "insight": {
+        "title": "Not Every Chest Pain Is STEMI",
+        "body": "Exertional chest pain that resolves with rest without ST elevation is angina — not STEMI. Treat with aspirin and nitroglycerin, but do not activate the cath lab."
+      }
+    },
+    {
+      "id": "unstable_pattern",
+      "weight": 2,
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Chest Pain",
+          "notes": "Recurrent chest pain at rest today. Not relieved fully by home nitroglycerin."
+        },
+        {
+          "chiefComplaint": "Chest Pain",
+          "notes": "Increasing chest pressure over 24 hours. History of CAD."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["Coronary artery disease"],
+          "clue": "Known CAD with stents. Chest pain at rest x 2 episodes today."
+        },
+        {
+          "history": ["Hypertension", "Hyperlipidemia"],
+          "clue": "Worsening angina pattern. Prior negative stress test 1 year ago."
+        }
+      ],
+      "scenePool": [
+        [
+          "Mild ongoing chest pressure.",
+          "Diaphoretic but conversational.",
+          "No respiratory distress.",
+          "Pain 4/10 at rest."
+        ]
+      ],
+      "lungSoundsClue": "Clear.",
+      "ecgClue": "Non-specific ST depression. No STEMI on monitor.",
+      "bloodSugarClue": "{{glucose}} mg/dL.",
+      "useTwelveLead": true,
+      "twelveLeadClue": "No ST elevation. Ischemic changes without acute STEMI.",
+      "vitals": {
+        "bpSystolic": [132, 152],
+        "bpDiastolic": [78, 92],
+        "hr": [82, 98],
+        "rr": [16, 20],
+        "temp": [98.2, 98.8],
+        "spo2": [95, 98],
+        "mentalStatus": ["anxious", "alert"]
+      },
+      "correctActions": ["aspirin", "nitroglycerin", "twelve_lead"],
+      "harmfulActions": ["stemi_alert"],
+      "debriefIndicators": ["Chest pain at rest", "Known CAD", "No ST elevation", "Ischemic ECG changes"],
+      "debriefPrimaryCondition": "Unstable Angina",
+      "debriefCorrectTreatment": ["12-Lead ECG", "Aspirin", "Nitroglycerin", "Expedited transport"],
+      "insight": {
+        "title": "Angina Can Worsen",
+        "body": "Rest pain with known CAD is unstable angina until proven otherwise — but still not STEMI without ST elevation. Obtain 12-lead, treat ischemia, and avoid inappropriate cath lab activation."
+      }
+    }
+  ],
+  "scenarioSkeleton": {
+    "correctProtocol": "angina",
+    "correctActions": ["aspirin", "nitroglycerin", "twelve_lead"],
+    "harmfulActions": ["stemi_alert"],
+    "protocolChoices": ["angina", "stemi", "pulmonary_embolism", "chf", "respiratory"],
+    "treatmentActions": [
+      "twelve_lead",
+      "aspirin",
+      "nitroglycerin",
+      "stemi_alert",
+      "cardiac_monitor",
+      "oxygen",
+      "iv_access"
+    ],
+    "treatmentEffects": {
+      "twelve_lead": { "message": "12-lead negative for STEMI." },
+      "aspirin": { "message": "Aspirin given per chest pain protocol." },
+      "nitroglycerin": { "message": "Nitroglycerin SL. Residual pressure resolved.", "bp": "128/76" },
+      "stemi_alert": { "message": "STEMI alert activated — no ST elevation. Over-triage." },
+      "cardiac_monitor": { "message": "Monitor applied." },
+      "oxygen": { "message": "Room air adequate.", "spo2": 98 },
+      "iv_access": { "message": "IV established." }
+    },
+    "deterioration": {
+      "hr": 82,
+      "rr": 18,
+      "mentalStatus": "alert",
+      "message": "Stable angina — patient remains comfortable with treatment."
+    },
+    "endings": {
+      "perfect_save": { "title": "Appropriate Care", "message": "Angina managed without over-triage." },
+      "partial_success": { "title": "Acceptable — Overtreated", "message": "Patient fine but STEMI alert unnecessarily activated." },
+      "delayed_treatment": { "title": "Undertreated", "message": "Chest pain workup incomplete." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Missed unstable angina or STEMI equivalent." }
+    },
+    "debrief": {
+      "primaryCondition": "Stable Angina",
+      "protocolUsed": "UP11 Chest Pain — Non-STEMI",
+      "correctTreatment": ["12-Lead ECG", "Aspirin", "Nitroglycerin"]
+    }
+  }
+}

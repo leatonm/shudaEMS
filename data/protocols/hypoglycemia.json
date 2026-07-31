@@ -1,0 +1,13 @@
+{
+  "id": "hypoglycemia",
+  "name": "Hypoglycemia / Altered Mental Status",
+  "protocolCode": "UP03 Altered Mental Status / Hypoglycemia",
+  "keyIndicators": ["Blood glucose < 60", "Diabetes history", "Seizure activity", "Altered mental status"],
+  "recognition": {
+    "adultSIRS": { "temperatureHigh": 100.4, "temperatureLow": 96.8, "heartRate": 90, "respRate": 20, "etco2": 25 },
+    "qSOFA": { "sbp": 100, "respRate": 22, "mentalStatusChange": true }
+  },
+  "interventions": ["D10 IV", "Oral Glucose", "Blood Glucose Recheck"],
+  "fluidProtocol": { "adultBolus": 0, "maxLiters": 0, "targetSBP": 90, "targetMAP": 65 },
+  "neutralActions": ["blood_glucose_check", "cardiac_monitor"]
+}

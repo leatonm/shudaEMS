@@ -1,0 +1,18 @@
+{
+  "id": "stemi",
+  "name": "STEMI",
+  "protocolCode": "UP11 Chest Pain / STEMI",
+  "keyIndicators": [
+    "Chest pain or pressure",
+    "ST elevation on 12-lead",
+    "Diaphoresis",
+    "Radiation to arm or jaw"
+  ],
+  "recognition": {
+    "adultSIRS": { "temperatureHigh": 100.4, "temperatureLow": 96.8, "heartRate": 90, "respRate": 20, "etco2": 25 },
+    "qSOFA": { "sbp": 100, "respRate": 22, "mentalStatusChange": true }
+  },
+  "interventions": ["Aspirin", "Nitroglycerin", "12-Lead ECG", "STEMI Alert"],
+  "fluidProtocol": { "adultBolus": 0, "maxLiters": 0, "targetSBP": 90, "targetMAP": 65 },
+  "neutralActions": ["twelve_lead", "cardiac_monitor", "oxygen", "iv_access"]
+}

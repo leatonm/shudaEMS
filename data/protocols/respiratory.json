@@ -1,0 +1,18 @@
+{
+  "id": "respiratory",
+  "name": "Asthma / COPD",
+  "protocolCode": "UP08 Bronchospasm",
+  "keyIndicators": [
+    "Expiratory wheezing",
+    "Accessory muscle use",
+    "History of asthma or COPD",
+    "Home oxygen use"
+  ],
+  "recognition": {
+    "adultSIRS": { "temperatureHigh": 100.4, "temperatureLow": 96.8, "heartRate": 90, "respRate": 20, "etco2": 25 },
+    "qSOFA": { "sbp": 100, "respRate": 22, "mentalStatusChange": true }
+  },
+  "interventions": ["Albuterol", "DuoNeb", "Steroid", "Epinephrine", "Magnesium"],
+  "fluidProtocol": { "adultBolus": 0, "maxLiters": 0, "targetSBP": 90, "targetMAP": 65 },
+  "neutralActions": ["oxygen", "cardiac_monitor"]
+}

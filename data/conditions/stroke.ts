@@ -1,0 +1,56 @@
+import type { ConditionDefinition } from '@/data/conditions/types';
+
+export const stroke: ConditionDefinition = {
+  id: 'stroke',
+  name: 'Suspected Stroke',
+  category: 'neurologic',
+  dispatchTypes: [
+    'Altered Mental Status',
+    'Weakness',
+    'Difficulty Speaking',
+    'Dizziness',
+    'Fall',
+  ],
+  findings: [
+    'Facial Droop',
+    'Arm Drift',
+    'Slurred Speech',
+    'Aphasia',
+    'Unilateral Weakness',
+    'Confusion',
+    'Vision Changes',
+    'Dizziness',
+    'Vomiting',
+  ],
+  history: [
+    'Previous Stroke',
+    'TIA',
+    'Atrial Fibrillation',
+    'Hypertension',
+    'Blood Thinners',
+    'Diabetes',
+  ],
+  vitals: {
+    sbp: [150, 170, 188, 190, 210],
+    dbp: [90, 100, 104, 110],
+    hr: [70, 85, 92, 95, 110],
+    rr: [14, 18, 22],
+    spo2: [94, 96, 97, 98],
+    temp: [97.8, 98.2, 98.6],
+    glucose: [88, 102, 118, 140],
+  },
+  criticalAssessments: ['Blood Glucose', 'Cincinnati Stroke Scale', 'Last Known Well'],
+  treatments: [
+    'Stroke Alert',
+    'Rapid Transport',
+    'Cardiac Monitor',
+    'IV Access',
+    '12-Lead ECG',
+  ],
+  pearls: [
+    'Hypoglycemia can mimic stroke',
+    'Last Known Well is critical',
+    'Not all strokes cause paralysis',
+    'Posterior strokes may present as dizziness',
+  ],
+};

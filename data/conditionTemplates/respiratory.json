@@ -1,0 +1,188 @@
+{
+  "conditionId": "respiratory",
+  "protocolId": "respiratory",
+  "units": ["Medic 5", "Engine 8", "Medic 2", "Medic 11"],
+  "ages": [19, 22, 28, 34, 42],
+  "sexes": ["Male", "Female"],
+  "priorities": [1, 2, 2],
+  "etas": ["3 min", "4 min", "5 min", "6 min"],
+  "profiles": [
+    {
+      "id": "classic_asthma",
+      "weight": 4,
+      "ages": [16, 19, 22, 28, 34],
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Difficulty Breathing",
+          "notes": "Caller reports patient cannot catch breath. History of asthma."
+        },
+        {
+          "chiefComplaint": "Wheezing",
+          "notes": "Audible wheezing. Patient ran out of inhaler."
+        },
+        {
+          "chiefComplaint": "Shortness of Breath",
+          "notes": "College student unable to speak full sentences after gym."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["Asthma"],
+          "clue": "Known asthma — ran out of albuterol inhaler {{daysAgo}} days ago."
+        },
+        {
+          "history": ["Asthma", "Allergies"],
+          "clue": "Asthma with recent URI. Uses daily controller inhaler."
+        },
+        {
+          "history": ["Asthma"],
+          "clue": "Multiple ED visits for asthma. No inhaler available today."
+        }
+      ],
+      "scenePool": [
+        [
+          "Tripoding.",
+          "Audible expiratory wheezing.",
+          "Using accessory muscles.",
+          "Speaking in short phrases."
+        ],
+        [
+          "Sitting forward on edge of couch.",
+          "Diffuse wheezing audible without stethoscope.",
+          "Anxious and tachypneic.",
+          "No rales or edema."
+        ]
+      ],
+      "lungSoundsClue": "Diffuse expiratory wheezing bilaterally.",
+      "ecgClue": "Sinus tachycardia. No ST changes.",
+      "bloodSugarClue": "{{glucose}} mg/dL.",
+      "vitals": {
+        "bpSystolic": [118, 138],
+        "bpDiastolic": [72, 88],
+        "hr": [108, 128],
+        "rr": [26, 32],
+        "temp": [98.2, 99.0],
+        "spo2": [88, 94],
+        "mentalStatus": ["anxious", "alert"]
+      },
+      "correctActions": ["albuterol", "duoneb", "steroid"],
+      "harmfulActions": ["nitroglycerin"],
+      "debriefIndicators": ["Expiratory wheezing", "Accessory muscle use", "Asthma history", "Tachypnea"],
+      "debriefPrimaryCondition": "Acute Asthma Exacerbation",
+      "debriefCorrectTreatment": ["Albuterol", "DuoNeb", "Steroid"],
+      "insight": {
+        "title": "Classic Asthma",
+        "body": "Young patient with expiratory wheezing and accessory muscle use responds to albuterol, DuoNeb, and steroids. Nitroglycerin has no role in bronchospasm."
+      }
+    },
+    {
+      "id": "copd_exacerbation",
+      "weight": 3,
+      "ages": [62, 68, 72, 76, 80],
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Shortness of Breath",
+          "notes": "Patient on home oxygen. Increased work of breathing today."
+        },
+        {
+          "chiefComplaint": "Difficulty Breathing",
+          "notes": "COPD patient with productive cough and increased wheezing."
+        },
+        {
+          "chiefComplaint": "Wheezing",
+          "notes": "Long-time smoker with barrel chest. Worse than baseline."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["COPD"],
+          "clue": "COPD — 40 pack-year smoker. Home oxygen 2L continuous."
+        },
+        {
+          "history": ["COPD", "Hypertension"],
+          "clue": "Severe COPD on home O2. Increased sputum production x 3 days."
+        },
+        {
+          "history": ["COPD"],
+          "clue": "Uses albuterol PRN. Ran out of tiotropium refill last week."
+        }
+      ],
+      "scenePool": [
+        [
+          "On home O2 via nasal cannula.",
+          "Prolonged expiratory phase.",
+          "Barrel chest.",
+          "Productive cough."
+        ],
+        [
+          "Tripoding in recliner.",
+          "Pursed-lip breathing.",
+          "Central cyanosis absent.",
+          "No peripheral edema."
+        ]
+      ],
+      "lungSoundsClue": "Diffuse wheezing with prolonged expiration.",
+      "ecgClue": "Sinus tachycardia. Old LVH pattern.",
+      "bloodSugarClue": "{{glucose}} mg/dL.",
+      "vitals": {
+        "bpSystolic": [136, 158],
+        "bpDiastolic": [82, 96],
+        "hr": [102, 118],
+        "rr": [24, 30],
+        "temp": [98.0, 98.8],
+        "spo2": [84, 90],
+        "mentalStatus": ["alert", "anxious"]
+      },
+      "correctActions": ["albuterol", "duoneb"],
+      "debriefIndicators": ["Home oxygen use", "Smoking history", "Wheezing", "Prolonged expiration"],
+      "debriefPrimaryCondition": "COPD Exacerbation",
+      "debriefCorrectTreatment": ["Albuterol", "DuoNeb"],
+      "insight": {
+        "title": "COPD on Home O2",
+        "body": "COPD patients on chronic oxygen who develop increased wheezing need bronchodilator therapy. Distinguish from CHF — COPD patients are often hypertensive, not hypotensive with rales."
+      }
+    }
+  ],
+  "scenarioSkeleton": {
+    "correctProtocol": "respiratory",
+    "correctActions": ["albuterol", "duoneb", "steroid"],
+    "protocolChoices": ["respiratory", "chf", "sepsis", "stemi", "pulmonary_embolism"],
+    "treatmentActions": [
+      "albuterol",
+      "duoneb",
+      "steroid",
+      "oxygen",
+      "epinephrine_im",
+      "nitroglycerin",
+      "cpap",
+      "cardiac_monitor"
+    ],
+    "treatmentEffects": {
+      "albuterol": { "message": "Albuterol nebulizer started. Wheezing improving." },
+      "duoneb": { "message": "DuoNeb administered. Bronchospasm easing." },
+      "steroid": { "message": "Steroid given per bronchospasm protocol." },
+      "oxygen": { "message": "Supplemental oxygen applied." },
+      "epinephrine_im": { "message": "Epinephrine IM — reserve for severe bronchospasm." },
+      "nitroglycerin": { "message": "Nitroglycerin given — no bronchospasm relief.", "mentalStatus": "confused" },
+      "cpap": { "message": "CPAP attempted — patient fighting mask. Consider COPD vs CHF." },
+      "cardiac_monitor": { "message": "Monitor applied." }
+    },
+    "deterioration": {
+      "hr": 132,
+      "rr": 36,
+      "mentalStatus": "distressed",
+      "message": "Bronchospasm worsening. Hypoxia progressing."
+    },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "Bronchospasm treated appropriately." },
+      "partial_success": { "title": "Improved — Incomplete Treatment", "message": "Partial bronchospasm relief." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Respiratory distress worsening." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Wrong pathway. Patient desaturating." }
+    },
+    "debrief": {
+      "primaryCondition": "Bronchospasm",
+      "protocolUsed": "UP08 Bronchospasm",
+      "correctTreatment": ["Albuterol", "DuoNeb", "Steroid"]
+    }
+  }
+}

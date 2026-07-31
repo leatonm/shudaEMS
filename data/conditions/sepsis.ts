@@ -1,0 +1,55 @@
+import type { ConditionDefinition } from '@/data/conditions/types';
+
+export const sepsis: ConditionDefinition = {
+  id: 'sepsis',
+  name: 'Sepsis',
+  category: 'medical',
+  dispatchTypes: [
+    'General Weakness',
+    'Altered Mental Status',
+    'Fall',
+    'Difficulty Breathing',
+    'Flu Symptoms',
+    'Not Feeling Well',
+  ],
+  findings: [
+    'Fever',
+    'Hypothermia',
+    'Tachycardia',
+    'Hypotension',
+    'Altered Mental Status',
+    'Tachypnea',
+    'Diaphoresis',
+    'Poor Perfusion',
+  ],
+  history: [
+    'Recent UTI',
+    'Pneumonia',
+    'Cellulitis',
+    'Recent Surgery',
+    'Unknown Infection',
+    'Indwelling Catheter',
+  ],
+  vitals: {
+    sbp: [76, 82, 84, 88, 92, 96],
+    dbp: [40, 48, 50, 54, 58, 62],
+    hr: [104, 110, 118, 122, 128, 132],
+    rr: [22, 24, 26, 28, 30],
+    spo2: [88, 91, 93, 95],
+    temp: [96.2, 96.8, 100.4, 101.2, 102.4, 103.1],
+    glucose: [96, 118, 132, 148, 178],
+  },
+  criticalAssessments: ['Vitals', 'Lung Sounds', 'Medical History', 'EtCO2'],
+  treatments: [
+    'IV Access',
+    'Fluid Bolus',
+    'Notify Receiving Facility',
+    'Cardiac Monitor',
+    'EtCO2',
+  ],
+  pearls: [
+    'Two or more SIRS criteria with suspected infection triggers sepsis pathway',
+    'Hypothermia can occur instead of fever in elderly sepsis',
+    'Fluid boluses target MAP ≥ 65',
+  ],
+};

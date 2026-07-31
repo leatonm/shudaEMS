@@ -1,0 +1,174 @@
+{
+  "conditionId": "cardiogenic_shock",
+  "protocolId": "cardiogenic_shock",
+  "units": ["Medic 1", "Medic 12", "Engine 1"],
+  "ages": [68, 72, 76, 80, 84],
+  "sexes": ["Male", "Female"],
+  "priorities": [1, 1],
+  "etas": ["2 min", "3 min", "4 min"],
+  "profiles": [
+    {
+      "id": "chf_decompensation",
+      "weight": 4,
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Difficulty Breathing",
+          "notes": "Found in severe distress. Was on home CPAP. Now unresponsive to family."
+        },
+        {
+          "chiefComplaint": "Difficulty Breathing",
+          "notes": "End-stage heart failure patient crashing. Pink frothy sputum reported."
+        },
+        {
+          "chiefComplaint": "Altered Mental Status",
+          "notes": "Known CHF patient found obtunded. Previously very tachycardic."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["End-stage CHF"],
+          "clue": "End-stage CHF. Was tachycardic at {{priorHr}} before bradycardia."
+        },
+        {
+          "history": ["CHF", "Prior MI"],
+          "clue": "Severe CHF with EF 15%. Was in flash pulmonary edema before becoming hypotensive."
+        },
+        {
+          "history": ["CHF"],
+          "clue": "Multiple CHF admissions. Home CPAP in use. Acute worsening today."
+        }
+      ],
+      "scenePool": [
+        [
+          "Pink frothy sputum at mouth.",
+          "Previously tachycardic — now bradycardic.",
+          "Cold, clammy skin.",
+          "Barely responsive."
+        ],
+        [
+          "Tripoding then slumped.",
+          "Mottled extremities.",
+          "JVD markedly elevated.",
+          "Gurgling respirations."
+        ]
+      ],
+      "lungSoundsClue": "Diffuse rales. Pink frothy sputum.",
+      "ecgClue": "Sinus bradycardia — was tachycardic {{minutesAgo}} minutes ago per family.",
+      "bloodSugarClue": "{{glucose}} mg/dL.",
+      "vitals": {
+        "bpSystolic": [58, 82],
+        "bpDiastolic": [32, 48],
+        "hr": [38, 52],
+        "rr": [24, 32],
+        "temp": [97.0, 98.0],
+        "spo2": [78, 86],
+        "mentalStatus": ["obtunded", "unresponsive", "lethargic"]
+      },
+      "correctActions": ["iv_access", "cardiac_monitor", "notify_facility"],
+      "harmfulActions": ["fluid_bolus", "cpap", "remove_cpap", "nitroglycerin"],
+      "debriefIndicators": ["Hypotension", "Pink frothy sputum", "Bradycardia after tachycardia", "End-stage CHF"],
+      "debriefPrimaryCondition": "Cardiogenic Shock",
+      "debriefCorrectTreatment": ["IV Access", "Cardiac Monitor", "Notify Receiving Facility"],
+      "insight": {
+        "title": "Beyond Standard CHF",
+        "body": "When CHF progresses to cardiogenic shock — hypotension, bradycardia after tachycardia, altered perfusion — standard CPAP, fluids, and nitroglycerin are contraindicated. Escalate to shock protocol immediately."
+      }
+    },
+    {
+      "id": "post_mi_shock",
+      "weight": 2,
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Chest Pain",
+          "notes": "Chest pain now with severe hypotension and altered mental status."
+        },
+        {
+          "chiefComplaint": "Difficulty Breathing",
+          "notes": "Recent MI patient now in respiratory failure and shock."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["Recent MI"],
+          "clue": "NSTEMI {{daysAgo}} days ago. Now acute hypotension and pulmonary edema."
+        },
+        {
+          "history": ["CHF", "Recent MI"],
+          "clue": "STEMI {{daysAgo}} days ago with stent. Acute decompensation today."
+        }
+      ],
+      "scenePool": [
+        [
+          "Diaphoretic and pale.",
+          "Hypotensive and bradycardic.",
+          "Bilateral rales.",
+          "Altered mental status."
+        ]
+      ],
+      "lungSoundsClue": "Diffuse crackles with pink frothy sputum.",
+      "ecgClue": "Bradycardia with frequent ectopy. Possible new ischemic changes.",
+      "bloodSugarClue": "{{glucose}} mg/dL.",
+      "vitals": {
+        "bpSystolic": [62, 88],
+        "bpDiastolic": [36, 52],
+        "hr": [42, 58],
+        "rr": [26, 34],
+        "temp": [97.4, 98.2],
+        "spo2": [80, 88],
+        "mentalStatus": ["obtunded", "unresponsive"]
+      },
+      "correctActions": ["iv_access", "cardiac_monitor", "notify_facility"],
+      "harmfulActions": ["fluid_bolus", "cpap", "nitroglycerin", "stemi_alert"],
+      "debriefIndicators": ["Hypotension", "Recent MI", "Pulmonary edema", "Altered perfusion"],
+      "debriefPrimaryCondition": "Cardiogenic Shock",
+      "debriefCorrectTreatment": ["IV Access", "Cardiac Monitor", "Notify Receiving Facility"],
+      "insight": {
+        "title": "Shock After MI",
+        "body": "Hypotension with pulmonary edema after recent infarction is cardiogenic shock — not a fluid-responsive process. Avoid CPAP, nitroglycerin, and bolus fluids; notify receiving immediately."
+      }
+    }
+  ],
+  "scenarioSkeleton": {
+    "correctProtocol": "cardiogenic_shock",
+    "correctActions": ["iv_access", "cardiac_monitor", "notify_facility"],
+    "harmfulActions": ["fluid_bolus", "cpap", "remove_cpap", "nitroglycerin"],
+    "protocolChoices": ["chf", "sepsis", "cardiogenic_shock", "stemi"],
+    "treatmentActions": [
+      "iv_access",
+      "cardiac_monitor",
+      "notify_facility",
+      "cpap",
+      "remove_cpap",
+      "fluid_bolus",
+      "nitroglycerin",
+      "oxygen"
+    ],
+    "treatmentEffects": {
+      "iv_access": { "message": "IV established for shock protocol." },
+      "cardiac_monitor": { "message": "Monitor applied — bradycardia with frequent ectopy." },
+      "notify_facility": { "message": "Cardiogenic shock alert transmitted to receiving." },
+      "cpap": { "message": "CPAP applied in shock — patient deteriorating.", "mentalStatus": "unresponsive" },
+      "remove_cpap": { "message": "CPAP removed — patient crashing.", "mentalStatus": "unresponsive" },
+      "fluid_bolus": { "message": "Fluid bolus in cardiogenic shock — pulmonary edema worsening." },
+      "nitroglycerin": { "message": "Nitroglycerin given — BP drops further.", "mentalStatus": "unresponsive" },
+      "oxygen": { "message": "High-flow oxygen applied." }
+    },
+    "deterioration": {
+      "hr": 36,
+      "rr": 10,
+      "mentalStatus": "unresponsive",
+      "message": "Cardiogenic shock — patient in pre-arrest."
+    },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "Shock recognized. Appropriate escalation en route." },
+      "partial_success": { "title": "Improved — Incomplete Handoff", "message": "Shock recognized but incomplete protocol." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Standard CHF treatment applied to shock patient." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Bradycardia after tachycardia missed. Patient in arrest." }
+    },
+    "debrief": {
+      "primaryCondition": "Cardiogenic Shock",
+      "protocolUsed": "UP12 / Shock Protocol",
+      "correctTreatment": ["IV Access", "Cardiac Monitor", "Notify Receiving Facility"]
+    }
+  }
+}

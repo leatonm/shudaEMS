@@ -1,0 +1,174 @@
+{
+  "conditionId": "eclampsia",
+  "protocolId": "eclampsia",
+  "units": ["Medic 1", "Medic 9", "Engine 2"],
+  "ages": [22, 26, 28, 32, 35],
+  "sexes": ["Female"],
+  "priorities": [1, 1],
+  "etas": ["2 min", "3 min", "4 min"],
+  "profiles": [
+    {
+      "id": "active_eclampsia",
+      "weight": 4,
+      "sexes": ["Female"],
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Seizure",
+          "notes": "Pregnant patient — third trimester. Active seizure. Partner on scene."
+        },
+        {
+          "chiefComplaint": "Seizure",
+          "notes": "Pregnant female seizing. Estimated 30+ weeks."
+        },
+        {
+          "chiefComplaint": "Altered Mental Status",
+          "notes": "Pregnant patient found seizing at home. Hypertension reported."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["Pregnancy"],
+          "clue": "{{gestWeeks}} weeks pregnant. Headache and swelling x 3 days. No prior complications until today."
+        },
+        {
+          "history": ["Pregnancy", "Preeclampsia"],
+          "clue": "{{gestWeeks}} weeks — diagnosed preeclampsia this week. Missed follow-up."
+        },
+        {
+          "history": ["Pregnancy"],
+          "clue": "First pregnancy at {{gestWeeks}} weeks. Severe headache and visual changes today."
+        }
+      ],
+      "scenePool": [
+        [
+          "Third trimester pregnancy obvious.",
+          "Active tonic-clonic seizure.",
+          "Hypertensive appearance.",
+          "Facial edema noted."
+        ],
+        [
+          "Pregnant patient postictal then re-seizing.",
+          "Marked facial and hand edema.",
+          "Diaphoretic.",
+          "Partner extremely distressed."
+        ]
+      ],
+      "lungSoundsClue": "Clear with mild bibasilar crackles.",
+      "ecgClue": "Sinus tachycardia.",
+      "bloodSugarClue": "Blood glucose {{glucose}} mg/dL.",
+      "vitals": {
+        "bpSystolic": [162, 188],
+        "bpDiastolic": [98, 118],
+        "hr": [110, 124],
+        "rr": [22, 28],
+        "temp": [98.2, 99.0],
+        "spo2": [91, 95],
+        "mentalStatus": ["seizing", "postictal"]
+      },
+      "correctActions": ["magnesium_sulfate", "notify_facility"],
+      "harmfulActions": ["midazolam"],
+      "debriefIndicators": ["Pregnancy third trimester", "Active seizure", "Hypertension", "Headache", "Facial edema"],
+      "debriefPrimaryCondition": "Eclampsia",
+      "debriefCorrectTreatment": ["Magnesium Sulfate", "Notify Receiving Facility"],
+      "insight": {
+        "title": "Not a Routine Seizure",
+        "body": "Seizure in pregnancy is eclampsia until proven otherwise. Magnesium sulfate is the definitive treatment — not midazolam alone. Alert the receiving facility immediately."
+      }
+    },
+    {
+      "id": "severe_preeclampsia",
+      "weight": 2,
+      "sexes": ["Female"],
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Headache",
+          "notes": "Pregnant patient with severe headache and high blood pressure. Now confused."
+        },
+        {
+          "chiefComplaint": "Altered Mental Status",
+          "notes": "Pregnant female with sudden confusion and vomiting."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["Pregnancy"],
+          "clue": "{{gestWeeks}} weeks pregnant. BP elevated at home. Right upper quadrant pain today."
+        },
+        {
+          "history": ["Pregnancy"],
+          "clue": "Third trimester — worsening edema and headache. Seizure just occurred."
+        }
+      ],
+      "scenePool": [
+        [
+          "Pregnant and hypertensive.",
+          "Confused between seizure episodes.",
+          "Epigastric tenderness reported.",
+          "Hyperreflexia noted."
+        ]
+      ],
+      "lungSoundsClue": "Clear.",
+      "ecgClue": "Sinus tachycardia.",
+      "bloodSugarClue": "{{glucose}} mg/dL — normal.",
+      "vitals": {
+        "bpSystolic": [168, 192],
+        "bpDiastolic": [102, 122],
+        "hr": [104, 118],
+        "rr": [20, 26],
+        "temp": [98.4, 99.2],
+        "spo2": [93, 97],
+        "mentalStatus": ["confused", "seizing"]
+      },
+      "correctActions": ["magnesium_sulfate", "notify_facility"],
+      "harmfulActions": ["midazolam"],
+      "debriefIndicators": ["Pregnancy", "Severe hypertension", "Headache", "Seizure or AMS"],
+      "debriefPrimaryCondition": "Eclampsia / Severe Preeclampsia",
+      "debriefCorrectTreatment": ["Magnesium Sulfate", "Notify Receiving Facility"],
+      "insight": {
+        "title": "Headache Plus Pregnancy Is Obstetric",
+        "body": "Severe headache, hypertension, and altered mental status in pregnancy are obstetric emergencies. Magnesium prevents recurrent seizures and stabilizes the patient for definitive care."
+      }
+    }
+  ],
+  "scenarioSkeleton": {
+    "correctProtocol": "eclampsia",
+    "correctActions": ["magnesium_sulfate", "notify_facility"],
+    "harmfulActions": ["midazolam"],
+    "protocolChoices": ["eclampsia", "seizure", "hypoglycemia", "sepsis", "stemi"],
+    "treatmentActions": [
+      "magnesium_sulfate",
+      "notify_facility",
+      "midazolam",
+      "oxygen",
+      "iv_access",
+      "cardiac_monitor",
+      "blood_glucose_check"
+    ],
+    "treatmentEffects": {
+      "magnesium_sulfate": { "message": "Magnesium sulfate IV loading dose. Seizure activity ceasing.", "mentalStatus": "postictal" },
+      "notify_facility": { "message": "Obstetric emergency alert transmitted. L&D and NICU notified." },
+      "midazolam": { "message": "Midazolam only — seizure may recur without magnesium.", "mentalStatus": "postictal" },
+      "oxygen": { "message": "Oxygen applied." },
+      "iv_access": { "message": "Large-bore IV established." },
+      "cardiac_monitor": { "message": "Monitor applied." },
+      "blood_glucose_check": { "message": "Glucose normal — not hypoglycemia." }
+    },
+    "deterioration": {
+      "hr": 128,
+      "rr": 30,
+      "mentalStatus": "seizing",
+      "message": "Eclampsia with recurrent seizures. Fetal distress likely."
+    },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "Eclampsia recognized and treated." },
+      "partial_success": { "title": "Improved — Incomplete Handoff", "message": "Magnesium given but facility not alerted." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Treated as routine seizure. Eclampsia progressing." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Obstetric emergency missed." }
+    },
+    "debrief": {
+      "primaryCondition": "Eclampsia",
+      "protocolUsed": "UP Obstetric Emergency",
+      "correctTreatment": ["Magnesium Sulfate", "Notify Receiving Facility"]
+    }
+  }
+}

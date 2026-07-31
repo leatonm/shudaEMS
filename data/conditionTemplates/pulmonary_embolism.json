@@ -1,0 +1,177 @@
+{
+  "conditionId": "pulmonary_embolism",
+  "protocolId": "pulmonary_embolism",
+  "units": ["Medic 18", "Medic 11", "Engine 14"],
+  "ages": [38, 45, 48, 52, 58],
+  "sexes": ["Male", "Female"],
+  "priorities": [1, 1, 2],
+  "etas": ["3 min", "4 min", "6 min"],
+  "profiles": [
+    {
+      "id": "post_surgical",
+      "weight": 4,
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Chest Pain / SOB",
+          "notes": "Sudden onset chest pain and shortness of breath. Recent knee surgery 1 week ago."
+        },
+        {
+          "chiefComplaint": "Difficulty Breathing",
+          "notes": "Acute dyspnea after hip surgery 10 days ago. On blood thinners at home."
+        },
+        {
+          "chiefComplaint": "Chest Pain",
+          "notes": "Pleuritic chest pain sudden onset. Recent hospitalization for fracture."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["Recent surgery"],
+          "clue": "Knee replacement {{daysAgo}} days ago. On enoxaparin at home."
+        },
+        {
+          "history": ["Recent surgery", "Immobility"],
+          "clue": "Hip fracture repair 2 weeks ago. Limited mobility since discharge."
+        },
+        {
+          "history": ["Recent surgery"],
+          "clue": "Abdominal surgery 1 week ago. Missed two doses of anticoagulant."
+        }
+      ],
+      "scenePool": [
+        [
+          "Sudden onset distress.",
+          "Tachypneic.",
+          "Chest pain pleuritic quality.",
+          "Recent surgical incision visible."
+        ],
+        [
+          "Tripoding.",
+          "Clutching chest with deep breaths.",
+          "Anxious and hypoxic.",
+          "Leg swelling unilateral."
+        ]
+      ],
+      "lungSoundsClue": "Clear. Tachypneic.",
+      "ecgClue": "Sinus tachycardia on monitor.",
+      "bloodSugarClue": "{{glucose}} mg/dL.",
+      "useTwelveLead": true,
+      "twelveLeadClue": "Sinus tachycardia. S1Q3T3 pattern. No ST elevation.",
+      "vitals": {
+        "bpSystolic": [108, 128],
+        "bpDiastolic": [66, 78],
+        "hr": [110, 128],
+        "rr": [26, 32],
+        "temp": [98.4, 99.2],
+        "spo2": [88, 93],
+        "mentalStatus": ["anxious", "alert"]
+      },
+      "correctActions": ["oxygen", "iv_access", "notify_facility", "twelve_lead"],
+      "harmfulActions": ["stemi_alert"],
+      "debriefIndicators": ["Sudden dyspnea", "Pleuritic chest pain", "Recent surgery", "Tachycardia", "S1Q3T3"],
+      "debriefPrimaryCondition": "Suspected Pulmonary Embolism",
+      "debriefCorrectTreatment": ["Oxygen", "IV Access", "Notify Receiving Facility", "12-Lead ECG"],
+      "insight": {
+        "title": "Not All Chest Pain Is Cardiac",
+        "body": "Sudden pleuritic chest pain with tachycardia after recent surgery is pulmonary embolism until proven otherwise. Do not activate STEMI protocol without ST elevation."
+      }
+    },
+    {
+      "id": "immobility",
+      "weight": 2,
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Difficulty Breathing",
+          "notes": "Long flight yesterday. Sudden shortness of breath today."
+        },
+        {
+          "chiefComplaint": "Chest Pain",
+          "notes": "Bedbound patient with sudden dyspnea and sharp chest pain."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["Immobility", "Oral contraceptive"],
+          "clue": "12-hour flight yesterday. On oral contraceptives. No prior PE."
+        },
+        {
+          "history": ["Cancer", "Immobility"],
+          "clue": "Metastatic cancer — mostly bedbound. Acute dyspnea x 1 hour."
+        }
+      ],
+      "scenePool": [
+        [
+          "Acute respiratory distress.",
+          "Sharp chest pain with inspiration.",
+          "Tachycardic.",
+          "No fever."
+        ]
+      ],
+      "lungSoundsClue": "Clear to auscultation. Marked tachypnea.",
+      "ecgClue": "Tachycardia with right heart strain pattern.",
+      "bloodSugarClue": "{{glucose}} mg/dL.",
+      "useTwelveLead": true,
+      "twelveLeadClue": "Tachycardia with S1Q3T3. Right axis deviation. No STEMI.",
+      "vitals": {
+        "bpSystolic": [98, 118],
+        "bpDiastolic": [58, 72],
+        "hr": [118, 136],
+        "rr": [28, 34],
+        "temp": [98.0, 98.8],
+        "spo2": [86, 91],
+        "mentalStatus": ["anxious", "confused"]
+      },
+      "correctActions": ["oxygen", "iv_access", "notify_facility", "twelve_lead"],
+      "harmfulActions": ["stemi_alert", "nitroglycerin"],
+      "debriefIndicators": ["Sudden dyspnea", "Immobility risk", "Tachycardia", "Hypoxia"],
+      "debriefPrimaryCondition": "Suspected Pulmonary Embolism",
+      "debriefCorrectTreatment": ["Oxygen", "IV Access", "Notify Receiving Facility", "12-Lead ECG"],
+      "insight": {
+        "title": "PE Risk Factors Matter",
+        "body": "Immobility, cancer, estrogen use, and recent travel are major PE risks. Tachycardia with hypoxia and pleuritic pain should trigger PE suspicion and early facility notification."
+      }
+    }
+  ],
+  "scenarioSkeleton": {
+    "correctProtocol": "pulmonary_embolism",
+    "correctActions": ["oxygen", "iv_access", "notify_facility", "twelve_lead"],
+    "protocolChoices": ["pulmonary_embolism", "stemi", "angina", "respiratory", "sepsis"],
+    "treatmentActions": [
+      "oxygen",
+      "iv_access",
+      "notify_facility",
+      "twelve_lead",
+      "aspirin",
+      "nitroglycerin",
+      "stemi_alert",
+      "cardiac_monitor"
+    ],
+    "treatmentEffects": {
+      "oxygen": { "message": "High-flow oxygen applied." },
+      "iv_access": { "message": "IV established." },
+      "notify_facility": { "message": "PE alert transmitted to receiving facility." },
+      "twelve_lead": { "message": "12-lead shows S1Q3T3 — PE suspicion supported." },
+      "aspirin": { "message": "Aspirin given — not primary PE treatment." },
+      "nitroglycerin": { "message": "Nitroglycerin — minimal benefit for PE.", "bp": "108/66" },
+      "stemi_alert": { "message": "STEMI alert activated inappropriately — no ST elevation." },
+      "cardiac_monitor": { "message": "Monitor applied. Tachycardia persists." }
+    },
+    "deterioration": {
+      "hr": 132,
+      "rr": 32,
+      "mentalStatus": "obtunded",
+      "message": "Massive PE suspected. Hemodynamic collapse."
+    },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "PE recognized and facility alerted." },
+      "partial_success": { "title": "Improved — Incomplete Handoff", "message": "PE suspected but incomplete workup." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Treated as ACS. PE worsening." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Chest pain assumed cardiac. PE missed." }
+    },
+    "debrief": {
+      "primaryCondition": "Suspected Pulmonary Embolism",
+      "protocolUsed": "UP11 Chest Pain — PE Suspicion",
+      "correctTreatment": ["Oxygen", "IV Access", "Notify Receiving Facility", "12-Lead ECG"]
+    }
+  }
+}

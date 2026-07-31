@@ -1,0 +1,56 @@
+import type { ConditionDefinition } from '@/data/conditions/types';
+
+export const anaphylaxis: ConditionDefinition = {
+  id: 'anaphylaxis',
+  name: 'Allergic Reaction / Anaphylaxis',
+  category: 'respiratory',
+  dispatchTypes: [
+    'Difficulty Breathing',
+    'Allergic Reaction',
+    'Bee Sting',
+    'Medication Reaction',
+    'Collapse',
+  ],
+  findings: [
+    'Hives',
+    'Facial Swelling',
+    'Lip Swelling',
+    'Tongue Swelling',
+    'Stridor',
+    'Wheezing',
+    'Difficulty Swallowing',
+    'Hypotension',
+    'Respiratory Distress',
+  ],
+  history: [
+    'Peanut Allergy',
+    'Bee Allergy',
+    'Shellfish Allergy',
+    'Recent Medication',
+    'Previous Anaphylaxis',
+    'Unknown Allergen Exposure',
+  ],
+  vitals: {
+    sbp: [70, 80, 82, 90, 100],
+    dbp: [40, 44, 50, 60],
+    hr: [110, 120, 132, 138, 145],
+    rr: [24, 28, 30, 36],
+    spo2: [86, 88, 90, 92, 94],
+    temp: [98.0, 98.6, 99.0],
+    glucose: [96, 104, 118],
+  },
+  criticalAssessments: ['Airway', 'Exposure History', 'Severity Assessment'],
+  treatments: [
+    'Epinephrine IM',
+    'Albuterol',
+    'Fluid Bolus',
+    'Steroids',
+    'Airway Management',
+  ],
+  pearls: [
+    'Epinephrine is first-line treatment',
+    "Don't delay epinephrine",
+    "Wheezing isn't always asthma",
+    'Hypotension indicates severe anaphylaxis',
+  ],
+};

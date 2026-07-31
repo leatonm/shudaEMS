@@ -1,0 +1,233 @@
+{
+  "conditionId": "chf",
+  "protocolId": "chf",
+  "units": ["Medic 3", "Engine 6", "Medic 12", "Medic 9"],
+  "ages": [68, 70, 72, 74, 76],
+  "sexes": ["Male", "Female"],
+  "priorities": [1, 2, 2],
+  "etas": ["3 min", "4 min", "5 min", "7 min"],
+  "profiles": [
+    {
+      "id": "acute_edema",
+      "weight": 4,
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Difficulty Breathing",
+          "notes": "Family reports sudden onset shortness of breath. Patient unable to lie flat."
+        },
+        {
+          "chiefComplaint": "Shortness of Breath",
+          "notes": "Patient audibly struggling to breathe. History of heart problems."
+        },
+        {
+          "chiefComplaint": "Difficulty Breathing",
+          "notes": "Caller reports pink frothy sputum. Patient sitting upright in chair."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["CHF"],
+          "clue": "Known CHF — takes furosemide daily. Missed doses this week."
+        },
+        {
+          "history": ["CHF", "Hypertension"],
+          "clue": "Heart failure with reduced EF. Non-compliant with diuretics."
+        },
+        {
+          "history": ["CHF"],
+          "clue": "Prior hospitalization for pulmonary edema. Ran out of lasix 4 days ago."
+        }
+      ],
+      "scenePool": [
+        [
+          "Tripoding in recliner.",
+          "Unable to speak full sentences.",
+          "Bilateral leg swelling visible.",
+          "Pink-tinged sputum in emesis basin."
+        ],
+        [
+          "Sitting bolt upright.",
+          "Audible crackles with each breath.",
+          "Bilateral pitting edema to knees.",
+          "Anxious and diaphoretic."
+        ]
+      ],
+      "lungSoundsClue": "Bilateral rales to mid-lung fields. No isolated wheezing.",
+      "ecgClue": "Sinus tachycardia. No ST elevation.",
+      "bloodSugarClue": "{{glucose}} mg/dL — normal.",
+      "vitals": {
+        "bpSystolic": [168, 196],
+        "bpDiastolic": [88, 104],
+        "hr": [108, 122],
+        "rr": [28, 34],
+        "temp": [97.8, 98.8],
+        "spo2": [82, 88],
+        "mentalStatus": ["anxious", "alert", "confused"]
+      },
+      "debriefIndicators": ["Bilateral rales", "Hypertension", "Tachypnea", "Low SpO2", "CHF history"],
+      "requiresCpap": true,
+      "insight": {
+        "title": "Not All SOB Is Asthma",
+        "body": "Bilateral rales with hypertension and CHF history point to pulmonary edema — not bronchospasm. CPAP and nitroglycerin paste are first-line, not albuterol or sublingual nitro under the CPAP mask."
+      }
+    },
+    {
+      "id": "orthopnea",
+      "weight": 3,
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Shortness of Breath",
+          "notes": "Patient reports worsening breathing overnight. Has not slept flat in weeks."
+        },
+        {
+          "chiefComplaint": "Difficulty Breathing",
+          "notes": "Patient sleeping upright in chair. Family concerned about leg swelling."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["CHF", "Orthopnea"],
+          "clue": "Orthopnea — sleeps on 4 pillows. Leg swelling x 2 weeks."
+        },
+        {
+          "history": ["CHF"],
+          "clue": "Known heart failure. Weight up 8 lbs this week per patient."
+        }
+      ],
+      "scenePool": [
+        [
+          "Sitting upright on edge of bed.",
+          "Using 4 pillows to sleep.",
+          "Bilateral lower extremity edema.",
+          "Speaking in short phrases."
+        ]
+      ],
+      "lungSoundsClue": "Fine crackles at bases bilaterally.",
+      "ecgClue": "Left ventricular hypertrophy pattern. No acute changes.",
+      "bloodSugarClue": "{{glucose}} mg/dL.",
+      "vitals": {
+        "bpSystolic": [172, 188],
+        "bpDiastolic": [90, 98],
+        "hr": [104, 112],
+        "rr": [26, 30],
+        "temp": [98.0, 98.6],
+        "spo2": [86, 91],
+        "mentalStatus": ["alert", "anxious"]
+      },
+      "debriefIndicators": ["Orthopnea", "Peripheral edema", "Hypertension", "Crackles"],
+      "requiresCpap": false,
+      "insight": {
+        "title": "Orthopnea Is a Clue",
+        "body": "Sleeping on multiple pillows is a classic sign of CHF decompensation. Mild cases may respond to nitroglycerin SL or paste before escalating to CPAP. Once CPAP is on, switch to paste — SL is unreliable under the mask."
+      }
+    },
+    {
+      "id": "cardiac_wheeze",
+      "weight": 2,
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Difficulty Breathing",
+          "notes": "Patient audibly wheezing per caller. History of lung disease unknown."
+        },
+        {
+          "chiefComplaint": "Wheezing",
+          "notes": "Neighbor reports loud wheezing. Patient has swollen legs."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["CHF", "COPD"],
+          "clue": "CHF and COPD on chart — non-compliant with diuretics."
+        },
+        {
+          "history": ["CHF"],
+          "clue": "Heart failure history. Uses albuterol at home but not helping today."
+        }
+      ],
+      "scenePool": [
+        [
+          "Audible wheezing on arrival.",
+          "Bilateral pitting edema to knees.",
+          "Tripoding.",
+          "No fever, skin warm and dry."
+        ]
+      ],
+      "lungSoundsClue": "Wheezing AND bilateral rales — mixed picture.",
+      "ecgClue": "Tachycardia with LVH. No STEMI.",
+      "bloodSugarClue": "{{glucose}} mg/dL.",
+      "vitals": {
+        "bpSystolic": [164, 182],
+        "bpDiastolic": [86, 96],
+        "hr": [112, 124],
+        "rr": [30, 36],
+        "temp": [98.2, 98.8],
+        "spo2": [82, 86],
+        "mentalStatus": ["anxious"]
+      },
+      "debriefIndicators": ["Wheezing WITH rales", "Edema", "Hypertension", "CHF history"],
+      "requiresCpap": true,
+      "harmfulActions": ["albuterol"],
+      "insight": {
+        "title": "Wheezing Can Occur in CHF",
+        "body": "Cardiogenic pulmonary edema can produce wheezing — 'cardiac asthma.' Many providers see wheezing and choose asthma. Look for rales, edema, and hypertension together. With CPAP on, use nitroglycerin paste — not SL."
+      }
+    }
+  ],
+  "scenarioSkeleton": {
+    "correctProtocol": "chf",
+    "protocolChoices": ["chf", "sepsis", "cardiogenic_shock"],
+    "treatmentActions": [
+      "cpap",
+      "nitroglycerin",
+      "nitro_paste",
+      "oxygen",
+      "cardiac_monitor",
+      "fluid_bolus",
+      "albuterol",
+      "iv_access"
+    ],
+    "treatmentEffects": {
+      "oxygen": { "message": "Supplemental oxygen applied." },
+      "cardiac_monitor": { "message": "Monitor applied. Sinus tachycardia." },
+      "iv_access": { "message": "IV established." },
+      "fluid_bolus": {
+        "message": "Patient becomes more dyspneic. Pulmonary edema worsening.",
+        "rr": 34,
+        "mentalStatus": "distressed"
+      },
+      "albuterol": {
+        "message": "Wheezing slightly improved — pulmonary edema worsening.",
+        "rr": 32
+      }
+    },
+    "deterioration": {
+      "hr": 128,
+      "rr": 36,
+      "mentalStatus": "obtunded",
+      "message": "Pulmonary edema worsening — patient in respiratory failure."
+    },
+    "endings": {
+      "perfect_save": {
+        "title": "Patient Stabilized",
+        "message": "Pulmonary edema improving en route."
+      },
+      "partial_success": {
+        "title": "Improved — Incomplete Treatment",
+        "message": "Some improvement but key interventions missed."
+      },
+      "delayed_treatment": {
+        "title": "Patient Deteriorating",
+        "message": "Respiratory distress worsening."
+      },
+      "wrong_protocol": {
+        "title": "Critical Miss",
+        "message": "Wrong pathway. Pulmonary edema progressing."
+      }
+    },
+    "debrief": {
+      "primaryCondition": "CHF / Pulmonary Edema",
+      "protocolUsed": "UP12 Cardiac Pulmonary Edema",
+      "correctTreatment": ["CPAP", "Nitroglycerin Paste"]
+    }
+  }
+}

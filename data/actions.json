@@ -1,0 +1,205 @@
+[
+  {
+    "id": "cardiac_monitor",
+    "name": "Cardiac Monitor",
+    "description": "Apply cardiac monitor and obtain 12-lead if indicated",
+    "type": "monitoring",
+    "protocolIds": ["sepsis", "chf", "cardiogenic_shock", "seizure", "stemi", "stroke", "anaphylaxis", "monomorphic_vt", "torsades", "angina", "pulmonary_embolism", "respiratory"]
+  },
+  {
+    "id": "twelve_lead",
+    "name": "12-Lead ECG",
+    "description": "Obtain 12-lead to rule out STEMI",
+    "type": "assessment",
+    "protocolIds": ["chf", "cardiogenic_shock", "stemi", "stroke", "monomorphic_vt", "torsades", "angina", "pulmonary_embolism"]
+  },
+  {
+    "id": "etco2",
+    "name": "EtCO2",
+    "description": "Apply waveform capnography",
+    "type": "monitoring",
+    "protocolIds": ["sepsis"]
+  },
+  {
+    "id": "iv_access",
+    "name": "IV Access",
+    "description": "Establish large-bore peripheral IV access",
+    "type": "intervention",
+    "protocolIds": ["sepsis", "chf", "cardiogenic_shock", "seizure", "eclampsia", "stemi", "stroke", "anaphylaxis", "monomorphic_vt", "torsades", "pulmonary_embolism"]
+  },
+  {
+    "id": "fluid_bolus",
+    "name": "500mL LR Bolus",
+    "description": "Administer 500mL lactated Ringer's fluid bolus",
+    "type": "intervention",
+    "protocolIds": ["sepsis", "anaphylaxis"]
+  },
+  {
+    "id": "notify_facility",
+    "name": "Notify Receiving Facility",
+    "description": "Early notification with condition-specific alert",
+    "type": "intervention",
+    "protocolIds": ["sepsis", "chf", "cardiogenic_shock", "eclampsia", "stemi", "stroke", "anaphylaxis", "monomorphic_vt", "torsades", "pulmonary_embolism"]
+  },
+  {
+    "id": "cpap",
+    "name": "CPAP",
+    "description": "Apply CPAP for pulmonary edema",
+    "type": "intervention",
+    "protocolIds": ["chf"]
+  },
+  {
+    "id": "nitroglycerin",
+    "name": "Nitroglycerin SL",
+    "description": "Sublingual nitroglycerin — avoid with CPAP mask in place; prefer paste for titratable afterload reduction",
+    "type": "intervention",
+    "protocolIds": ["chf", "stemi", "angina"]
+  },
+  {
+    "id": "nitro_paste",
+    "name": "Nitroglycerin Paste",
+    "description": "Topical nitroglycerin paste — preferred with CPAP for titratable afterload reduction",
+    "type": "intervention",
+    "protocolIds": ["chf"]
+  },
+  {
+    "id": "enalapril",
+    "name": "Enalapril",
+    "description": "ACE inhibitor per protocol for severe CHF",
+    "type": "intervention",
+    "protocolIds": ["chf"]
+  },
+  {
+    "id": "oxygen",
+    "name": "Supplemental Oxygen",
+    "description": "Apply oxygen to maintain adequate SpO2",
+    "type": "intervention",
+    "protocolIds": ["sepsis", "chf", "cardiogenic_shock", "respiratory", "seizure", "stemi", "stroke", "anaphylaxis", "monomorphic_vt", "torsades", "angina", "pulmonary_embolism", "eclampsia"]
+  },
+  {
+    "id": "remove_cpap",
+    "name": "Remove CPAP",
+    "description": "Discontinue CPAP therapy",
+    "type": "intervention",
+    "protocolIds": ["chf"]
+  },
+  {
+    "id": "albuterol",
+    "name": "Albuterol",
+    "description": "Nebulized albuterol",
+    "type": "intervention",
+    "protocolIds": ["respiratory", "anaphylaxis"]
+  },
+  {
+    "id": "duoneb",
+    "name": "DuoNeb",
+    "description": "Albuterol/ipratropium combination nebulizer",
+    "type": "intervention",
+    "protocolIds": ["respiratory"]
+  },
+  {
+    "id": "steroid",
+    "name": "Steroid",
+    "description": "IM or IV corticosteroid per bronchospasm protocol",
+    "type": "intervention",
+    "protocolIds": ["respiratory", "anaphylaxis"]
+  },
+  {
+    "id": "epinephrine_im",
+    "name": "Epinephrine IM",
+    "description": "Intramuscular epinephrine for severe bronchospasm",
+    "type": "intervention",
+    "protocolIds": ["respiratory", "anaphylaxis"]
+  },
+  {
+    "id": "magnesium_sulfate",
+    "name": "Magnesium Sulfate",
+    "description": "IV magnesium sulfate",
+    "type": "intervention",
+    "protocolIds": ["respiratory", "eclampsia", "torsades"]
+  },
+  {
+    "id": "nebulized_epinephrine",
+    "name": "Nebulized Epinephrine",
+    "description": "Racemic epinephrine for upper airway obstruction",
+    "type": "intervention",
+    "protocolIds": ["respiratory", "anaphylaxis"]
+  },
+  {
+    "id": "midazolam",
+    "name": "Midazolam",
+    "description": "Benzodiazepine for active seizure or withdrawal",
+    "type": "intervention",
+    "protocolIds": ["seizure"]
+  },
+  {
+    "id": "blood_glucose_check",
+    "name": "Blood Glucose Check",
+    "description": "Obtain point-of-care blood glucose",
+    "type": "assessment",
+    "protocolIds": ["seizure", "stroke", "hypoglycemia"]
+  },
+  {
+    "id": "d10",
+    "name": "D10 IV",
+    "description": "Administer D10 for hypoglycemia",
+    "type": "intervention",
+    "protocolIds": ["hypoglycemia"]
+  },
+  {
+    "id": "supportive_care",
+    "name": "Supportive Care",
+    "description": "Positioning, reassurance, and monitoring",
+    "type": "intervention",
+    "protocolIds": ["seizure"]
+  },
+  {
+    "id": "aspirin",
+    "name": "Aspirin",
+    "description": "Chewable aspirin 324mg for suspected ACS",
+    "type": "intervention",
+    "protocolIds": ["stemi", "angina"]
+  },
+  {
+    "id": "stemi_alert",
+    "name": "STEMI Alert",
+    "description": "Activate cath lab alert with receiving facility",
+    "type": "intervention",
+    "protocolIds": ["stemi"]
+  },
+  {
+    "id": "synchronized_cardioversion",
+    "name": "Synchronized Cardioversion",
+    "description": "Synchronized cardioversion for unstable monomorphic VT",
+    "type": "intervention",
+    "protocolIds": ["monomorphic_vt"]
+  },
+  {
+    "id": "amiodarone",
+    "name": "Amiodarone",
+    "description": "IV amiodarone for refractory ventricular tachycardia",
+    "type": "intervention",
+    "protocolIds": ["monomorphic_vt", "torsades"]
+  },
+  {
+    "id": "lidocaine",
+    "name": "Lidocaine",
+    "description": "IV lidocaine for ventricular tachycardia",
+    "type": "intervention",
+    "protocolIds": ["monomorphic_vt"]
+  },
+  {
+    "id": "defibrillation",
+    "name": "Defibrillation",
+    "description": "Unsynchronized defibrillation for pulseless or polymorphic VT",
+    "type": "intervention",
+    "protocolIds": ["torsades"]
+  },
+  {
+    "id": "stroke_assessment",
+    "name": "Stroke Scale",
+    "description": "Prehospital stroke scale assessment",
+    "type": "assessment",
+    "protocolIds": ["sepsis", "stroke"]
+  }
+]

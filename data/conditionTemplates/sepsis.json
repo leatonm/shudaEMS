@@ -1,0 +1,251 @@
+{
+  "conditionId": "sepsis",
+  "protocolId": "sepsis",
+  "units": ["Engine 4", "Medic 7", "Engine 2", "Medic 3", "Engine 6"],
+  "ages": [65, 72, 78, 81, 84, 68, 74],
+  "sexes": ["Male", "Female"],
+  "priorities": [1, 2, 2, 2],
+  "etas": ["3 min", "4 min", "5 min", "6 min"],
+  "profiles": [
+    {
+      "id": "classic_fever",
+      "weight": 4,
+      "dispatchPool": [
+        {
+          "chiefComplaint": "General Weakness",
+          "notes": "Caller reports weakness and fever since this morning. Patient confused."
+        },
+        {
+          "chiefComplaint": "Weakness",
+          "notes": "Family reports increased fatigue and sleeping more than usual. No trauma."
+        },
+        {
+          "chiefComplaint": "Fever",
+          "notes": "Patient febrile at home. Becoming increasingly weak and confused."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["Recent UTI"],
+          "clue": "Recent UTI treated {{daysAgo}} days ago. No known cardiac history."
+        },
+        {
+          "history": ["Recent UTI", "Hypertension"],
+          "clue": "Recent UTI — antibiotics stopped early. Takes lisinopril."
+        },
+        {
+          "history": ["Kidney stones"],
+          "clue": "Recent kidney stone with stent placement 1 week ago. Low-grade fever at home."
+        }
+      ],
+      "scenePool": [
+        [
+          "Patient appears flushed.",
+          "Skin warm and diaphoretic.",
+          "Confused — oriented x1.",
+          "Speaking slowly."
+        ],
+        [
+          "Patient sitting upright on couch.",
+          "Mildly tachypneic.",
+          "Skin pale but warm.",
+          "Alert but fatigued."
+        ]
+      ],
+      "lungSoundsClue": "Clear bilaterally. No wheezing or crackles.",
+      "ecgClue": "Sinus tachycardia at {{hr}}. No ST elevation or depression.",
+      "bloodSugarClue": "{{glucose}} mg/dL — mildly elevated, non-diagnostic.",
+      "vitals": {
+        "bpSystolic": [80, 94],
+        "bpDiastolic": [48, 58],
+        "hr": [110, 125],
+        "rr": [22, 28],
+        "temp": [101.0, 103.2],
+        "spo2": [91, 96],
+        "mentalStatus": ["confused", "lethargic", "alert"]
+      },
+      "debriefIndicators": ["Fever", "Tachycardia", "Hypotension", "Altered mental status"],
+      "insight": {
+        "title": "Classic SIRS Presentation",
+        "body": "Fever, tachycardia, tachypnea, and hypotension with altered mental status strongly suggest sepsis. Two or more SIRS criteria with suspected infection should trigger the sepsis pathway immediately."
+      }
+    },
+    {
+      "id": "pneumonia_source",
+      "weight": 3,
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Difficulty Breathing",
+          "notes": "Progressive shortness of breath over 2 days. Productive cough reported."
+        },
+        {
+          "chiefComplaint": "Weakness",
+          "notes": "Patient too weak to get out of bed. Family concerned about pneumonia relapse."
+        },
+        {
+          "chiefComplaint": "Fall",
+          "notes": "Patient found on floor. Weakness preceded the fall per family."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["Pneumonia"],
+          "clue": "Recent pneumonia — finished antibiotics {{daysAgo}} days ago. Type 2 diabetes."
+        },
+        {
+          "history": ["Pneumonia", "COPD"],
+          "clue": "Hospitalized for pneumonia 2 weeks ago. Home oxygen at night."
+        },
+        {
+          "history": ["Pneumonia"],
+          "clue": "Treated for pneumonia last month. Productive cough returned 3 days ago."
+        }
+      ],
+      "scenePool": [
+        [
+          "Patient tripoding in recliner.",
+          "Productive cough with yellow sputum.",
+          "Skin warm, mild diaphoresis.",
+          "Speaking in short phrases."
+        ],
+        [
+          "Patient in bed, refusing to lie flat.",
+          "Audible coarse breath sounds.",
+          "Fatigued but alert.",
+          "No obvious trauma from fall."
+        ]
+      ],
+      "lungSoundsClue": "Coarse crackles at right base. Productive cough noted.",
+      "ecgClue": "Sinus tachycardia. No acute ischemic changes.",
+      "bloodSugarClue": "{{glucose}} mg/dL — elevated, may reflect stress response.",
+      "vitals": {
+        "bpSystolic": [88, 100],
+        "bpDiastolic": [54, 68],
+        "hr": [104, 118],
+        "rr": [24, 30],
+        "temp": [100.4, 101.8],
+        "spo2": [88, 93],
+        "mentalStatus": ["alert", "confused"]
+      },
+      "debriefIndicators": ["Recent infection", "Tachypnea", "Borderline hypotension", "Low-grade fever"],
+      "insight": {
+        "title": "Subtle Sepsis Clues",
+        "body": "Sepsis may present with only low-grade fever and vague weakness. A recent pneumonia with tachypnea and borderline hypotension should raise suspicion even when the patient appears alert."
+      }
+    },
+    {
+      "id": "hypothermic",
+      "weight": 2,
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Altered Mental Status",
+          "notes": "Caregiver found patient on floor. Unable to stand. Baseline dementia."
+        },
+        {
+          "chiefComplaint": "Fall",
+          "notes": "Unwitnessed fall. Patient more confused than baseline. No head strike reported."
+        },
+        {
+          "chiefComplaint": "Weakness",
+          "notes": "Nursing home staff reports progressive weakness. No documented fever today."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["Indwelling catheter"],
+          "clue": "Nursing home resident. Indwelling Foley. No documented fever today."
+        },
+        {
+          "history": ["UTI", "Dementia"],
+          "clue": "History of recurrent UTIs. Baseline dementia — acutely worse today."
+        },
+        {
+          "history": ["Pneumonia"],
+          "clue": "Treated for pneumonia 3 weeks ago. Temp at facility recorded 96.4°F this morning."
+        }
+      ],
+      "scenePool": [
+        [
+          "Patient on floor, assisted to chair.",
+          "Skin cool at extremities, warm core.",
+          "Confused — not at baseline per caregiver.",
+          "No obvious trauma."
+        ],
+        [
+          "Patient slumped in wheelchair.",
+          "Pale and lethargic.",
+          "Responds to voice only.",
+          "Extremities cool and mottled."
+        ]
+      ],
+      "lungSoundsClue": "Diminished at bases. No wheezing.",
+      "ecgClue": "Sinus tachycardia. No STEMI.",
+      "bloodSugarClue": "{{glucose}} mg/dL — within normal limits.",
+      "vitals": {
+        "bpSystolic": [76, 90],
+        "bpDiastolic": [40, 54],
+        "hr": [98, 112],
+        "rr": [22, 26],
+        "temp": [95.5, 96.8],
+        "spo2": [91, 95],
+        "mentalStatus": ["confused", "obtunded", "lethargic"]
+      },
+      "debriefIndicators": ["Hypothermia", "Hypotension", "AMS", "Recent infection"],
+      "insight": {
+        "title": "Hypothermic Sepsis",
+        "body": "Septic patients may present with hypothermia instead of fever — especially elderly and nursing home residents. A temperature below 96.8°F with hypotension and AMS is sepsis until proven otherwise."
+      }
+    }
+  ],
+  "scenarioSkeleton": {
+    "correctProtocol": "sepsis",
+    "correctActions": ["iv_access", "fluid_bolus", "notify_facility"],
+    "protocolChoices": ["chf", "sepsis", "cardiogenic_shock"],
+    "treatmentActions": [
+      "cardiac_monitor",
+      "etco2",
+      "iv_access",
+      "fluid_bolus",
+      "notify_facility",
+      "nitroglycerin",
+      "albuterol"
+    ],
+    "treatmentEffects": {
+      "cardiac_monitor": { "message": "Cardiac monitor applied. Sinus tachycardia." },
+      "etco2": { "message": "EtCO2 26 mmHg — decreased perfusion." },
+      "iv_access": { "message": "IV established." },
+      "notify_facility": { "message": "Sepsis alert activated. Receiving facility notified." },
+      "nitroglycerin": { "message": "Nitroglycerin given — no improvement in perfusion." },
+      "albuterol": { "message": "Albuterol administered — no bronchospasm noted." }
+    },
+    "deterioration": {
+      "hr": 132,
+      "rr": 28,
+      "mentalStatus": "lethargic",
+      "message": "Patient becoming increasingly lethargic. Hypotension worsening."
+    },
+    "endings": {
+      "perfect_save": {
+        "title": "Patient Stabilized",
+        "message": "Patient condition improved en route. Handoff complete."
+      },
+      "partial_success": {
+        "title": "Improved — Incomplete Handoff",
+        "message": "Patient improved but critical alert was not transmitted to receiving."
+      },
+      "delayed_treatment": {
+        "title": "Patient Deteriorating",
+        "message": "Hypotension persists. Patient becoming lethargic."
+      },
+      "wrong_protocol": {
+        "title": "Critical Miss",
+        "message": "Wrong pathway selected. Patient crashing."
+      }
+    },
+    "debrief": {
+      "primaryCondition": "Sepsis",
+      "protocolUsed": "UP15 Suspected Sepsis",
+      "correctTreatment": ["IV Access", "500mL LR Bolus", "Notify Receiving Facility"]
+    }
+  }
+}

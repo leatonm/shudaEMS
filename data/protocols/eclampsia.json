@@ -1,0 +1,13 @@
+{
+  "id": "eclampsia",
+  "name": "Eclampsia",
+  "protocolCode": "UP Obstetric Emergency",
+  "keyIndicators": ["Pregnancy > 20 weeks", "Active seizure", "Hypertension", "Headache"],
+  "recognition": {
+    "adultSIRS": { "temperatureHigh": 100.4, "temperatureLow": 96.8, "heartRate": 90, "respRate": 20, "etco2": 25 },
+    "qSOFA": { "sbp": 100, "respRate": 22, "mentalStatusChange": true }
+  },
+  "interventions": ["Magnesium Sulfate", "Notify Receiving Facility", "Left Lateral Position"],
+  "fluidProtocol": { "adultBolus": 0, "maxLiters": 0, "targetSBP": 90, "targetMAP": 65 },
+  "neutralActions": ["oxygen", "cardiac_monitor", "iv_access"]
+}

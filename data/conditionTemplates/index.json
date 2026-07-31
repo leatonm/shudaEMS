@@ -1,0 +1,14 @@
+{
+  "templateIds": [
+    "sepsis",
+    "chf",
+    "respiratory",
+    "seizure",
+    "stemi",
+    "angina",
+    "pulmonary_embolism",
+    "hypoglycemia",
+    "eclampsia",
+    "cardiogenic_shock"
+  ]
+}

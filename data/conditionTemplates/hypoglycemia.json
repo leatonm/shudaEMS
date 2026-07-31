@@ -1,0 +1,186 @@
+{
+  "conditionId": "hypoglycemia",
+  "protocolId": "hypoglycemia",
+  "units": ["Medic 8", "Medic 6", "Engine 5"],
+  "ages": [28, 35, 42, 55, 62],
+  "sexes": ["Male", "Female"],
+  "priorities": [1, 1, 2],
+  "etas": ["3 min", "4 min", "6 min"],
+  "profiles": [
+    {
+      "id": "seizure_presentation",
+      "weight": 4,
+      "glucoseRange": [28, 54],
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Seizure",
+          "notes": "Seizure stopped. Diabetic per family."
+        },
+        {
+          "chiefComplaint": "Seizure",
+          "notes": "Witnessed seizure now resolved. Patient on insulin."
+        },
+        {
+          "chiefComplaint": "Altered Mental Status",
+          "notes": "Found confused and tremulous. History of diabetes."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["Type 1 diabetes"],
+          "clue": "Type 1 diabetes — skipped lunch and took full insulin dose."
+        },
+        {
+          "history": ["Type 2 diabetes"],
+          "clue": "Type 2 diabetes on insulin. Missed dinner last night."
+        },
+        {
+          "history": ["Diabetes"],
+          "clue": "Diabetic — increased activity today without eating. Seizure witnessed."
+        }
+      ],
+      "scenePool": [
+        [
+          "Postictal and diaphoretic.",
+          "Seizure stopped on arrival.",
+          "Family reports insulin use.",
+          "Confused and tremulous."
+        ],
+        [
+          "Lethargic with tremor.",
+          "Incontinence noted.",
+          "Skin cool and clammy.",
+          "Responds only to pain."
+        ]
+      ],
+      "lungSoundsClue": "Clear.",
+      "ecgClue": "Sinus tachycardia.",
+      "bloodSugarClue": "Blood glucose {{glucose}} mg/dL — CRITICAL LOW.",
+      "vitals": {
+        "bpSystolic": [142, 168],
+        "bpDiastolic": [84, 98],
+        "hr": [108, 124],
+        "rr": [16, 22],
+        "temp": [97.6, 98.4],
+        "spo2": [94, 98],
+        "mentalStatus": ["confused", "postictal", "lethargic"]
+      },
+      "correctActions": ["blood_glucose_check", "d10"],
+      "harmfulActions": ["midazolam"],
+      "debriefIndicators": ["Blood glucose below 60", "Diabetes", "Seizure activity", "Diaphoresis"],
+      "debriefPrimaryCondition": "Hypoglycemic Seizure",
+      "debriefCorrectTreatment": ["Blood Glucose Check", "D10 IV"],
+      "insight": {
+        "title": "Treat the Cause",
+        "body": "Not every seizure needs midazolam first. Critical hypoglycemia is the emergency — treat glucose and the seizure will not recur."
+      }
+    },
+    {
+      "id": "ams_presentation",
+      "weight": 3,
+      "glucoseRange": [32, 58],
+      "dispatchPool": [
+        {
+          "chiefComplaint": "Altered Mental Status",
+          "notes": "Family found patient confused and sweaty. Diabetic."
+        },
+        {
+          "chiefComplaint": "Weakness",
+          "notes": "Progressive weakness and slurred speech. On oral diabetes medications."
+        },
+        {
+          "chiefComplaint": "Altered Mental Status",
+          "notes": "Nursing home resident found unresponsive to verbal stimuli."
+        }
+      ],
+      "historyPool": [
+        {
+          "history": ["Type 2 diabetes"],
+          "clue": "Type 2 diabetes on metformin and glipizide. Poor oral intake x 2 days."
+        },
+        {
+          "history": ["Diabetes", "Renal failure"],
+          "clue": "Diabetic with CKD. Dose of insulin not reduced after illness."
+        },
+        {
+          "history": ["Type 1 diabetes"],
+          "clue": "Type 1 diabetic — pump malfunction suspected by family."
+        }
+      ],
+      "scenePool": [
+        [
+          "Confused and diaphoretic.",
+          "Slurred speech.",
+          "Tremulous hands.",
+          "No focal neurologic deficit."
+        ],
+        [
+          "Obtunded but protecting airway.",
+          "Cool clammy skin.",
+          "Capillary refill delayed.",
+          "Glasgow decreased."
+        ]
+      ],
+      "lungSoundsClue": "Clear bilaterally.",
+      "ecgClue": "Sinus tachycardia. No acute ischemia.",
+      "bloodSugarClue": "Blood glucose {{glucose}} mg/dL — hypoglycemic.",
+      "vitals": {
+        "bpSystolic": [128, 156],
+        "bpDiastolic": [78, 92],
+        "hr": [98, 118],
+        "rr": [14, 20],
+        "temp": [97.4, 98.2],
+        "spo2": [95, 98],
+        "mentalStatus": ["confused", "obtunded", "lethargic"]
+      },
+      "correctActions": ["blood_glucose_check", "d10"],
+      "harmfulActions": ["midazolam"],
+      "debriefIndicators": ["Altered mental status", "Diabetes", "Diaphoresis", "Low blood glucose"],
+      "debriefPrimaryCondition": "Hypoglycemia",
+      "debriefCorrectTreatment": ["Blood Glucose Check", "D10 IV"],
+      "insight": {
+        "title": "AMS Plus Diabetes Equals Glucose",
+        "body": "Any altered diabetic patient needs an immediate blood glucose check before sedatives or seizure pathways. D10 treats the problem — midazolam masks it."
+      }
+    }
+  ],
+  "scenarioSkeleton": {
+    "correctProtocol": "hypoglycemia",
+    "correctActions": ["blood_glucose_check", "d10"],
+    "harmfulActions": ["midazolam"],
+    "protocolChoices": ["hypoglycemia", "seizure", "eclampsia", "sepsis", "stemi"],
+    "treatmentActions": [
+      "blood_glucose_check",
+      "d10",
+      "midazolam",
+      "cardiac_monitor",
+      "oxygen",
+      "iv_access"
+    ],
+    "treatmentEffects": {
+      "blood_glucose_check": { "message": "Blood glucose confirmed critically low." },
+      "d10": { "message": "D10 IV bolus given. Mental status improving.", "mentalStatus": "alert" },
+      "midazolam": { "message": "Midazolam given — sedated further without treating cause.", "mentalStatus": "obtunded" },
+      "cardiac_monitor": { "message": "Monitor applied." },
+      "oxygen": { "message": "Oxygen applied." },
+      "iv_access": { "message": "IV established." }
+    },
+    "deterioration": {
+      "hr": 128,
+      "rr": 22,
+      "mentalStatus": "unresponsive",
+      "message": "Hypoglycemia untreated. Patient becoming unresponsive."
+    },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "Hypoglycemia recognized and treated." },
+      "partial_success": { "title": "Improved — Incomplete Treatment", "message": "Glucose checked but D10 delayed." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Seizure treated but not the cause." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Missed hypoglycemia as cause of presentation." }
+    },
+    "debrief": {
+      "primaryCondition": "Hypoglycemia",
+      "protocolUsed": "UP03 Altered Mental Status / Hypoglycemia",
+      "correctTreatment": ["Blood Glucose Check", "D10 IV"]
+    }
+  }
+}

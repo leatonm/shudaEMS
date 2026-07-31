@@ -1,0 +1,13 @@
+{
+  "id": "pulmonary_embolism",
+  "name": "Pulmonary Embolism",
+  "protocolCode": "UP11 Chest Pain — PE Suspicion",
+  "keyIndicators": ["Sudden dyspnea", "Chest pain", "Recent surgery or immobility", "Tachycardia"],
+  "recognition": {
+    "adultSIRS": { "temperatureHigh": 100.4, "temperatureLow": 96.8, "heartRate": 90, "respRate": 20, "etco2": 25 },
+    "qSOFA": { "sbp": 100, "respRate": 22, "mentalStatusChange": true }
+  },
+  "interventions": ["Oxygen", "IV Access", "Notify Receiving Facility", "12-Lead ECG"],
+  "fluidProtocol": { "adultBolus": 0, "maxLiters": 0, "targetSBP": 90, "targetMAP": 65 },
+  "neutralActions": ["twelve_lead", "cardiac_monitor", "oxygen"]
+}

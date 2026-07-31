@@ -1,0 +1,615 @@
+[
+  {
+    "id": "chf_easy_001",
+    "protocolId": "chf",
+    "dispatchCard": {
+      "unit": "Medic 3",
+      "priority": 2,
+      "chiefComplaint": "Difficulty Breathing",
+      "patientSummary": "72yo Male",
+      "eta": "5 min"
+    },
+    "dispatchNotes": "Family reports sudden onset shortness of breath. Patient unable to lie flat.",
+    "scene": {
+      "appearance": [
+        "Tripoding in recliner.",
+        "Unable to speak full sentences.",
+        "Bilateral leg swelling visible.",
+        "Pink-tinged sputum in emesis basin."
+      ]
+    },
+    "assessmentOptions": [
+      {
+        "id": "vitals",
+        "label": "Obtain Vitals",
+        "clue": "BP 190/100 · HR 112 · RR 30 · SpO2 86% · Temp 98.4°F"
+      },
+      {
+        "id": "lung_sounds",
+        "label": "Lung Sounds",
+        "clue": "Bilateral rales to mid-lung fields. No isolated wheezing."
+      },
+      {
+        "id": "history",
+        "label": "Medical History",
+        "clue": "Known CHF — takes furosemide daily. Missed doses this week."
+      },
+      {
+        "id": "ecg",
+        "label": "ECG",
+        "clue": "Sinus tachycardia. No ST elevation."
+      },
+      {
+        "id": "blood_sugar",
+        "label": "Blood Sugar",
+        "clue": "118 mg/dL — normal."
+      }
+    ],
+    "assessment": {
+      "bp": "190/100",
+      "hr": 112,
+      "rr": 30,
+      "temp": 98.4,
+      "mentalStatus": "anxious",
+      "spo2": 86
+    },
+    "correctProtocol": "chf",
+    "correctActions": ["cpap", "nitro_paste"],
+    "harmfulActions": ["fluid_bolus", "albuterol", "nitroglycerin"],
+    "protocolChoices": ["chf", "sepsis", "cardiogenic_shock"],
+    "treatmentActions": [
+      "cpap",
+      "nitroglycerin",
+      "nitro_paste",
+      "oxygen",
+      "cardiac_monitor",
+      "fluid_bolus",
+      "albuterol",
+      "iv_access"
+    ],
+    "treatmentEffects": {
+      "cpap": {
+        "message": "CPAP applied. Work of breathing decreased.",
+        "spo2": 92,
+        "rr": 24
+      },
+      "nitroglycerin": {
+        "message": "Nitroglycerin SL with CPAP in place — poor absorption under mask. BP drops to 148/72.",
+        "bp": "148/72",
+        "spo2": 88,
+        "mentalStatus": "distressed"
+      },
+      "nitro_paste": {
+        "message": "Nitroglycerin paste applied — titratable afterload reduction with CPAP.",
+        "bp": "168/92",
+        "spo2": 94
+      },
+      "oxygen": { "message": "Supplemental oxygen applied.", "spo2": 88 },
+      "cardiac_monitor": { "message": "Monitor applied. Sinus tachycardia." },
+      "fluid_bolus": {
+        "message": "Patient becomes more dyspneic. SpO2 drops to 78%.",
+        "spo2": 78,
+        "rr": 34,
+        "mentalStatus": "distressed"
+      },
+      "albuterol": {
+        "message": "Wheezing slightly improved — pulmonary edema worsening.",
+        "spo2": 82,
+        "rr": 32
+      },
+      "iv_access": { "message": "IV established." }
+    },
+    "deterioration": {
+      "bp": "200/110",
+      "hr": 128,
+      "rr": 36,
+      "temp": 98.4,
+      "mentalStatus": "obtunded",
+      "spo2": 72,
+      "message": "Patient in severe respiratory failure. SpO2 72%."
+    },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "Pulmonary edema improving en route." },
+      "partial_success": { "title": "Improved — Incomplete Treatment", "message": "Some improvement but key interventions missed." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Respiratory distress worsening." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Wrong pathway. Pulmonary edema progressing." }
+    },
+    "debrief": {
+      "primaryCondition": "CHF / Pulmonary Edema",
+      "protocolUsed": "UP12 Cardiac Pulmonary Edema",
+      "keyIndicators": ["Bilateral rales", "Hypertension", "Tachypnea", "Low SpO2", "CHF history"],
+      "correctTreatment": ["CPAP", "Nitroglycerin Paste"]
+    },
+    "protocolInsight": {
+      "title": "Not All SOB Is Asthma",
+      "body": "Bilateral rales with hypertension and CHF history point to pulmonary edema — not bronchospasm. CPAP and nitroglycerin paste are first-line, not albuterol or sublingual nitro under the CPAP mask."
+    }
+  },
+  {
+    "id": "chf_easy_002",
+    "protocolId": "chf",
+    "dispatchCard": {
+      "unit": "Engine 6",
+      "priority": 2,
+      "chiefComplaint": "Shortness of Breath",
+      "patientSummary": "68yo Female",
+      "eta": "4 min"
+    },
+    "dispatchNotes": "Patient reports worsening breathing overnight. Has not slept flat in weeks.",
+    "scene": {
+      "appearance": [
+        "Sitting upright on edge of bed.",
+        "Using 4 pillows to sleep.",
+        "Bilateral lower extremity edema.",
+        "Speaking in short phrases."
+      ]
+    },
+    "assessmentOptions": [
+      {
+        "id": "vitals",
+        "label": "Obtain Vitals",
+        "clue": "BP 180/96 · HR 108 · RR 28 · SpO2 88% · Temp 98.2°F"
+      },
+      {
+        "id": "lung_sounds",
+        "label": "Lung Sounds",
+        "clue": "Fine crackles at bases bilaterally."
+      },
+      {
+        "id": "history",
+        "label": "Medical History",
+        "clue": "Orthopnea — sleeps on 4 pillows. Leg swelling x 2 weeks."
+      },
+      {
+        "id": "ecg",
+        "label": "ECG",
+        "clue": "Left ventricular hypertrophy pattern. No acute changes."
+      },
+      {
+        "id": "blood_sugar",
+        "label": "Blood Sugar",
+        "clue": "104 mg/dL."
+      }
+    ],
+    "assessment": {
+      "bp": "180/96",
+      "hr": 108,
+      "rr": 28,
+      "temp": 98.2,
+      "mentalStatus": "alert",
+      "spo2": 88
+    },
+    "correctProtocol": "chf",
+    "correctActions": ["nitroglycerin", "nitro_paste"],
+    "harmfulActions": ["fluid_bolus"],
+    "protocolChoices": ["chf", "sepsis", "cardiogenic_shock"],
+    "treatmentActions": [
+      "nitroglycerin",
+      "nitro_paste",
+      "cpap",
+      "oxygen",
+      "cardiac_monitor",
+      "fluid_bolus",
+      "albuterol"
+    ],
+    "treatmentEffects": {
+      "nitroglycerin": {
+        "message": "Nitroglycerin SL given. BP 164/88. Dyspnea slightly improved.",
+        "bp": "164/88",
+        "spo2": 91
+      },
+      "nitro_paste": {
+        "message": "Nitroglycerin paste applied. Ongoing afterload reduction.",
+        "bp": "158/86",
+        "spo2": 93
+      },
+      "cpap": {
+        "message": "CPAP applied. SpO2 improving.",
+        "spo2": 94,
+        "rr": 22
+      },
+      "oxygen": { "message": "Oxygen via NC.", "spo2": 90 },
+      "cardiac_monitor": { "message": "Monitor applied." },
+      "fluid_bolus": {
+        "message": "Fluid bolus given — patient becomes more dyspneic. SpO2 80%.",
+        "spo2": 80,
+        "rr": 32
+      },
+      "albuterol": {
+        "message": "Minimal wheezing. No significant improvement.",
+        "spo2": 87
+      }
+    },
+    "deterioration": {
+      "bp": "192/102",
+      "hr": 118,
+      "rr": 34,
+      "temp": 98.2,
+      "mentalStatus": "confused",
+      "spo2": 76,
+      "message": "Classic orthopnea missed. Patient desaturating."
+    },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "Orthopnea recognized. Patient improving." },
+      "partial_success": { "title": "Improved — Incomplete Treatment", "message": "Partial response to treatment." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "CHF decompensation worsening." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Wrong diagnosis. Edema worsening." }
+    },
+    "debrief": {
+      "primaryCondition": "CHF / Pulmonary Edema",
+      "protocolUsed": "UP12 Cardiac Pulmonary Edema",
+      "keyIndicators": ["Orthopnea", "Peripheral edema", "Hypertension", "Crackles"],
+      "correctTreatment": ["Nitroglycerin SL", "Nitroglycerin Paste"]
+    },
+    "protocolInsight": {
+      "title": "Orthopnea Is a Clue",
+      "body": "Sleeping on multiple pillows is a classic sign of CHF decompensation. Mild cases may respond to nitroglycerin SL or paste before escalating to CPAP. Once CPAP is on, switch to paste — SL is unreliable under the mask."
+    }
+  },
+  {
+    "id": "chf_medium_001",
+    "protocolId": "chf",
+    "dispatchCard": {
+      "unit": "Medic 12",
+      "priority": 2,
+      "chiefComplaint": "Difficulty Breathing",
+      "patientSummary": "74yo Male",
+      "eta": "7 min"
+    },
+    "dispatchNotes": "Patient audibly wheezing per caller. History of lung disease unknown.",
+    "scene": {
+      "appearance": [
+        "Audible wheezing on arrival.",
+        "Bilateral pitting edema to knees.",
+        "Tripoding.",
+        "No fever, skin warm and dry."
+      ]
+    },
+    "assessmentOptions": [
+      {
+        "id": "vitals",
+        "label": "Obtain Vitals",
+        "clue": "BP 176/92 · HR 118 · RR 32 · SpO2 84% · Temp 98.6°F"
+      },
+      {
+        "id": "lung_sounds",
+        "label": "Lung Sounds",
+        "clue": "Wheezing AND bilateral rales — mixed picture."
+      },
+      {
+        "id": "history",
+        "label": "Medical History",
+        "clue": "CHF and COPD on chart — non-compliant with diuretics."
+      },
+      {
+        "id": "ecg",
+        "label": "ECG",
+        "clue": "Tachycardia with LVH. No STEMI."
+      },
+      {
+        "id": "blood_sugar",
+        "label": "Blood Sugar",
+        "clue": "132 mg/dL."
+      }
+    ],
+    "assessment": {
+      "bp": "176/92",
+      "hr": 118,
+      "rr": 32,
+      "temp": 98.6,
+      "mentalStatus": "anxious",
+      "spo2": 84
+    },
+    "correctProtocol": "chf",
+    "correctActions": ["cpap", "nitro_paste"],
+    "harmfulActions": ["albuterol", "fluid_bolus", "nitroglycerin"],
+    "protocolChoices": ["chf", "sepsis", "cardiogenic_shock"],
+    "treatmentActions": [
+      "cpap",
+      "nitroglycerin",
+      "nitro_paste",
+      "albuterol",
+      "oxygen",
+      "cardiac_monitor",
+      "fluid_bolus",
+      "enalapril"
+    ],
+    "treatmentEffects": {
+      "cpap": { "message": "CPAP applied. Rales improving.", "spo2": 90, "rr": 26 },
+      "nitroglycerin": {
+        "message": "Nitroglycerin SL with CPAP on — hypotension and no reliable SL absorption.",
+        "bp": "142/68",
+        "spo2": 86,
+        "mentalStatus": "distressed"
+      },
+      "nitro_paste": {
+        "message": "Nitroglycerin paste applied. BP 158/86 — titratable with CPAP.",
+        "bp": "158/86",
+        "spo2": 92
+      },
+      "albuterol": {
+        "message": "Wheezing slightly better — but rales worsening. SpO2 80%.",
+        "spo2": 80,
+        "rr": 34
+      },
+      "oxygen": { "message": "High-flow oxygen applied.", "spo2": 86 },
+      "cardiac_monitor": { "message": "Monitor applied." },
+      "fluid_bolus": {
+        "message": "Fluid bolus — patient becomes more dyspneic. SpO2 76%.",
+        "spo2": 76,
+        "rr": 36
+      },
+      "enalapril": { "message": "Enalapril given per protocol.", "bp": "152/84" }
+    },
+    "deterioration": {
+      "bp": "188/98",
+      "hr": 130,
+      "rr": 38,
+      "temp": 98.6,
+      "mentalStatus": "obtunded",
+      "spo2": 70,
+      "message": "Treated as asthma. Pulmonary edema worsening — SpO2 70%."
+    },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "Wheezing with rales correctly identified as CHF." },
+      "partial_success": { "title": "Improved — Incomplete Treatment", "message": "Partial treatment only." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Cardiogenic pulmonary edema worsening." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Wheezing led to wrong pathway. Patient crashing." }
+    },
+    "debrief": {
+      "primaryCondition": "CHF / Pulmonary Edema",
+      "protocolUsed": "UP12 Cardiac Pulmonary Edema",
+      "keyIndicators": ["Wheezing WITH rales", "Edema", "Hypertension", "CHF history"],
+      "correctTreatment": ["CPAP", "Nitroglycerin Paste"]
+    },
+    "protocolInsight": {
+      "title": "Wheezing Can Occur in CHF",
+      "body": "Cardiogenic pulmonary edema can produce wheezing — 'cardiac asthma.' Many providers see wheezing and choose asthma. Look for rales, edema, and hypertension together. With CPAP on, use nitroglycerin paste — not SL under the mask."
+    }
+  },
+  {
+    "id": "chf_medium_002",
+    "protocolId": "chf",
+    "dispatchCard": {
+      "unit": "Medic 9",
+      "priority": 1,
+      "chiefComplaint": "Chest Pain / SOB",
+      "patientSummary": "70yo Male",
+      "eta": "3 min"
+    },
+    "dispatchNotes": "Chest pain with shortness of breath. Diaphoretic. History of heart failure.",
+    "scene": {
+      "appearance": [
+        "Diaphoretic and pale.",
+        "Clutching chest.",
+        "Tripoding.",
+        "JVD visible at 45 degrees."
+      ]
+    },
+    "assessmentOptions": [
+      {
+        "id": "vitals",
+        "label": "Obtain Vitals",
+        "clue": "BP 168/88 · HR 116 · RR 30 · SpO2 85% · Temp 98.4°F"
+      },
+      {
+        "id": "lung_sounds",
+        "label": "Lung Sounds",
+        "clue": "Bilateral rales. No isolated wheezing."
+      },
+      {
+        "id": "history",
+        "label": "Medical History",
+        "clue": "Known CHF and prior MI. Non-compliant with medications."
+      },
+      {
+        "id": "twelve_lead",
+        "label": "12-Lead ECG",
+        "clue": "No STEMI. Diffuse ST depression — demand ischemia pattern possible."
+      },
+      {
+        "id": "blood_sugar",
+        "label": "Blood Sugar",
+        "clue": "156 mg/dL."
+      }
+    ],
+    "assessment": {
+      "bp": "168/88",
+      "hr": 116,
+      "rr": 30,
+      "temp": 98.4,
+      "mentalStatus": "anxious",
+      "spo2": 85
+    },
+    "correctProtocol": "chf",
+    "correctActions": ["twelve_lead", "cpap", "nitro_paste"],
+    "harmfulActions": ["fluid_bolus", "nitroglycerin"],
+    "protocolChoices": ["chf", "sepsis", "cardiogenic_shock"],
+    "treatmentActions": [
+      "twelve_lead",
+      "cardiac_monitor",
+      "cpap",
+      "nitroglycerin",
+      "nitro_paste",
+      "oxygen",
+      "fluid_bolus",
+      "albuterol"
+    ],
+    "treatmentEffects": {
+      "twelve_lead": {
+        "message": "12-lead obtained — no STEMI. Demand ischemia pattern noted."
+      },
+      "cardiac_monitor": { "message": "Monitor applied. Tachycardia with frequent PVCs." },
+      "cpap": { "message": "CPAP applied. Work of breathing improved.", "spo2": 91, "rr": 24 },
+      "nitroglycerin": {
+        "message": "Nitroglycerin SL with CPAP in place — BP falls to 132/68. Chest pressure unchanged.",
+        "bp": "132/68",
+        "spo2": 89,
+        "mentalStatus": "distressed"
+      },
+      "nitro_paste": {
+        "message": "Nitroglycerin paste applied. Chest pressure easing with CPAP.",
+        "bp": "148/80",
+        "spo2": 93
+      },
+      "oxygen": { "message": "Oxygen applied.", "spo2": 87 },
+      "fluid_bolus": {
+        "message": "Fluid bolus — pulmonary edema worsening. SpO2 79%.",
+        "spo2": 79,
+        "rr": 34
+      },
+      "albuterol": { "message": "Albuterol given — no significant benefit.", "spo2": 84 }
+    },
+    "deterioration": {
+      "bp": "182/96",
+      "hr": 132,
+      "rr": 36,
+      "temp": 98.4,
+      "mentalStatus": "obtunded",
+      "spo2": 74,
+      "message": "STEMI not ruled out. CHF decompensation with ischemia worsening."
+    },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "12-lead obtained, STEMI ruled out, CHF treated." },
+      "partial_success": { "title": "Improved — Incomplete Treatment", "message": "Patient improved but key steps missed." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Chest pain and SOB worsening." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Missed CHF decompensation with cardiac ischemia." }
+    },
+    "debrief": {
+      "primaryCondition": "CHF / Pulmonary Edema",
+      "protocolUsed": "UP12 Cardiac Pulmonary Edema",
+      "keyIndicators": ["Chest pain", "SOB", "Diaphoresis", "CHF history", "JVD"],
+      "correctTreatment": ["12-Lead ECG", "CPAP", "Nitroglycerin Paste"]
+    },
+    "protocolInsight": {
+      "title": "Rule Out STEMI First",
+      "body": "Chest pain with CHF history requires a 12-lead before focusing on pulmonary edema treatment. Once CPAP is on, nitroglycerin paste — not SL — provides titratable afterload reduction without fighting the mask."
+    }
+  },
+  {
+    "id": "chf_hard_001",
+    "protocolId": "chf",
+    "dispatchCard": {
+      "unit": "Medic 1",
+      "priority": 1,
+      "chiefComplaint": "Difficulty Breathing",
+      "patientSummary": "76yo Female",
+      "eta": "2 min"
+    },
+    "dispatchNotes": "Found in severe distress. Was on home CPAP. Now unresponsive to family.",
+    "scene": {
+      "appearance": [
+        "Pink frothy sputum at mouth.",
+        "Previously tachycardic — now bradycardic.",
+        "Cold, clammy skin.",
+        "Barely responsive."
+      ]
+    },
+    "assessmentOptions": [
+      {
+        "id": "vitals",
+        "label": "Obtain Vitals",
+        "clue": "BP 78/40 · HR 48 · RR 28 · SpO2 82% · Temp 97.8°F"
+      },
+      {
+        "id": "lung_sounds",
+        "label": "Lung Sounds",
+        "clue": "Diffuse rales. Pink frothy sputum."
+      },
+      {
+        "id": "history",
+        "label": "Medical History",
+        "clue": "End-stage CHF. Was tachycardic at 130 before bradycardia."
+      },
+      {
+        "id": "ecg",
+        "label": "ECG",
+        "clue": "Sinus bradycardia — was tachycardic 10 minutes ago per family."
+      },
+      {
+        "id": "blood_sugar",
+        "label": "Blood Sugar",
+        "clue": "98 mg/dL."
+      }
+    ],
+    "assessment": {
+      "bp": "78/40",
+      "hr": 48,
+      "rr": 28,
+      "temp": 97.8,
+      "mentalStatus": "obtunded",
+      "spo2": 82
+    },
+    "correctProtocol": "cardiogenic_shock",
+    "correctActions": ["iv_access", "cardiac_monitor", "notify_facility"],
+    "harmfulActions": ["fluid_bolus", "cpap", "remove_cpap"],
+    "protocolChoices": ["chf", "sepsis", "cardiogenic_shock"],
+    "treatmentActions": [
+      "iv_access",
+      "cardiac_monitor",
+      "notify_facility",
+      "cpap",
+      "remove_cpap",
+      "fluid_bolus",
+      "nitroglycerin",
+      "oxygen"
+    ],
+    "treatmentEffects": {
+      "iv_access": { "message": "IV established for shock protocol." },
+      "cardiac_monitor": { "message": "Monitor applied — bradycardia with frequent ectopy." },
+      "notify_facility": { "message": "Cardiogenic shock alert transmitted to receiving." },
+      "cpap": {
+        "message": "CPAP applied in shock — patient deteriorating. SpO2 74%.",
+        "spo2": 74,
+        "hr": 42
+      },
+      "remove_cpap": {
+        "message": "CPAP removed — patient crashing. SpO2 68%.",
+        "spo2": 68,
+        "hr": 38,
+        "mentalStatus": "unresponsive"
+      },
+      "fluid_bolus": {
+        "message": "Fluid bolus in cardiogenic shock — pulmonary edema worsening. SpO2 70%.",
+        "spo2": 70,
+        "rr": 32
+      },
+      "nitroglycerin": {
+        "message": "Nitroglycerin given — BP drops to 62/38.",
+        "bp": "62/38",
+        "hr": 40
+      },
+      "oxygen": { "message": "High-flow oxygen applied.", "spo2": 84 }
+    },
+    "deterioration": {
+      "bp": "58/32",
+      "hr": 36,
+      "rr": 10,
+      "temp": 97.4,
+      "mentalStatus": "unresponsive",
+      "spo2": 62,
+      "message": "Cardiogenic shock — patient in pre-arrest."
+    },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "Shock recognized. Appropriate escalation en route." },
+      "partial_success": { "title": "Improved — Incomplete Handoff", "message": "Shock recognized but incomplete protocol." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Standard CHF treatment applied to shock patient." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Bradycardia after tachycardia missed. Patient in arrest." }
+    },
+    "debrief": {
+      "primaryCondition": "Cardiogenic Shock",
+      "protocolUsed": "UP12 / Shock Protocol",
+      "keyIndicators": [
+        "Hypotension",
+        "Pink frothy sputum",
+        "Bradycardia after tachycardia",
+        "End-stage CHF"
+      ],
+      "correctTreatment": ["IV Access", "Cardiac Monitor", "Notify Receiving Facility"]
+    },
+    "protocolInsight": {
+      "title": "Beyond Standard CHF",
+      "body": "When CHF progresses to cardiogenic shock — hypotension, bradycardia after tachycardia, altered perfusion — standard CPAP and nitroglycerin are contraindicated. Escalate to shock protocol immediately."
+    }
+  }
+]

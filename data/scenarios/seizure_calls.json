@@ -1,0 +1,226 @@
+[
+  {
+    "id": "seiz_easy_001",
+    "protocolId": "seizure",
+    "dispatchCard": { "unit": "Medic 4", "priority": 2, "chiefComplaint": "Seizure", "patientSummary": "22yo Male", "eta": "5 min" },
+    "dispatchNotes": "Seizure reportedly stopped before your arrival. Known epileptic.",
+    "scene": { "appearance": ["Postictal — confused and lethargic.", "Incontinence noted.", "No active seizure activity.", "Minor tongue laceration."] },
+    "assessmentOptions": [
+      { "id": "vitals", "label": "Obtain Vitals", "clue": "BP 128/76 · HR 96 · RR 16 · SpO2 97% · Temp 98.4°F" },
+      { "id": "history", "label": "Medical History", "clue": "Known epilepsy — missed last two doses of Keppra." },
+      { "id": "blood_sugar", "label": "Blood Sugar", "clue": "Pending — not yet checked." },
+      { "id": "ecg", "label": "ECG", "clue": "Sinus rhythm. No arrhythmia." },
+      { "id": "lung_sounds", "label": "Lung Sounds", "clue": "Clear bilaterally." }
+    ],
+    "assessment": { "bp": "128/76", "hr": 96, "rr": 16, "temp": 98.4, "mentalStatus": "postictal", "spo2": 97 },
+    "correctProtocol": "seizure",
+    "correctActions": ["blood_glucose_check", "cardiac_monitor"],
+    "protocolChoices": ["seizure", "hypoglycemia", "eclampsia", "sepsis", "stemi"],
+    "treatmentActions": ["blood_glucose_check", "cardiac_monitor", "midazolam", "oxygen", "iv_access", "d10"],
+    "treatmentEffects": {
+      "blood_glucose_check": { "message": "Blood glucose 98 mg/dL — normal.", "mentalStatus": "postictal" },
+      "cardiac_monitor": { "message": "Monitor applied. Sinus rhythm." },
+      "midazolam": { "message": "Midazolam given — no active seizure. Patient more sedated.", "mentalStatus": "lethargic" },
+      "oxygen": { "message": "Oxygen applied.", "spo2": 98 },
+      "iv_access": { "message": "IV established." },
+      "d10": { "message": "D10 given — glucose already normal at 98." }
+    },
+    "deterioration": { "bp": "110/68", "hr": 108, "rr": 20, "temp": 98.4, "mentalStatus": "obtunded", "spo2": 94, "message": "Postictal patient deteriorating — hypoglycemia not ruled out." },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "Postictal patient monitored appropriately." },
+      "partial_success": { "title": "Improved — Incomplete Assessment", "message": "Patient stable but incomplete workup." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Missed reversible causes." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Wrong pathway for postictal patient." }
+    },
+    "debrief": {
+      "primaryCondition": "Postictal State — Known Epilepsy",
+      "protocolUsed": "UP04 Seizure / Withdrawal",
+      "keyIndicators": ["Seizure stopped prior to arrival", "Postictal", "Known epileptic", "Medication non-compliance"],
+      "correctTreatment": ["Blood Glucose Check", "Cardiac Monitor"]
+    },
+    "protocolInsight": {
+      "title": "Always Check Glucose",
+      "body": "Every postictal patient needs a blood glucose check and monitoring — even known epileptics. Hypoglycemia can mimic or trigger seizures."
+    }
+  },
+  {
+    "id": "seiz_easy_002",
+    "protocolId": "seizure",
+    "dispatchCard": { "unit": "Engine 3", "priority": 1, "chiefComplaint": "Seizure", "patientSummary": "30yo Male", "eta": "2 min" },
+    "dispatchNotes": "Active generalized seizure ongoing approximately 2 minutes.",
+    "scene": { "appearance": ["Generalized tonic-clonic activity ongoing.", "Incontinence.", "Tongue biting.", "No response to verbal stimuli."] },
+    "assessmentOptions": [
+      { "id": "vitals", "label": "Obtain Vitals", "clue": "BP 142/88 · HR 132 · RR 22 · SpO2 91% · Temp 99.2°F" },
+      { "id": "history", "label": "Medical History", "clue": "No known seizure disorder. No epilepsy medications." },
+      { "id": "blood_sugar", "label": "Blood Sugar", "clue": "Unable to obtain during active seizure." },
+      { "id": "ecg", "label": "ECG", "clue": "Tachycardia during seizure activity." },
+      { "id": "lung_sounds", "label": "Lung Sounds", "clue": "Clear — airway maintained." }
+    ],
+    "assessment": { "bp": "142/88", "hr": 132, "rr": 22, "temp": 99.2, "mentalStatus": "seizing", "spo2": 91 },
+    "correctProtocol": "seizure",
+    "correctActions": ["midazolam"],
+    "protocolChoices": ["seizure", "hypoglycemia", "eclampsia", "sepsis", "stemi"],
+    "treatmentActions": ["midazolam", "blood_glucose_check", "cardiac_monitor", "oxygen", "iv_access", "d10"],
+    "treatmentEffects": {
+      "midazolam": { "message": "Midazolam administered. Seizure activity stopping.", "hr": 108, "mentalStatus": "postictal", "spo2": 94 },
+      "blood_glucose_check": { "message": "Glucose 112 mg/dL after seizure stops.", "mentalStatus": "postictal" },
+      "cardiac_monitor": { "message": "Monitor applied." },
+      "oxygen": { "message": "Oxygen applied.", "spo2": 93 },
+      "iv_access": { "message": "IV established." },
+      "d10": { "message": "D10 not indicated — glucose normal." }
+    },
+    "deterioration": { "bp": "148/92", "hr": 148, "rr": 28, "temp": 100.4, "mentalStatus": "seizing", "spo2": 82, "message": "Status epilepticus — seizure continuing beyond 5 minutes." },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "Active seizure terminated appropriately." },
+      "partial_success": { "title": "Improved — Incomplete Treatment", "message": "Seizure stopped but incomplete care." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Prolonged seizure activity." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Failed to treat active seizure." }
+    },
+    "debrief": {
+      "primaryCondition": "Active Generalized Seizure",
+      "protocolUsed": "UP04 Seizure / Withdrawal",
+      "keyIndicators": ["Generalized tonic-clonic activity", "Ongoing > 2 minutes", "No response to stimuli"],
+      "correctTreatment": ["Midazolam"]
+    },
+    "protocolInsight": {
+      "title": "Terminate Active Seizures",
+      "body": "Prolonged generalized tonic-clonic activity requires benzodiazepine administration. Protect the airway and prepare to treat underlying causes once the seizure stops."
+    }
+  },
+  {
+    "id": "seiz_medium_001",
+    "protocolId": "seizure",
+    "dispatchCard": { "unit": "Medic 8", "priority": 1, "chiefComplaint": "Seizure", "patientSummary": "55yo Male", "eta": "3 min" },
+    "dispatchNotes": "Seizure stopped. Diabetic per family.",
+    "scene": { "appearance": ["Postictal and diaphoretic.", "Seizure stopped on arrival.", "Family reports insulin use.", "Confused and tremulous."] },
+    "assessmentOptions": [
+      { "id": "vitals", "label": "Obtain Vitals", "clue": "BP 156/92 · HR 118 · RR 18 · SpO2 96% · Temp 98.0°F" },
+      { "id": "blood_sugar", "label": "Blood Sugar", "clue": "Blood glucose 34 mg/dL — CRITICAL LOW." },
+      { "id": "history", "label": "Medical History", "clue": "Type 1 diabetes — skipped lunch and took full insulin dose." },
+      { "id": "ecg", "label": "ECG", "clue": "Sinus tachycardia." },
+      { "id": "lung_sounds", "label": "Lung Sounds", "clue": "Clear." }
+    ],
+    "assessment": { "bp": "156/92", "hr": 118, "rr": 18, "temp": 98.0, "mentalStatus": "confused", "spo2": 96 },
+    "correctProtocol": "hypoglycemia",
+    "correctActions": ["blood_glucose_check", "d10"],
+    "harmfulActions": ["midazolam"],
+    "protocolChoices": ["hypoglycemia", "seizure", "eclampsia", "sepsis", "stemi"],
+    "treatmentActions": ["blood_glucose_check", "d10", "midazolam", "cardiac_monitor", "oxygen", "iv_access"],
+    "treatmentEffects": {
+      "blood_glucose_check": { "message": "Blood glucose confirmed at 34 mg/dL." },
+      "d10": { "message": "D10 IV bolus given. Glucose recheck 78 mg/dL. Mental status improving.", "mentalStatus": "alert", "hr": 102 },
+      "midazolam": { "message": "Midazolam given — sedated further without treating cause.", "mentalStatus": "obtunded" },
+      "cardiac_monitor": { "message": "Monitor applied." },
+      "oxygen": { "message": "Oxygen applied.", "spo2": 97 },
+      "iv_access": { "message": "IV established." }
+    },
+    "deterioration": { "bp": "148/86", "hr": 128, "rr": 22, "temp": 98.0, "mentalStatus": "unresponsive", "spo2": 90, "message": "Hypoglycemia untreated. Patient becoming unresponsive." },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "Hypoglycemic seizure — cause treated." },
+      "partial_success": { "title": "Improved — Incomplete Treatment", "message": "Glucose checked but D10 delayed." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Seizure treated but not the cause." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Missed hypoglycemia as seizure cause." }
+    },
+    "debrief": {
+      "primaryCondition": "Hypoglycemic Seizure",
+      "protocolUsed": "UP03 Hypoglycemia",
+      "keyIndicators": ["Blood glucose 34 mg/dL", "Diabetes", "Seizure activity", "Diaphoresis"],
+      "correctTreatment": ["Blood Glucose Check", "D10 IV"]
+    },
+    "protocolInsight": {
+      "title": "Treat the Cause",
+      "body": "Not every seizure needs midazolam first. A glucose of 34 mg/dL is the emergency — treat hypoglycemia and the seizure will not recur."
+    }
+  },
+  {
+    "id": "seiz_medium_002",
+    "protocolId": "seizure",
+    "dispatchCard": { "unit": "Medic 6", "priority": 2, "chiefComplaint": "Altered Mental Status", "patientSummary": "45yo Male", "eta": "6 min" },
+    "dispatchNotes": "Family reports patient stopped drinking alcohol 2 days ago. Tremulous and agitated.",
+    "scene": { "appearance": ["Agitated and tremulous.", "Diaphoretic.", "Visual hallucinations reported by family.", "No active seizure."] },
+    "assessmentOptions": [
+      { "id": "vitals", "label": "Obtain Vitals", "clue": "BP 162/98 · HR 124 · RR 22 · SpO2 97% · Temp 99.4°F" },
+      { "id": "history", "label": "Medical History", "clue": "Stopped drinking 48 hours ago. History of alcohol dependence." },
+      { "id": "blood_sugar", "label": "Blood Sugar", "clue": "Blood glucose 118 mg/dL." },
+      { "id": "ecg", "label": "ECG", "clue": "Sinus tachycardia. QTc mildly prolonged." },
+      { "id": "lung_sounds", "label": "Lung Sounds", "clue": "Clear." }
+    ],
+    "assessment": { "bp": "162/98", "hr": 124, "rr": 22, "temp": 99.4, "mentalStatus": "agitated", "spo2": 97 },
+    "correctProtocol": "seizure",
+    "correctActions": ["midazolam", "supportive_care"],
+    "protocolChoices": ["seizure", "hypoglycemia", "sepsis", "stemi", "chf"],
+    "treatmentActions": ["midazolam", "supportive_care", "blood_glucose_check", "cardiac_monitor", "oxygen", "iv_access", "d10"],
+    "treatmentEffects": {
+      "midazolam": { "message": "Midazolam given. Agitation decreasing.", "mentalStatus": "calm", "hr": 108 },
+      "supportive_care": { "message": "Quiet environment, reassurance, vitals monitored.", "mentalStatus": "calm" },
+      "blood_glucose_check": { "message": "Glucose 118 — normal." },
+      "cardiac_monitor": { "message": "Monitor applied. Watching QTc." },
+      "oxygen": { "message": "Room air adequate.", "spo2": 97 },
+      "iv_access": { "message": "IV established." },
+      "d10": { "message": "D10 not indicated." }
+    },
+    "deterioration": { "bp": "178/106", "hr": 142, "rr": 28, "temp": 100.2, "mentalStatus": "seizing", "spo2": 92, "message": "Alcohol withdrawal progressing to seizure." },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "Withdrawal managed appropriately." },
+      "partial_success": { "title": "Improved — Incomplete Treatment", "message": "Partial withdrawal management." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Withdrawal seizure developing." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Withdrawal not recognized." }
+    },
+    "debrief": {
+      "primaryCondition": "Seizure / Withdrawal",
+      "protocolUsed": "UP04 Seizure / Withdrawal",
+      "keyIndicators": ["Stopped drinking 48 hours ago", "Tremulous", "Agitation", "Hallucinations"],
+      "correctTreatment": ["Midazolam", "Supportive Care"]
+    },
+    "protocolInsight": {
+      "title": "Withdrawal Is a Seizure Risk",
+      "body": "Alcohol withdrawal at 48 hours presents with agitation and tremor before seizures. Benzodiazepines and supportive care prevent progression."
+    }
+  },
+  {
+    "id": "seiz_hard_001",
+    "protocolId": "seizure",
+    "dispatchCard": { "unit": "Medic 1", "priority": 1, "chiefComplaint": "Seizure", "patientSummary": "26yo Female", "eta": "2 min" },
+    "dispatchNotes": "Pregnant patient — 32 weeks. Active seizure. Husband on scene.",
+    "scene": { "appearance": ["Third trimester pregnancy obvious.", "Active tonic-clonic seizure.", "Hypertensive appearance.", "Facial edema noted."] },
+    "assessmentOptions": [
+      { "id": "vitals", "label": "Obtain Vitals", "clue": "BP 178/108 · HR 118 · RR 24 · SpO2 93% · Temp 98.6°F" },
+      { "id": "history", "label": "Medical History", "clue": "32 weeks pregnant. Headache and swelling x 3 days. No prenatal complications until today." },
+      { "id": "blood_sugar", "label": "Blood Sugar", "clue": "Blood glucose 94 mg/dL." },
+      { "id": "ecg", "label": "ECG", "clue": "Sinus tachycardia." },
+      { "id": "lung_sounds", "label": "Lung Sounds", "clue": "Clear with mild bibasilar crackles." }
+    ],
+    "assessment": { "bp": "178/108", "hr": 118, "rr": 24, "temp": 98.6, "mentalStatus": "seizing", "spo2": 93 },
+    "correctProtocol": "eclampsia",
+    "correctActions": ["magnesium_sulfate", "notify_facility"],
+    "harmfulActions": ["midazolam"],
+    "protocolChoices": ["eclampsia", "seizure", "hypoglycemia", "sepsis", "stemi"],
+    "treatmentActions": ["magnesium_sulfate", "notify_facility", "midazolam", "oxygen", "iv_access", "cardiac_monitor", "blood_glucose_check"],
+    "treatmentEffects": {
+      "magnesium_sulfate": { "message": "Magnesium sulfate IV loading dose. Seizure activity ceasing.", "mentalStatus": "postictal", "hr": 104, "spo2": 95 },
+      "notify_facility": { "message": "Obstetric emergency alert transmitted. L&D and NICU notified." },
+      "midazolam": { "message": "Midazolam only — seizure may recur without magnesium. Eclampsia untreated.", "mentalStatus": "postictal", "spo2": 91 },
+      "oxygen": { "message": "Oxygen applied.", "spo2": 94 },
+      "iv_access": { "message": "Large-bore IV established." },
+      "cardiac_monitor": { "message": "Monitor applied." },
+      "blood_glucose_check": { "message": "Glucose 94 — normal. Not hypoglycemia." }
+    },
+    "deterioration": { "bp": "186/114", "hr": 128, "rr": 30, "temp": 98.8, "mentalStatus": "seizing", "spo2": 84, "message": "Eclampsia with recurrent seizures. Fetal distress likely." },
+    "endings": {
+      "perfect_save": { "title": "Patient Stabilized", "message": "Eclampsia recognized and treated." },
+      "partial_success": { "title": "Improved — Incomplete Handoff", "message": "Magnesium given but facility not alerted." },
+      "delayed_treatment": { "title": "Patient Deteriorating", "message": "Treated as routine seizure. Eclampsia progressing." },
+      "wrong_protocol": { "title": "Critical Miss", "message": "Obstetric emergency missed." }
+    },
+    "debrief": {
+      "primaryCondition": "Eclampsia",
+      "protocolUsed": "UP Obstetric Emergency",
+      "keyIndicators": ["Pregnancy 32 weeks", "Active seizure", "Hypertension", "Headache", "Facial edema"],
+      "correctTreatment": ["Magnesium Sulfate", "Notify Receiving Facility"]
+    },
+    "protocolInsight": {
+      "title": "Not a Routine Seizure",
+      "body": "Seizure in pregnancy is eclampsia until proven otherwise. Magnesium sulfate is the definitive treatment — not midazolam alone. Alert the receiving facility immediately."
+    }
+  }
+]

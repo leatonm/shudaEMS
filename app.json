@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Shuda EMS",
-    "slug": "shuda-ems",
+    "name": "EMT Response Simulator",
+    "slug": "emt-response-simulator",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "shudaems",
+    "scheme": "emtresponse",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true

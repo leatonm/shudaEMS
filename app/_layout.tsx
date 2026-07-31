@@ -43,12 +43,16 @@ export default function RootLayout() {
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen
-          name="scenario/[id]"
-          options={{ title: 'ACTIVE CALL', headerBackTitle: 'Academy' }}
+          name="emt/call/[id]"
+          options={{ title: 'EMT CALL', headerBackTitle: 'Home' }}
         />
         <Stack.Screen
-          name="results"
+          name="emt/debrief"
           options={{ title: 'DEBRIEF', headerBackVisible: false }}
+        />
+        <Stack.Screen
+          name="emt/leaderboard"
+          options={{ title: 'LEADERBOARD', headerBackTitle: 'Home' }}
         />
       </Stack>
     </>

@@ -43,4 +43,18 @@ export const HAZARD_LIBRARY: Record<string, SceneHazard> = {
     clearWith: ['don_ppe'],
     severity: 'low',
   },
+  structural_damage: {
+    id: 'structural_damage',
+    label: 'Unstable Structure / Debris',
+    description: 'Collapsed area or debris field — do not freestyle entry',
+    clearWith: ['request_fire', 'stage_away', 'establish_command'],
+    severity: 'high',
+  },
+  multiple_patients: {
+    id: 'multiple_patients',
+    label: 'Multiple Patients Visible',
+    description: 'More patients than you can treat alone',
+    clearWith: ['request_mutual_aid', 'establish_command'],
+    severity: 'high',
+  },
 };

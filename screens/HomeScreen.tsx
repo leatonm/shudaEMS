@@ -4,14 +4,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ShiftButton } from '@/components/ui/ShiftUI';
 import { theme } from '@/constants/theme';
+import { CALL_CATEGORIES } from '@/data/emt/categories';
+import type { CallCategory } from '@/data/emt/types';
 import { useEmtStore } from '@/store/emtStore';
 
 export default function HomeScreen() {
   const router = useRouter();
   const startEmtCall = useEmtStore((s) => s.startCall);
 
-  const handleStartEmt = (archetypeId?: string) => {
-    const callId = startEmtCall(archetypeId);
+  const handleStartCategory = (category?: CallCategory) => {
+    const callId = startEmtCall(category ? { category } : undefined);
     if (callId) {
       router.push(`/emt/call/${callId}`);
     }
@@ -27,8 +29,8 @@ export default function HomeScreen() {
           <Text style={styles.academy}>EMT RESPONSE SIMULATOR</Text>
           <Text style={styles.title}>Think Like an EMT</Text>
           <Text style={styles.tagline}>
-            Scene safety. ABCDE. Focused history. EMT-scope treatment. Destination. Decisions
-            change the patient — not a quiz.
+            Pick a category. The call is generated — chest pain, arrest, choking, MCI, and more.
+            Scene safety → ABCDE → treat → transport.
           </Text>
         </View>
 
@@ -41,20 +43,29 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.shiftCard}>
-          <Text style={styles.shiftLabel}>ACTIVE CALLS</Text>
+          <Text style={styles.shiftLabel}>CHOOSE A CATEGORY</Text>
           <Text style={styles.shiftPrompt}>
-            Generated chest pain and stroke scenarios. Score safety, assessment order, treatment
-            judgment, and transport decisions.
+            You do not pick the exact diagnosis. You pick the lane — the generator builds the call.
           </Text>
-          <ShiftButton label="START CHEST PAIN CALL" onPress={() => handleStartEmt('chest_pain')} />
+
+          {CALL_CATEGORIES.map((cat, index) => (
+            <View key={cat.id}>
+              {index > 0 ? <View style={styles.spacer} /> : null}
+              <ShiftButton
+                label={cat.label.toUpperCase()}
+                onPress={() => handleStartCategory(cat.id)}
+                variant={index === 0 ? 'primary' : 'secondary'}
+              />
+              <Text style={styles.examples}>{cat.examples}</Text>
+            </View>
+          ))}
+
           <View style={styles.spacer} />
           <ShiftButton
-            label="START STROKE CALL"
-            onPress={() => handleStartEmt('stroke')}
+            label="RANDOM ANY CATEGORY"
+            onPress={() => handleStartCategory()}
             variant="secondary"
           />
-          <View style={styles.spacer} />
-          <ShiftButton label="RANDOM CALL" onPress={() => handleStartEmt()} variant="secondary" />
         </View>
 
         <View style={styles.shiftCard}>
@@ -71,7 +82,7 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Coming next: MVC triage · choking · MCI · PCR</Text>
+          <Text style={styles.footerText}>Coming next: deeper MCI · PCR · en-route</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -148,6 +159,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     marginBottom: theme.spacing.lg,
+  },
+  examples: {
+    color: theme.colors.textMuted,
+    fontSize: 12,
+    marginTop: 6,
+    marginBottom: 4,
+    lineHeight: 17,
   },
   spacer: {
     height: theme.spacing.sm,

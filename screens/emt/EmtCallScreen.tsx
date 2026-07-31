@@ -88,7 +88,7 @@ export default function EmtCallScreen() {
 
         {phase === 'dispatch' && (
           <View style={styles.card}>
-            <Text style={styles.cad}>CAD DISPATCH</Text>
+            <Text style={styles.cad}>CAD DISPATCH · {call.category.toUpperCase()}</Text>
             <Text style={styles.dispatch}>{call.dispatch}</Text>
             <Text style={styles.patient}>{call.patientSummary}</Text>
             <Text style={styles.hint}>

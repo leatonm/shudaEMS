@@ -3,8 +3,12 @@ import {
   destinationOptions,
   TRANSPORT_PRIORITY_OPTIONS,
 } from '@/data/emt/actions';
-import { getArchetype, EMT_ARCHETYPE_IDS } from '@/data/emt/registry';
-import type { EmtCall, ScenarioArchetype } from '@/data/emt/types';
+import {
+  EMT_ARCHETYPE_IDS,
+  getArchetype,
+  pickArchetypeIdForCategory,
+} from '@/data/emt/registry';
+import type { CallCategory, EmtCall, ScenarioArchetype } from '@/data/emt/types';
 import {
   createRng,
   generateId,
@@ -19,8 +23,9 @@ const UNITS = ['Medic 4', 'Engine 2', 'Unit 12', 'Rescue 7', 'Ambulance 3'];
 function buildVitals(archetype: ScenarioArchetype, rng: Rng) {
   const sbp = pickRandom(archetype.vitalsPools.sbp, rng);
   const dbp = pickRandom(archetype.vitalsPools.dbp, rng);
+  const bp = sbp === 0 && dbp === 0 ? '—' : `${sbp}/${dbp}`;
   return {
-    bp: `${sbp}/${dbp}`,
+    bp,
     hr: pickRandom(archetype.vitalsPools.hr, rng),
     rr: pickRandom(archetype.vitalsPools.rr, rng),
     spo2: pickRandom(archetype.vitalsPools.spo2, rng),
@@ -32,18 +37,29 @@ function buildVitals(archetype: ScenarioArchetype, rng: Rng) {
 }
 
 export interface GenerateEmtCallOptions {
+  /** Prefer category — generator picks a random call type inside it */
+  category?: CallCategory;
+  /** Pin a specific archetype when testing */
   archetypeId?: string;
   seed?: number;
 }
 
 export function generateEmtCall(options: GenerateEmtCallOptions = {}): EmtCall {
   const rng = createRng(options.seed);
-  const archetypeId =
-    options.archetypeId ?? pickRandom(EMT_ARCHETYPE_IDS, rng);
+
+  let archetypeId = options.archetypeId;
+  if (!archetypeId && options.category) {
+    archetypeId = pickArchetypeIdForCategory(options.category, rng);
+  }
+  if (!archetypeId) {
+    archetypeId = pickRandom(EMT_ARCHETYPE_IDS, rng);
+  }
+
   const archetype = getArchetype(archetypeId);
 
   const [minH, maxH] = archetype.hazardPickCount;
-  const hazardCount = randomInt(minH, maxH, rng);
+  const hazardCount =
+    archetype.hazardPool.length === 0 ? 0 : randomInt(minH, maxH, rng);
   const hazards = randomSubset(archetype.hazardPool, hazardCount, rng);
 
   const age = randomInt(archetype.ageRange[0], archetype.ageRange[1], rng);
@@ -51,13 +67,20 @@ export function generateEmtCall(options: GenerateEmtCallOptions = {}): EmtCall {
   const complaint = pickRandom(archetype.dispatchTemplates, rng);
   const appearance = pickRandom(archetype.patientSummaries, rng);
 
+  const patientSummary =
+    archetype.category === 'mci'
+      ? appearance
+      : `${age}yo ${sex} — ${appearance}`;
+
   return {
     id: generateId(`emt_${archetype.id}`, rng),
     archetypeId: archetype.id,
+    archetypeName: archetype.name,
+    category: archetype.category,
     unit: pickRandom(UNITS, rng),
     priority: pickRandom([1, 1, 2] as const, rng),
     dispatch: complaint,
-    patientSummary: `${age}yo ${sex} — ${appearance}`,
+    patientSummary,
     age,
     sex,
     hazards,
@@ -71,7 +94,9 @@ export function generateEmtCall(options: GenerateEmtCallOptions = {}): EmtCall {
     recommendedTreatment: [...archetype.recommendedTreatment],
     harmfulTreatment: [...archetype.harmfulTreatment],
     transportPriorityOptions: TRANSPORT_PRIORITY_OPTIONS.filter((o) =>
-      archetype.transportPriorities.includes(o.id as 'emergency' | 'urgent' | 'non_urgent')
+      archetype.transportPriorities.includes(
+        o.id as 'emergency' | 'urgent' | 'non_urgent'
+      )
     ),
     correctTransportPriority: archetype.correctTransportPriority,
     destinationOptions: destinationOptions(archetype.destinations),

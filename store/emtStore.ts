@@ -12,6 +12,7 @@ import {
 import { generateEmtCall } from '@/data/emt/generator';
 import type {
   AbcdeStep,
+  CallCategory,
   EmtCall,
   EmtPhase,
   EmtRunResult,
@@ -40,7 +41,7 @@ interface EmtStore {
   result: EmtRunResult | null;
   startedAt: number;
 
-  startCall: (archetypeId?: string) => string | null;
+  startCall: (options?: { category?: CallCategory; archetypeId?: string }) => string | null;
   respond: () => void;
   takeSafetyAction: (actionId: string) => void;
   beginPrimarySurvey: () => void;
@@ -100,8 +101,11 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
   result: null,
   startedAt: 0,
 
-  startCall: (archetypeId) => {
-    const call = generateEmtCall({ archetypeId });
+  startCall: (options) => {
+    const call = generateEmtCall({
+      category: options?.category,
+      archetypeId: options?.archetypeId,
+    });
     set({
       call,
       phase: 'dispatch',

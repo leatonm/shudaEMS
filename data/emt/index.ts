@@ -1,11 +1,23 @@
-export type { EmtCall, EmtPhase, EmtRunResult, ScenarioArchetype } from '@/data/emt/types';
+export type {
+  CallCategory,
+  EmtCall,
+  EmtPhase,
+  EmtRunResult,
+  ScenarioArchetype,
+} from '@/data/emt/types';
 export { generateEmtCall } from '@/data/emt/generator';
-export { listArchetypes, getArchetype, EMT_ARCHETYPE_IDS } from '@/data/emt/registry';
 export {
-  evaluateSafetyAction,
+  EMT_ARCHETYPE_IDS,
+  getArchetype,
+  listArchetypes,
+  listArchetypesByCategory,
+} from '@/data/emt/registry';
+export { CALL_CATEGORIES } from '@/data/emt/categories';
+export {
   evaluateAbcdeStep,
-  evaluateTreatmentAction,
+  evaluateSafetyAction,
   evaluateTransport,
+  evaluateTreatmentAction,
   hazardsAreCleared,
   resolveEmtRun,
 } from '@/data/emt/engine';

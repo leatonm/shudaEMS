@@ -13,12 +13,15 @@ export type AbcdeStep = 'airway' | 'breathing' | 'circulation' | 'disability' | 
 
 export type TransportPriority = 'emergency' | 'urgent' | 'non_urgent';
 
+export type CallCategory = 'medical' | 'trauma' | 'peds' | 'ob' | 'mci';
+
 export type DestinationType =
   | 'closest_ed'
   | 'stroke_center'
   | 'trauma_center'
   | 'pci_capable'
-  | 'pediatric_ed';
+  | 'pediatric_ed'
+  | 'labor_delivery';
 
 export type SkillCategory =
   | 'scene_safety'
@@ -115,7 +118,7 @@ export interface SkillScores {
 export interface ScenarioArchetype {
   id: string;
   name: string;
-  category: 'medical' | 'trauma' | 'pediatric' | 'mci';
+  category: CallCategory;
   dispatchTemplates: string[];
   patientSummaries: string[];
   ageRange: [number, number];
@@ -155,6 +158,8 @@ export interface ScenarioArchetype {
 export interface EmtCall {
   id: string;
   archetypeId: string;
+  archetypeName: string;
+  category: CallCategory;
   unit: string;
   priority: 1 | 2 | 3;
   dispatch: string;

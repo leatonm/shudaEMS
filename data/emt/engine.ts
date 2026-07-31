@@ -339,7 +339,7 @@ export function resolveEmtRun(input: {
   const pearl = pickRandom(call.pearls, Math.random);
 
   const debrief: EmtDebrief = {
-    title: call.archetypeId === 'stroke' ? 'Suspected Stroke' : 'Chest Pain / Suspected ACS',
+    title: call.archetypeName,
     summary:
       patientOutcome === 'improved'
         ? 'Solid EMT judgment — systematic assessment and timely transport.'

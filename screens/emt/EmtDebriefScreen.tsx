@@ -15,8 +15,8 @@ export default function EmtDebriefScreen() {
   const startCall = useEmtStore((s) => s.startCall);
   const reset = useEmtStore((s) => s.reset);
 
-  const handleNext = (archetypeId?: string) => {
-    const id = startCall(archetypeId);
+  const handleNext = (category?: import('@/data/emt/types').CallCategory) => {
+    const id = startCall(category ? { category } : undefined);
     if (id) router.replace(`/emt/call/${id}`);
   };
 
@@ -104,8 +104,10 @@ export default function EmtDebriefScreen() {
           </Text>
         </View>
 
-        <ShiftButton label="ANOTHER CHEST PAIN CALL" onPress={() => handleNext('chest_pain')} />
-        <ShiftButton label="STROKE CALL" onPress={() => handleNext('stroke')} variant="secondary" />
+        <ShiftButton
+          label={`ANOTHER ${call.category.toUpperCase()} CALL`}
+          onPress={() => handleNext(call.category)}
+        />
         <ShiftButton label="RANDOM CALL" onPress={() => handleNext()} variant="secondary" />
         <ShiftButton label="END SESSION" onPress={handleHome} variant="secondary" />
       </ScrollView>

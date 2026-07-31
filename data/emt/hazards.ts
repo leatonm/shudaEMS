@@ -33,7 +33,7 @@ export const HAZARD_LIBRARY: Record<string, SceneHazard> = {
     id: 'bystanders',
     label: 'Agitated Bystanders',
     description: 'Crowd interfering with access',
-    clearWith: ['request_pd', 'don_ppe'],
+    clearWith: ['request_pd', 'stage_away'],
     severity: 'moderate',
   },
   unknown_meds: {

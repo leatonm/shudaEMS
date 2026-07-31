@@ -189,59 +189,109 @@ export function buildWalkthrough(call: EmtCall): WalkthroughStep[] {
   });
 
   // —— Size-up: scene safety verbalize / hazards ——
-  const sceneChoices: WalkthroughChoice[] = [
-    {
-      id: 'scene_safe_ok',
-      label:
-        call.hazards.length === 0
-          ? 'Verbalize: scene appears safe'
-          : 'Identify hazards and plan to make scene safe',
-      correct: true,
-      actionKind: 'verbalize_safe',
-      advance: 'next',
-      scoreDelta: 10,
-      message:
-        call.hazards.length === 0
-          ? 'Scene safety verbalized.'
-          : 'Hazards noted — address them before patient contact.',
-      severity: 'good',
-      skill: 'scene_safety',
-    },
-    {
-      id: 'scene_ignore',
-      label: 'Ignore surroundings — focus on the patient',
-      correct: false,
-      tip: 'Scene safety is a critical criterion.',
-      actionKind: 'trap_ignore_hazards',
-      advance: 'next',
-      scoreDelta: -18,
-      message: 'Flow miss — failed to determine scene safety.',
-      severity: 'bad',
-      skill: 'scene_safety',
-      flowMiss: true,
-    },
-    {
-      id: 'scene_stage',
-      label: 'Stage away until the scene is secure',
-      correct: call.hazards.some((h) => h.severity === 'high'),
-      tip: 'Stage when hazards are uncontrolled; then reassess.',
-      actionKind: 'stage',
-      payload: 'stage_away',
-      advance: 'stay',
-      scoreDelta: call.hazards.some((h) => h.severity === 'high') ? 14 : 6,
-      message: 'Staging. Reassess when resources clear the hazard.',
-      severity: 'good',
-      skill: 'scene_safety',
-    },
-    trapEarlyTreat('scene'),
-  ];
+  const hasAgitatedBystanders = call.hazards.some((h) => h.id === 'bystanders');
+  const sceneChoices: WalkthroughChoice[] = hasAgitatedBystanders
+    ? [
+        {
+          id: 'scene_withdraw_bystanders',
+          label: 'Withdraw to safety; move the patient only if safely possible',
+          correct: true,
+          tip: 'Do not attempt a rescue through danger. Withdraw, then request PD.',
+          actionKind: 'stage',
+          payload: 'stage_away',
+          advance: 'next',
+          scoreDelta: 14,
+          message:
+            'Crew withdraws from the unsafe crowd. Move the patient only if it does not increase risk; request PD and reassess before re-entry.',
+          severity: 'good',
+          skill: 'scene_safety',
+        },
+        {
+          id: 'scene_deescalate_continue',
+          label: 'Try to calm the crowd while continuing patient care',
+          correct: false,
+          tip: 'Do not remain exposed while attempting to de-escalate an unsafe crowd.',
+          actionKind: 'trap_ignore_hazards',
+          advance: 'stay',
+          scoreDelta: -14,
+          message:
+            'The crew remains exposed to an uncontrolled crowd. Withdraw and request law enforcement.',
+          severity: 'bad',
+          skill: 'scene_safety',
+          flowMiss: true,
+        },
+        {
+          id: 'scene_ignore',
+          label: 'Ignore surroundings — focus on the patient',
+          correct: false,
+          tip: 'Scene safety is a critical criterion.',
+          actionKind: 'trap_ignore_hazards',
+          advance: 'stay',
+          scoreDelta: -18,
+          message: 'Flow miss — failed to respond to an unsafe scene.',
+          severity: 'bad',
+          skill: 'scene_safety',
+          flowMiss: true,
+        },
+        trapEarlyTreat('scene'),
+      ]
+    : [
+        {
+          id: 'scene_safe_ok',
+          label:
+            call.hazards.length === 0
+              ? 'Verbalize: scene appears safe'
+              : 'Identify hazards and plan to make scene safe',
+          correct: true,
+          actionKind: 'verbalize_safe',
+          advance: 'next',
+          scoreDelta: 10,
+          message:
+            call.hazards.length === 0
+              ? 'Scene safety verbalized.'
+              : 'Hazards noted — address them before patient contact.',
+          severity: 'good',
+          skill: 'scene_safety',
+        },
+        {
+          id: 'scene_ignore',
+          label: 'Ignore surroundings — focus on the patient',
+          correct: false,
+          tip: 'Scene safety is a critical criterion.',
+          actionKind: 'trap_ignore_hazards',
+          advance: 'next',
+          scoreDelta: -18,
+          message: 'Flow miss — failed to determine scene safety.',
+          severity: 'bad',
+          skill: 'scene_safety',
+          flowMiss: true,
+        },
+        {
+          id: 'scene_stage',
+          label: 'Stage at a safe distance until the scene is secured',
+          correct: call.hazards.some((h) => h.severity === 'high'),
+          tip: 'Stage before entry when hazards are uncontrolled; then reassess.',
+          actionKind: 'stage',
+          payload: 'stage_away',
+          advance: 'stay',
+          scoreDelta: call.hazards.some((h) => h.severity === 'high') ? 14 : 6,
+          message: 'Holding at a safe distance. Reassess when resources clear the hazard.',
+          severity: 'good',
+          skill: 'scene_safety',
+        },
+        trapEarlyTreat('scene'),
+      ];
 
   steps.push({
     id: 'sizeup_scene',
     phase: 'scene_safety',
     title: 'Scene size-up',
-    prompt: 'Is the scene safe for you and the patient?',
-    coachTip: 'Say it out loud. If unsafe — stage or request help.',
+    prompt: hasAgitatedBystanders
+      ? 'The agitated crowd is making the scene unsafe. What do you do?'
+      : 'Is the scene safe for you and the patient?',
+    coachTip: hasAgitatedBystanders
+      ? 'If a scene becomes unsafe, withdraw. Take the patient only when doing so is safe.'
+      : 'Say it out loud. If unsafe — stage or request help.',
     reveal: 'scene',
     choices: sceneChoices,
   });

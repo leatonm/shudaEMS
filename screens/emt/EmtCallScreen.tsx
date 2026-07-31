@@ -179,16 +179,23 @@ function SituationStrip({
   hazardDetail: boolean;
   accent: string;
 }) {
-  if (reveal === 'none') return null;
-
-  if (reveal === 'dispatch') {
-    return (
+  const dispatchCard =
+    reveal === 'dispatch' ? (
       <Animated.View entering={enterFade(0)} style={styles.card}>
         <Text style={styles.cad}>CAD DISPATCH · {call.category.toUpperCase()}</Text>
         <Text style={[styles.dispatch, { textShadowColor: accent }]}>{call.dispatch}</Text>
         <Text style={styles.patient}>{call.patientSummary}</Text>
       </Animated.View>
+    ) : (
+      <View style={styles.dispatchSticky}>
+        <Text style={styles.cad}>CAD DISPATCH · {call.category.toUpperCase()}</Text>
+        <Text style={styles.dispatchStickyText}>{call.dispatch}</Text>
+        <Text style={styles.patientSticky}>{call.patientSummary}</Text>
+      </View>
     );
+
+  if (reveal === 'dispatch' || reveal === 'none') {
+    return dispatchCard;
   }
 
   const resources = describeResourcesOnArrival(call.resourcesOnScene ?? []);
@@ -196,6 +203,8 @@ function SituationStrip({
 
   return (
     <View style={styles.situation}>
+      {dispatchCard}
+
       <Animated.View
         entering={enterFade(0)}
         style={[styles.resources, first ? styles.resourcesFirst : styles.resourcesPresent]}
@@ -305,6 +314,29 @@ const styles = StyleSheet.create({
     textShadowRadius: 14,
   },
   patient: { color: theme.colors.accentLight, fontSize: 16 },
+  dispatchSticky: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.critical,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  dispatchStickyText: {
+    color: theme.colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+    lineHeight: 21,
+    marginTop: 4,
+  },
+  patientSticky: {
+    color: theme.colors.accentLight,
+    fontSize: 13,
+    marginTop: 4,
+    lineHeight: 18,
+  },
   situation: { marginBottom: theme.spacing.md },
   promptCard: {
     backgroundColor: theme.colors.surface,

@@ -1,10 +1,12 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated from 'react-native-reanimated';
 
 import { ShiftButton } from '@/components/ui/ShiftUI';
 import { BrandMark } from '@/components/ui/BrandMark';
-import { theme } from '@/constants/theme';
+import { PressScale, PulseOrb, enterUp } from '@/components/ui/motion';
+import { categoryColor, theme } from '@/constants/theme';
 import { CALL_CATEGORIES } from '@/data/emt/categories';
 import { DIFFICULTY_OPTIONS } from '@/data/emt/difficulty';
 import type { CallCategory, EmtDifficulty } from '@/data/emt/types';
@@ -25,23 +27,39 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.glowAmber} pointerEvents="none" />
-      <View style={styles.glowTeal} pointerEvents="none" />
+      <PulseOrb color={theme.colors.amberGlow} size={240} top={-50} right={-70} />
+      <PulseOrb
+        color={theme.colors.cadGlow}
+        size={280}
+        top={140}
+        left={-90}
+        duration={4400}
+        delay={600}
+      />
+      <PulseOrb
+        color={theme.colors.violetGlow}
+        size={220}
+        bottom={-60}
+        right={-40}
+        duration={5200}
+        delay={1200}
+      />
+
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
         <BrandMark />
 
-        <View style={styles.disclaimer}>
+        <Animated.View entering={enterUp(3)} style={styles.disclaimer}>
           <Text style={styles.disclaimerTitle}>Training aid only</Text>
           <Text style={styles.disclaimerText}>
             Not a substitute for formal EMT education, certification, medical direction, or local
             protocols.
           </Text>
-        </View>
+        </Animated.View>
 
-        <View style={styles.shiftCard}>
+        <Animated.View entering={enterUp(4)} style={styles.shiftCard}>
           <Text style={styles.shiftLabel}>DIFFICULTY</Text>
           <View style={styles.diffRow}>
             {DIFFICULTY_OPTIONS.map((opt) => (
@@ -57,12 +75,13 @@ export default function HomeScreen() {
           <Text style={styles.diffHelp}>
             {DIFFICULTY_OPTIONS.find((o) => o.id === difficulty)?.description}
           </Text>
-        </View>
+        </Animated.View>
 
-        <View style={styles.shiftCard}>
+        <Animated.View entering={enterUp(5)} style={styles.shiftCard}>
           <Text style={styles.shiftLabel}>CHOOSE A CATEGORY</Text>
           <Text style={styles.shiftPrompt}>
-            You pick the lane — Medical, Trauma, Peds, OB, or MCI. The generator builds the call.
+            Step-by-step skills-sheet walkthrough. Correct and incorrect options at each
+            decision — stay in order like the NREMT sheet.
           </Text>
 
           {CALL_CATEGORIES.map((cat, index) => (
@@ -72,6 +91,8 @@ export default function HomeScreen() {
                 label={cat.label.toUpperCase()}
                 onPress={() => handleStartCategory(cat.id)}
                 variant={index === 0 ? 'primary' : 'secondary'}
+                accentColor={categoryColor(cat.id)}
+                index={index}
               />
               <Text style={styles.examples}>{cat.examples}</Text>
             </View>
@@ -82,10 +103,11 @@ export default function HomeScreen() {
             label="RANDOM ANY CATEGORY"
             onPress={() => handleStartCategory()}
             variant="secondary"
+            index={CALL_CATEGORIES.length}
           />
-        </View>
+        </Animated.View>
 
-        <View style={styles.shiftCard}>
+        <Animated.View entering={enterUp(6)} style={styles.shiftCard}>
           <Text style={styles.shiftLabel}>COMPETE</Text>
           <Text style={styles.shiftPrompt}>
             Season standings for clinical judgment and patient outcomes.
@@ -94,8 +116,9 @@ export default function HomeScreen() {
             label="VIEW LEADERBOARD"
             onPress={() => router.push('/emt/leaderboard')}
             variant="secondary"
+            accentColor={theme.colors.accent}
           />
-        </View>
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -113,7 +136,7 @@ function DifficultyChip({
   accent: 'default' | 'exam';
 }) {
   return (
-    <Pressable
+    <PressScale
       onPress={onPress}
       style={[
         styles.chip,
@@ -130,30 +153,12 @@ function DifficultyChip({
       >
         {label}
       </Text>
-    </Pressable>
+    </PressScale>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.background },
-  glowAmber: {
-    position: 'absolute',
-    top: -40,
-    right: -60,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: theme.colors.amberGlow,
-  },
-  glowTeal: {
-    position: 'absolute',
-    top: 120,
-    left: -80,
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: theme.colors.cadGlow,
-  },
   content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xl },
   disclaimer: {
     backgroundColor: theme.colors.surface,

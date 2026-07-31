@@ -1,6 +1,15 @@
+import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { theme } from '@/constants/theme';
+import { enterDown, enterUp } from '@/components/ui/motion';
 
 interface BrandMarkProps {
   /** Compact for stacked nav headers */
@@ -9,6 +18,21 @@ interface BrandMarkProps {
 
 /** Hero wordmark — dispatch-bay identity, not a generic eyebrow + headline. */
 export function BrandMark({ compact = false }: BrandMarkProps) {
+  const sweep = useSharedValue(0);
+
+  useEffect(() => {
+    sweep.value = withRepeat(
+      withTiming(1, { duration: 2600, easing: Easing.inOut(Easing.quad) }),
+      -1,
+      true
+    );
+  }, [sweep]);
+
+  const ruleStyle = useAnimatedStyle(() => ({
+    opacity: 0.45 + sweep.value * 0.55,
+    transform: [{ scaleX: 0.7 + sweep.value * 0.3 }],
+  }));
+
   if (compact) {
     return (
       <View style={styles.compactWrap}>
@@ -20,16 +44,18 @@ export function BrandMark({ compact = false }: BrandMarkProps) {
 
   return (
     <View style={styles.hero}>
-      <Text style={styles.wordmark}>RESPONSE</Text>
-      <View style={styles.subRow}>
+      <Animated.Text entering={enterDown(0)} style={styles.wordmark}>
+        RESPONSE
+      </Animated.Text>
+      <Animated.View entering={enterUp(1)} style={styles.subRow}>
         <Text style={styles.emt}>EMT</Text>
-        <View style={styles.subRule} />
+        <Animated.View style={[styles.subRule, ruleStyle]} />
         <Text style={styles.simulator}>SIMULATOR</Text>
-      </View>
+      </Animated.View>
 
-      <Text style={styles.tagline}>
-        Size up. Assess. Decide. Debrief like the skills sheet.
-      </Text>
+      <Animated.Text entering={enterUp(2)} style={styles.tagline}>
+        Size up. Assess. Decide. Wrong options are there on purpose — stay in order.
+      </Animated.Text>
     </View>
   );
 }
@@ -61,6 +87,9 @@ const styles = StyleSheet.create({
     lineHeight: 68,
     letterSpacing: 2,
     textAlign: 'center',
+    textShadowColor: theme.colors.cadGlowStrong,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 18,
   },
   subRow: {
     flexDirection: 'row',
@@ -80,7 +109,6 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 2,
     backgroundColor: theme.colors.accent,
-    opacity: 0.85,
   },
   simulator: {
     color: theme.colors.textMuted,

@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { theme } from '@/constants/theme';
+import { PressScale, enterUp } from '@/components/ui/motion';
 
 interface MasteryCardProps {
   protocolName: string;
@@ -31,6 +32,8 @@ interface ShiftButtonProps {
   onPress: () => void;
   variant?: 'primary' | 'secondary';
   disabled?: boolean;
+  accentColor?: string;
+  index?: number;
 }
 
 export function ShiftButton({
@@ -38,27 +41,38 @@ export function ShiftButton({
   onPress,
   variant = 'primary',
   disabled = false,
+  accentColor,
+  index = 0,
 }: ShiftButtonProps) {
+  const tint =
+    variant === 'primary'
+      ? { backgroundColor: accentColor ?? theme.colors.emsBlue }
+      : accentColor
+        ? { borderColor: accentColor }
+        : null;
+
   return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.button,
-        variant === 'primary' ? styles.primary : styles.secondary,
-        pressed && !disabled && styles.pressed,
-        disabled && styles.disabled,
-      ]}
+    <PressScale
       onPress={onPress}
       disabled={disabled}
+      entering={enterUp(index)}
+      style={[
+        styles.button,
+        variant === 'primary' ? styles.primary : styles.secondary,
+        tint,
+        disabled && styles.disabled,
+      ]}
     >
       <Text
         style={[
           styles.buttonText,
           variant === 'secondary' && styles.secondaryText,
+          variant === 'secondary' && accentColor ? { color: accentColor } : null,
         ]}
       >
         {label}
       </Text>
-    </Pressable>
+    </PressScale>
   );
 }
 
@@ -106,17 +120,11 @@ const styles = StyleSheet.create({
   },
   primary: {
     backgroundColor: theme.colors.emsBlue,
-    borderWidth: 1,
-    borderColor: theme.colors.primaryDark,
   },
   secondary: {
     backgroundColor: theme.colors.surfaceLight,
     borderWidth: 1,
     borderColor: theme.colors.border,
-  },
-  pressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.98 }],
   },
   disabled: {
     opacity: 0.4,

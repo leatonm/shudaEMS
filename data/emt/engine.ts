@@ -437,6 +437,10 @@ export function resolveEmtRun(input: {
 
   const pearl = pickRandom(call.pearls, Math.random);
 
+  const flowMisses = timeline
+    .filter((e) => e.flowMiss)
+    .map((e) => e.message);
+
   let summary: string;
   if (!skillsSheetPass && difficulty === 'exam') {
     summary =
@@ -455,6 +459,10 @@ export function resolveEmtRun(input: {
       'Patient or provider risk increased, but keep drilling the critical criteria.';
   }
 
+  if (flowMisses.length > 0) {
+    summary += ` ${flowMisses.length} flow miss(es) recorded.`;
+  }
+
   const debrief: EmtDebrief = {
     title: call.archetypeName,
     summary,
@@ -469,6 +477,7 @@ export function resolveEmtRun(input: {
     protocolNotes: call.protocolNotes,
     criticalFails,
     skillsSheetPass,
+    flowMisses: [...new Set(flowMisses)],
   };
 
   const normalizedSkills: SkillScores = {

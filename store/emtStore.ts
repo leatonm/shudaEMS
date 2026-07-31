@@ -2,14 +2,13 @@ import { create } from 'zustand';
 
 import {
   applyVitals,
-  evaluateAbcdeStep,
-  evaluateSafetyAction,
-  evaluateTransport,
+  createInitialSkills,
   evaluateTreatmentAction,
   hazardsAreCleared,
   resolveEmtRun,
 } from '@/data/emt/engine';
 import { generateEmtCall } from '@/data/emt/generator';
+import { buildWalkthrough, findStepIndex } from '@/data/emt/walkthrough';
 import type {
   AbcdeStep,
   CallCategory,
@@ -21,9 +20,9 @@ import type {
   SkillCategory,
   SkillScores,
   TimelineEntry,
+  WalkthroughChoice,
+  WalkthroughStep,
 } from '@/data/emt/types';
-import { createInitialSkills } from '@/data/emt/engine';
-import { isDestination, isTransportPriority } from '@/data/emt/actions';
 
 interface EmtStore {
   call: EmtCall | null;
@@ -36,6 +35,7 @@ interface EmtStore {
   abcdeCompleted: AbcdeStep[];
   historyCompleted: string[];
   treatments: string[];
+  allergiesChecked: boolean;
   transportPriority: string | null;
   destination: string | null;
   timeline: TimelineEntry[];
@@ -43,6 +43,8 @@ interface EmtStore {
   totalScore: number;
   result: EmtRunResult | null;
   startedAt: number;
+  steps: WalkthroughStep[];
+  stepIndex: number;
 
   setDifficulty: (difficulty: EmtDifficulty) => void;
   startCall: (options?: {
@@ -50,18 +52,7 @@ interface EmtStore {
     archetypeId?: string;
     difficulty?: EmtDifficulty;
   }) => string | null;
-  respond: () => void;
-  takeSafetyAction: (actionId: string) => void;
-  beginPrimarySurvey: () => void;
-  assessAbcde: (step: AbcdeStep) => void;
-  proceedToHistory: () => void;
-  takeHistory: (promptId: string) => void;
-  proceedToTreatment: () => void;
-  applyTreatment: (actionId: string) => void;
-  proceedToTransport: () => void;
-  chooseTransportPriority: (id: string) => void;
-  chooseDestination: (id: string) => void;
-  completeCall: () => void;
+  chooseNext: (choiceId: string) => void;
   reset: () => void;
 }
 
@@ -91,24 +82,60 @@ function applySkill(
   };
 }
 
-export const useEmtStore = create<EmtStore>((set, get) => ({
-  call: null,
-  phase: 'dispatch',
-  difficulty: 'standard',
-  vitals: null,
-  safetyActions: [],
+function resolveAdvanceIndex(
+  steps: WalkthroughStep[],
+  currentIndex: number,
+  advance: WalkthroughChoice['advance']
+): number {
+  switch (advance) {
+    case 'stay':
+      return currentIndex;
+    case 'next':
+      return Math.min(currentIndex + 1, steps.length - 1);
+    case 'jump_primary':
+      return findStepIndex(steps, 'primary_survey');
+    case 'jump_history': {
+      const idx = findStepIndex(steps, 'history');
+      return idx > 0 || steps[0]?.phase === 'history'
+        ? idx
+        : findStepIndex(steps, 'treatment');
+    }
+    case 'jump_treatment':
+      return findStepIndex(steps, 'treatment');
+    case 'jump_transport':
+      return findStepIndex(steps, 'transport');
+    case 'complete':
+      return currentIndex;
+    default:
+      return currentIndex + 1;
+  }
+}
+
+const emptyState = {
+  call: null as EmtCall | null,
+  phase: 'dispatch' as EmtPhase,
+  vitals: null as EmtVitals | null,
+  safetyActions: [] as string[],
   sceneEntered: false,
   enteredUnsafe: false,
-  abcdeCompleted: [],
-  historyCompleted: [],
-  treatments: [],
-  transportPriority: null,
-  destination: null,
-  timeline: [],
+  abcdeCompleted: [] as AbcdeStep[],
+  historyCompleted: [] as string[],
+  treatments: [] as string[],
+  allergiesChecked: false,
+  transportPriority: null as string | null,
+  destination: null as string | null,
+  timeline: [] as TimelineEntry[],
   skillScores: createInitialSkills(),
   totalScore: 0,
-  result: null,
+  result: null as EmtRunResult | null,
   startedAt: 0,
+  steps: [] as WalkthroughStep[],
+  stepIndex: 0,
+};
+
+export const useEmtStore = create<EmtStore>((set, get) => ({
+  ...emptyState,
+  difficulty: 'standard',
 
   setDifficulty: (difficulty) => set({ difficulty }),
 
@@ -118,281 +145,287 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       category: options?.category,
       archetypeId: options?.archetypeId,
     });
+    const steps = buildWalkthrough(call);
     set({
+      ...emptyState,
       call,
       difficulty,
-      phase: 'dispatch',
+      phase: steps[0]?.phase ?? 'dispatch',
       vitals: { ...call.vitals },
-      safetyActions: [],
-      sceneEntered: false,
-      enteredUnsafe: false,
-      abcdeCompleted: [],
-      historyCompleted: [],
-      treatments: [],
-      transportPriority: null,
-      destination: null,
-      timeline: [],
-      skillScores: createInitialSkills(),
-      totalScore: 0,
-      result: null,
       startedAt: Date.now(),
+      steps,
+      stepIndex: 0,
+      skillScores: createInitialSkills(),
     });
     return call.id;
   },
 
-  respond: () => {
-    set({ phase: 'scene_safety' });
-  },
-
-  takeSafetyAction: (actionId) => {
+  chooseNext: (choiceId) => {
     const state = get();
-    if (!state.call || state.phase !== 'scene_safety') return;
+    if (!state.call || !state.vitals || state.phase === 'debrief') return;
+    if (state.result) return;
 
-    const effect = evaluateSafetyAction(
-      state.call,
-      actionId,
-      state.safetyActions,
-      state.sceneEntered
-    );
+    const step = state.steps[state.stepIndex];
+    if (!step) return;
 
-    if (effect.message === 'Already done.') return;
+    const choice = step.choices.find((c) => c.id === choiceId);
+    if (!choice) return;
 
-    const nextSafety = [...state.safetyActions, actionId];
-    const entering = actionId === 'enter_scene';
-    const enteredUnsafe =
-      state.enteredUnsafe ||
-      (entering && !hazardsAreCleared(state.call, state.safetyActions));
+    let safetyActions = [...state.safetyActions];
+    let sceneEntered = state.sceneEntered;
+    let enteredUnsafe = state.enteredUnsafe;
+    let abcdeCompleted = [...state.abcdeCompleted];
+    let historyCompleted = [...state.historyCompleted];
+    let treatments = [...state.treatments];
+    let allergiesChecked = state.allergiesChecked;
+    let transportPriority = state.transportPriority;
+    let destination = state.destination;
+    let vitals = state.vitals;
+    let scoreDelta = choice.scoreDelta ?? 0;
+    let message = choice.message ?? choice.label;
+    let severity = choice.severity ?? (choice.correct ? 'good' : 'warn');
+    let skill = choice.skill;
+    let flowMiss = Boolean(choice.flowMiss);
+
+    const kind = choice.actionKind;
+    const payload = choice.payload;
+
+    if (kind === 'ppe' && payload) {
+      if (!safetyActions.includes(payload)) safetyActions.push(payload);
+    }
+
+    if (kind === 'verbalize_safe') {
+      if (!safetyActions.includes('verbalize_scene_safe')) {
+        safetyActions.push('verbalize_scene_safe');
+      }
+    }
+
+    if (kind === 'stage' && payload) {
+      if (!safetyActions.includes(payload)) safetyActions.push(payload);
+    }
+
+    if (kind === 'safety_request' && payload) {
+      if (!safetyActions.includes(payload)) safetyActions.push(payload);
+      if (payload === 'request_als' && !treatments.includes('request_als')) {
+        treatments.push('request_als');
+      }
+    }
+
+    if (kind === 'enter_scene') {
+      const safe = hazardsAreCleared(state.call, safetyActions);
+      if (!safe) {
+        enteredUnsafe = true;
+        scoreDelta = Math.min(scoreDelta, -30);
+        message =
+          choice.message ??
+          'Entered before the scene was safe — provider risk.';
+        severity = 'bad';
+        flowMiss = true;
+        vitals = applyVitals(vitals, {
+          mentalStatus: 'scene chaotic — delayed care',
+        });
+      }
+      sceneEntered = true;
+      if (!safetyActions.includes('enter_scene')) {
+        safetyActions.push('enter_scene');
+      }
+    }
+
+    if (kind === 'trap_skip_bsi') {
+      enteredUnsafe = enteredUnsafe || state.call.hazards.length > 0;
+      flowMiss = true;
+    }
+
+    if (kind === 'trap_ignore_hazards') {
+      flowMiss = true;
+    }
+
+    if (kind === 'abcde' && payload) {
+      const stepId = payload as AbcdeStep;
+      if (!abcdeCompleted.includes(stepId)) {
+        abcdeCompleted.push(stepId);
+      }
+      sceneEntered = true;
+    }
+
+    if ((kind === 'history' || kind === 'check_allergies') && payload) {
+      if (!historyCompleted.includes(payload)) {
+        historyCompleted.push(payload);
+      }
+      if (kind === 'check_allergies' || /allerg/i.test(payload)) {
+        allergiesChecked = true;
+      }
+    }
+
+    if (kind === 'trap_meds_before_allergies') {
+      flowMiss = true;
+      if (!allergiesChecked) {
+        scoreDelta = Math.min(scoreDelta, -16);
+        message =
+          'Medication considered before allergy check — dangerous habit.';
+        severity = 'bad';
+      }
+      if (payload && !treatments.includes(payload)) {
+        const fx = evaluateTreatmentAction(
+          state.call,
+          payload,
+          treatments,
+          vitals
+        );
+        treatments.push(payload);
+        vitals = applyVitals(vitals, fx.vitals);
+      }
+    }
+
+    if (kind === 'treatment' && payload) {
+      if (
+        ['aspirin', 'nitroglycerin'].includes(payload) &&
+        !allergiesChecked
+      ) {
+        flowMiss = true;
+        scoreDelta = Math.min(scoreDelta, -12);
+        message =
+          (choice.message ?? message) +
+          ' (Allergy check missing before medication.)';
+        severity = 'bad';
+      }
+      if (!treatments.includes(payload)) {
+        const fx = evaluateTreatmentAction(
+          state.call,
+          payload,
+          treatments,
+          vitals
+        );
+        treatments.push(payload);
+        vitals = applyVitals(vitals, fx.vitals);
+        // Prefer engine message for harmful treatments
+        if (state.call.harmfulTreatment.includes(payload)) {
+          message = fx.message;
+          scoreDelta = fx.scoreDelta;
+          severity = fx.severity ?? 'bad';
+          skill = fx.skill;
+          flowMiss = true;
+        } else if (resourceAlreadyOnSceneCheck(state.call, payload)) {
+          message = fx.message;
+          scoreDelta = fx.scoreDelta;
+          severity = fx.severity ?? 'warn';
+          flowMiss = true;
+        }
+      }
+    }
+
+    if (kind === 'trap_early_treat' || kind === 'trap_load_go') {
+      flowMiss = true;
+      sceneEntered = true;
+    }
+
+    if (kind === 'trap_full_history') {
+      flowMiss = true;
+    }
+
+    if (kind === 'transport_priority' && payload) {
+      transportPriority = payload;
+    }
+
+    if (kind === 'transport_destination' && payload) {
+      destination = payload;
+    }
 
     const timeline = pushTimeline(state.timeline, {
-      phase: 'scene_safety',
-      actionId,
-      label: state.call.safetyActions.find((a) => a.id === actionId)?.label ?? actionId,
-      message: effect.message,
-      scoreDelta: effect.scoreDelta,
-      severity: effect.severity ?? 'neutral',
+      phase: step.phase,
+      actionId: choice.id,
+      label: choice.label,
+      message,
+      scoreDelta,
+      severity,
+      flowMiss,
       startedAt: state.startedAt,
     });
 
-    set({
-      safetyActions: nextSafety,
-      sceneEntered: state.sceneEntered || entering,
-      enteredUnsafe,
-      vitals: applyVitals(state.vitals!, effect.vitals),
-      timeline,
-      totalScore: state.totalScore + effect.scoreDelta,
-      skillScores: applySkill(state.skillScores, effect.skill, effect.scoreDelta),
-    });
-  },
+    const skillScores = applySkill(state.skillScores, skill, scoreDelta);
+    const totalScore = state.totalScore + scoreDelta;
 
-  beginPrimarySurvey: () => {
-    const { call, safetyActions, sceneEntered } = get();
-    if (!call) return;
-    if (!sceneEntered && !hazardsAreCleared(call, safetyActions)) {
-      // Allow begin if they somehow cleared without explicit enter — auto-enter if safe
-      if (hazardsAreCleared(call, safetyActions)) {
-        set({ sceneEntered: true, phase: 'primary_survey' });
-      }
+    if (choice.advance === 'complete') {
+      const finalPriority =
+        transportPriority ?? state.call.correctTransportPriority;
+      const finalDestination =
+        destination ?? state.call.correctDestination;
+
+      const result = resolveEmtRun({
+        call: state.call,
+        timeline,
+        skillScores,
+        totalScore,
+        finalVitals: vitals,
+        safetyActions,
+        abcdeCompleted,
+        treatments,
+        transportPriority: finalPriority,
+        destination: finalDestination,
+        enteredUnsafe,
+        difficulty: state.difficulty,
+      });
+
+      set({
+        safetyActions,
+        sceneEntered,
+        enteredUnsafe,
+        abcdeCompleted,
+        historyCompleted,
+        treatments,
+        allergiesChecked,
+        transportPriority: finalPriority,
+        destination: finalDestination,
+        vitals,
+        timeline,
+        skillScores: result.skillScores,
+        totalScore: result.totalScore,
+        result,
+        phase: 'debrief',
+      });
       return;
     }
-    if (!sceneEntered) return;
-    set({ phase: 'primary_survey' });
-  },
 
-  assessAbcde: (step) => {
-    const state = get();
-    if (!state.call || state.phase !== 'primary_survey') return;
-
-    const effect = evaluateAbcdeStep(state.call, step, state.abcdeCompleted);
-    if (effect.message === 'Already assessed.') return;
-
-    const timeline = pushTimeline(state.timeline, {
-      phase: 'primary_survey',
-      actionId: step,
-      label: state.call.abcde.find((a) => a.step === step)?.label ?? step,
-      message: effect.message,
-      scoreDelta: effect.scoreDelta,
-      severity: effect.severity ?? 'neutral',
-      startedAt: state.startedAt,
-    });
+    const nextIndex = resolveAdvanceIndex(
+      state.steps,
+      state.stepIndex,
+      choice.advance
+    );
+    const nextStep = state.steps[nextIndex];
 
     set({
-      abcdeCompleted: [...state.abcdeCompleted, step],
-      timeline,
-      totalScore: state.totalScore + effect.scoreDelta,
-      skillScores: applySkill(state.skillScores, effect.skill, effect.scoreDelta),
-    });
-  },
-
-  proceedToHistory: () => {
-    const { abcdeCompleted, call } = get();
-    if (!call) return;
-    // Require airway, breathing, circulation at minimum
-    const required = ['airway', 'breathing', 'circulation'] as AbcdeStep[];
-    if (!required.every((s) => abcdeCompleted.includes(s))) return;
-    set({ phase: 'history' });
-  },
-
-  takeHistory: (promptId) => {
-    const state = get();
-    if (!state.call || state.phase !== 'history') return;
-    if (state.historyCompleted.includes(promptId)) return;
-
-    const prompt = state.call.history.find((h) => h.id === promptId);
-    if (!prompt) return;
-
-    const timeline = pushTimeline(state.timeline, {
-      phase: 'history',
-      actionId: promptId,
-      label: `${prompt.framework}: ${prompt.label}`,
-      message: prompt.clue,
-      scoreDelta: 5,
-      severity: 'good',
-      startedAt: state.startedAt,
-    });
-
-    set({
-      historyCompleted: [...state.historyCompleted, promptId],
-      timeline,
-      totalScore: state.totalScore + 5,
-      skillScores: {
-        ...state.skillScores,
-        assessment: state.skillScores.assessment + 5,
-      },
-    });
-  },
-
-  proceedToTreatment: () => {
-    set({ phase: 'treatment' });
-  },
-
-  applyTreatment: (actionId) => {
-    const state = get();
-    if (!state.call || !state.vitals || state.phase !== 'treatment') return;
-
-    const effect = evaluateTreatmentAction(
-      state.call,
-      actionId,
-      state.treatments,
-      state.vitals
-    );
-    if (effect.message === 'Already performed.') return;
-
-    const timeline = pushTimeline(state.timeline, {
-      phase: 'treatment',
-      actionId,
-      label: state.call.treatmentActions.find((a) => a.id === actionId)?.label ?? actionId,
-      message: effect.message,
-      scoreDelta: effect.scoreDelta,
-      severity: effect.severity ?? 'neutral',
-      startedAt: state.startedAt,
-    });
-
-    set({
-      treatments: [...state.treatments, actionId],
-      vitals: applyVitals(state.vitals, effect.vitals),
-      timeline,
-      totalScore: state.totalScore + effect.scoreDelta,
-      skillScores: applySkill(state.skillScores, effect.skill, effect.scoreDelta),
-    });
-  },
-
-  proceedToTransport: () => {
-    set({ phase: 'transport' });
-  },
-
-  chooseTransportPriority: (id) => {
-    if (!isTransportPriority(id)) return;
-    set({ transportPriority: id });
-  },
-
-  chooseDestination: (id) => {
-    if (!isDestination(id)) return;
-    set({ destination: id });
-  },
-
-  completeCall: () => {
-    const state = get();
-    if (!state.call || !state.vitals) return;
-    if (!state.transportPriority || !state.destination) return;
-
-    const transportFx = evaluateTransport(
-      state.call,
-      state.transportPriority,
-      state.destination
-    );
-
-    let timeline = pushTimeline(state.timeline, {
-      phase: 'transport',
-      actionId: 'priority',
-      label: 'Transport Priority',
-      message: transportFx.priority.message,
-      scoreDelta: transportFx.priority.scoreDelta,
-      severity: transportFx.priority.severity ?? 'neutral',
-      startedAt: state.startedAt,
-    });
-    timeline = pushTimeline(timeline, {
-      phase: 'transport',
-      actionId: 'destination',
-      label: 'Destination',
-      message: transportFx.destination.message,
-      scoreDelta: transportFx.destination.scoreDelta,
-      severity: transportFx.destination.severity ?? 'neutral',
-      startedAt: state.startedAt,
-    });
-
-    const totalScore =
-      state.totalScore +
-      transportFx.priority.scoreDelta +
-      transportFx.destination.scoreDelta;
-
-    const skillScores = applySkill(
-      applySkill(state.skillScores, 'transport', transportFx.priority.scoreDelta),
-      'transport',
-      transportFx.destination.scoreDelta
-    );
-
-    const result = resolveEmtRun({
-      call: state.call,
+      safetyActions,
+      sceneEntered,
+      enteredUnsafe,
+      abcdeCompleted,
+      historyCompleted,
+      treatments,
+      allergiesChecked,
+      transportPriority,
+      destination,
+      vitals,
       timeline,
       skillScores,
       totalScore,
-      finalVitals: state.vitals,
-      safetyActions: state.safetyActions,
-      abcdeCompleted: state.abcdeCompleted,
-      treatments: state.treatments,
-      transportPriority: state.transportPriority,
-      destination: state.destination,
-      enteredUnsafe: state.enteredUnsafe,
-      difficulty: state.difficulty,
-    });
-
-    set({
-      timeline,
-      totalScore: result.totalScore,
-      skillScores: result.skillScores,
-      result,
-      phase: 'debrief',
+      stepIndex: nextIndex,
+      phase: nextStep?.phase ?? state.phase,
     });
   },
 
   reset: () => {
-    set({
-      call: null,
-      phase: 'dispatch',
-      vitals: null,
-      safetyActions: [],
-      sceneEntered: false,
-      enteredUnsafe: false,
-      abcdeCompleted: [],
-      historyCompleted: [],
-      treatments: [],
-      transportPriority: null,
-      destination: null,
-      timeline: [],
-      skillScores: createInitialSkills(),
-      totalScore: 0,
-      result: null,
-      startedAt: 0,
-    });
+    set({ ...emptyState, difficulty: get().difficulty });
   },
 }));
+
+function resourceAlreadyOnSceneCheck(
+  call: EmtCall,
+  actionId: string
+): boolean {
+  const map: Record<string, 'fire' | 'als' | 'pd'> = {
+    request_fire: 'fire',
+    request_als: 'als',
+    request_pd: 'pd',
+  };
+  const res = map[actionId];
+  return res ? (call.resourcesOnScene ?? []).includes(res) : false;
+}

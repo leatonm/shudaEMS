@@ -1,28 +1,31 @@
-/** EMT Response Simulator — dispatch-bay visual language. */
+/** EMT Response Simulator — high-energy dispatch-bay visual language. */
 export const theme = {
   colors: {
-    background: '#061018',
-    backgroundAlt: '#0A1A24',
-    surface: '#102832',
-    surfaceLight: '#183844',
-    /** Signal teal — primary brand */
-    emsBlue: '#1ECAD4',
-    primary: '#1ECAD4',
-    primaryDark: '#1498A0',
+    background: '#050A12',
+    backgroundAlt: '#0A1622',
+    surface: '#0E1E2C',
+    surfaceLight: '#16303F',
+    /** Electric cyan — primary brand */
+    emsBlue: '#00E5FF',
+    primary: '#00E5FF',
+    primaryDark: '#00A9BF',
     /** CAD amber — urgency / highlights */
-    accent: '#F0B429',
-    accentLight: '#7EE8F0',
-    success: '#3DDC97',
-    warning: '#F5A623',
-    error: '#FF5A5F',
-    critical: '#FF3B4A',
-    text: '#E8F4F7',
-    textMuted: '#8AA8B4',
-    border: '#254555',
-    cadGlow: 'rgba(30, 202, 212, 0.28)',
-    amberGlow: 'rgba(240, 180, 41, 0.18)',
-    dangerGlow: 'rgba(255, 90, 95, 0.16)',
-    successGlow: 'rgba(61, 220, 151, 0.14)',
+    accent: '#FFC531',
+    accentLight: '#8BF3FF',
+    violet: '#B36BFF',
+    success: '#22F5A8',
+    warning: '#FFB020',
+    error: '#FF4D6D',
+    critical: '#FF2D55',
+    text: '#EAF6FB',
+    textMuted: '#8FB0C0',
+    border: '#1F4155',
+    cadGlow: 'rgba(0, 229, 255, 0.22)',
+    cadGlowStrong: 'rgba(0, 229, 255, 0.38)',
+    amberGlow: 'rgba(255, 197, 49, 0.18)',
+    violetGlow: 'rgba(179, 107, 255, 0.18)',
+    dangerGlow: 'rgba(255, 77, 109, 0.18)',
+    successGlow: 'rgba(34, 245, 168, 0.16)',
   },
   spacing: {
     xs: 4,
@@ -39,7 +42,20 @@ export const theme = {
 };
 
 export const priorityColors: Record<number, string> = {
-  1: '#FF5A5F',
-  2: '#F5A623',
-  3: '#1ECAD4',
+  1: '#FF2D55',
+  2: '#FFC531',
+  3: '#00E5FF',
 };
+
+/** Per-category accent so each lane feels distinct. */
+export const categoryColors: Record<string, string> = {
+  medical: '#00E5FF',
+  trauma: '#FF4D6D',
+  peds: '#B36BFF',
+  ob: '#FF7AC6',
+  mci: '#FFC531',
+};
+
+export function categoryColor(id: string): string {
+  return categoryColors[id] ?? theme.colors.emsBlue;
+}

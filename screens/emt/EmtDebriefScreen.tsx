@@ -2,10 +2,12 @@ import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated from 'react-native-reanimated';
 
 import { ShiftButton } from '@/components/ui/ShiftUI';
 import { StarRating } from '@/components/ui/StarRating';
-import { theme } from '@/constants/theme';
+import { PopIn, PulseOrb, enterUp } from '@/components/ui/motion';
+import { categoryColor, theme } from '@/constants/theme';
 import { useEmtStore } from '@/store/emtStore';
 
 export default function EmtDebriefScreen() {
@@ -38,17 +40,29 @@ export default function EmtDebriefScreen() {
   }
 
   const passed = result.skillsSheetPass;
+  const accent = categoryColor(call.category);
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.glowTop} pointerEvents="none" />
+      <PulseOrb
+        color={passed ? theme.colors.successGlow : theme.colors.dangerGlow}
+        size={300}
+        top={-90}
+        right={-90}
+      />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.header}>Debrief</Text>
-        <Text style={styles.subheader}>
+        <Animated.Text entering={enterUp(0)} style={styles.header}>
+          Debrief
+        </Animated.Text>
+        <Animated.Text entering={enterUp(1)} style={styles.subheader}>
           {result.debrief.title} · {call.category.toUpperCase()} · {difficulty.toUpperCase()}
-        </Text>
+        </Animated.Text>
 
-        <View style={[styles.sheetBanner, passed ? styles.sheetPass : styles.sheetFail]}>
+        <PopIn
+          delay={140}
+          style={[styles.sheetBanner, passed ? styles.sheetPass : styles.sheetFail]}
+        >
           <Text style={styles.sheetKicker}>NREMT-STYLE SKILLS SHEET</Text>
           <Text style={[styles.sheetResult, passed ? styles.passText : styles.failText]}>
             {passed ? 'PASS' : 'FAIL'}
@@ -60,18 +74,21 @@ export default function EmtDebriefScreen() {
                 ? 'Critical fail — automatic exam failure.'
                 : 'Would fail a skills sheet. Score capped for learning.'}
           </Text>
-        </View>
+        </PopIn>
 
-        <View style={styles.summary}>
+        <Animated.View
+          entering={enterUp(3)}
+          style={[styles.summary, { borderColor: accent }]}
+        >
           <StarRating stars={result.stars} />
           <Text style={styles.outcome}>
             Patient: {result.patientOutcome.toUpperCase()} · Score {result.totalScore}
           </Text>
           <Text style={styles.summaryText}>{result.debrief.summary}</Text>
-        </View>
+        </Animated.View>
 
         {result.criticalFails.length > 0 ? (
-          <Section title="Critical criteria">
+          <Section title="Critical criteria" index={4}>
             {result.criticalFails.map((fail) => (
               <View key={fail.id} style={styles.critCard}>
                 <Text style={styles.critLabel}>{fail.label}</Text>
@@ -81,28 +98,36 @@ export default function EmtDebriefScreen() {
           </Section>
         ) : null}
 
+        {result.debrief.flowMisses && result.debrief.flowMisses.length > 0 ? (
+          <Section title="Flow misses" index={5}>
+            {result.debrief.flowMisses.map((item) => (
+              <Bullet key={item} icon="!" color={theme.colors.critical} text={item} />
+            ))}
+          </Section>
+        ) : null}
+
         <SkillRow scores={result.skillScores} />
 
-        <Section title="What went well">
+        <Section title="What went well" index={6}>
           {result.debrief.whatWentWell.map((item) => (
             <Bullet key={item} icon="✓" color={theme.colors.success} text={item} />
           ))}
         </Section>
 
-        <Section title="Improve next time">
+        <Section title="Improve next time" index={7}>
           {result.debrief.improveNext.map((item) => (
             <Bullet key={item} icon="→" color={theme.colors.warning} text={item} />
           ))}
         </Section>
 
-        <Section title="Universal principles">
+        <Section title="Universal principles" index={8}>
           {result.debrief.universalPrinciples.map((item) => (
             <Bullet key={item} icon="•" color={theme.colors.accentLight} text={item} />
           ))}
         </Section>
 
         {result.debrief.protocolNotes && result.debrief.protocolNotes.length > 0 && (
-          <Section title="Protocol-dependent (region matters)">
+          <Section title="Protocol-dependent (region matters)" index={8}>
             {result.debrief.protocolNotes.map((item) => (
               <Bullet key={item} icon="!" color={theme.colors.emsBlue} text={item} />
             ))}
@@ -114,7 +139,7 @@ export default function EmtDebriefScreen() {
           <Text style={styles.pearlText}>{result.debrief.pearl}</Text>
         </View>
 
-        <Section title="Call timeline">
+        <Section title="Call timeline" index={8}>
           {result.timeline.map((entry, index) => (
             <View key={`${entry.actionId}-${index}`} style={styles.timelineRow}>
               <Text style={styles.time}>
@@ -138,6 +163,7 @@ export default function EmtDebriefScreen() {
         <ShiftButton
           label={`ANOTHER ${call.category.toUpperCase()} CALL`}
           onPress={() => handleNext(call.category)}
+          accentColor={accent}
         />
         <ShiftButton label="RANDOM CALL" onPress={() => handleNext()} variant="secondary" />
         <ShiftButton label="END SESSION" onPress={handleHome} variant="secondary" />
@@ -146,12 +172,20 @@ export default function EmtDebriefScreen() {
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({
+  title,
+  children,
+  index = 0,
+}: {
+  title: string;
+  children: ReactNode;
+  index?: number;
+}) {
   return (
-    <View style={styles.section}>
+    <Animated.View entering={enterUp(index)} style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
       {children}
-    </View>
+    </Animated.View>
   );
 }
 

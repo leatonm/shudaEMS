@@ -99,6 +99,68 @@ export interface TimelineEntry {
   scoreDelta: number;
   severity: 'good' | 'warn' | 'bad' | 'neutral';
   atMs: number;
+  /** Out-of-order / trap choice for debrief "Flow misses" */
+  flowMiss?: boolean;
+}
+
+/** What happens after the player picks a walkthrough choice. */
+export type WalkthroughAdvance =
+  | 'stay'
+  | 'next'
+  | 'jump_primary'
+  | 'jump_history'
+  | 'jump_treatment'
+  | 'jump_transport'
+  | 'complete';
+
+export type WalkthroughActionKind =
+  | 'respond'
+  | 'ppe'
+  | 'verbalize_safe'
+  | 'safety_request'
+  | 'stage'
+  | 'enter_scene'
+  | 'abcde'
+  | 'history'
+  | 'check_allergies'
+  | 'treatment'
+  | 'transport_priority'
+  | 'transport_destination'
+  | 'proceed'
+  | 'trap_skip_bsi'
+  | 'trap_early_treat'
+  | 'trap_meds_before_allergies'
+  | 'trap_full_history'
+  | 'trap_load_go'
+  | 'trap_ignore_hazards';
+
+export interface WalkthroughChoice {
+  id: string;
+  label: string;
+  /** Best answer for this step */
+  correct: boolean;
+  /** Show under Coach mode */
+  tip?: string;
+  actionKind: WalkthroughActionKind;
+  /** Action payload: airway, request_fire, aspirin, emergency, etc. */
+  payload?: string;
+  advance: WalkthroughAdvance;
+  scoreDelta?: number;
+  message?: string;
+  severity?: 'good' | 'warn' | 'bad';
+  skill?: SkillCategory;
+  flowMiss?: boolean;
+}
+
+export interface WalkthroughStep {
+  id: string;
+  phase: EmtPhase;
+  title: string;
+  prompt: string;
+  coachTip?: string;
+  /** What situational info to show */
+  reveal: 'dispatch' | 'scene' | 'vitals' | 'none';
+  choices: WalkthroughChoice[];
 }
 
 /** NREMT Patient Assessment–style automatic fail criterion. */
@@ -121,6 +183,8 @@ export interface EmtDebrief {
   /** Examiner-style critical criteria language */
   criticalFails: CriticalFail[];
   skillsSheetPass: boolean;
+  /** Out-of-order / trap decisions during the walkthrough */
+  flowMisses: string[];
 }
 
 export interface SkillScores {

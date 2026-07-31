@@ -1,20 +1,29 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated from 'react-native-reanimated';
 
 import {
   LEADERBOARD_ENTRIES,
   LEADERBOARD_NOTE,
   LEADERBOARD_SEASON,
 } from '@/data/emt/leaderboard';
+import { PulseOrb, enterUp } from '@/components/ui/motion';
 import { theme } from '@/constants/theme';
 
 export default function LeaderboardScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <PulseOrb color={theme.colors.amberGlow} size={260} top={-80} left={-70} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.kicker}>{LEADERBOARD_SEASON}</Text>
-        <Text style={styles.title}>Standings</Text>
-        <Text style={styles.subtitle}>{LEADERBOARD_NOTE}</Text>
+        <Animated.Text entering={enterUp(0)} style={styles.kicker}>
+          {LEADERBOARD_SEASON}
+        </Animated.Text>
+        <Animated.Text entering={enterUp(1)} style={styles.title}>
+          Standings
+        </Animated.Text>
+        <Animated.Text entering={enterUp(2)} style={styles.subtitle}>
+          {LEADERBOARD_NOTE}
+        </Animated.Text>
 
         <View style={styles.headerRow}>
           <Text style={[styles.colRank, styles.headerText]}>#</Text>
@@ -22,9 +31,10 @@ export default function LeaderboardScreen() {
           <Text style={[styles.colScore, styles.headerText]}>SCORE</Text>
         </View>
 
-        {LEADERBOARD_ENTRIES.map((entry) => (
-          <View
+        {LEADERBOARD_ENTRIES.map((entry, index) => (
+          <Animated.View
             key={entry.handle}
+            entering={enterUp(index + 3)}
             style={[styles.row, entry.rank <= 3 && styles.rowTop]}
           >
             <Text style={[styles.colRank, entry.rank <= 3 && styles.topRank]}>
@@ -37,7 +47,7 @@ export default function LeaderboardScreen() {
               </Text>
             </View>
             <Text style={styles.colScore}>{entry.score}</Text>
-          </View>
+          </Animated.View>
         ))}
 
         <Text style={styles.footer}>
@@ -114,7 +124,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   topRank: {
-    color: theme.colors.warning,
+    color: theme.colors.accent,
   },
   colName: {
     flex: 1,

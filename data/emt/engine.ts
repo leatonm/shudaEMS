@@ -237,15 +237,47 @@ export function evaluateTreatmentAction(
 
   if (call.recommendedTreatment.includes(actionId)) {
     const vitalsPatch: Partial<EmtVitals> = {};
+    let message = 'Appropriate EMT-scope intervention. Continue reassessment.';
     if (actionId === 'oxygen') {
       vitalsPatch.spo2 = Math.min(vitals.spo2 + 4, 99);
+      message = `Oxygen applied. SpO₂ improves from ${vitals.spo2}% to ${vitalsPatch.spo2}%.`;
     }
     if (actionId === 'position_comfort') {
       vitalsPatch.rr = Math.max(vitals.rr - 2, 12);
+      message = `Positioning eases the work of breathing; respirations decrease from ${vitals.rr} to ${vitalsPatch.rr}.`;
+    }
+    if (actionId === 'airway_adjunct') {
+      vitalsPatch.spo2 = Math.min(vitals.spo2 + 3, 99);
+      message = `Airway support improves oxygenation from ${vitals.spo2}% to ${vitalsPatch.spo2}%.`;
+    }
+    if (actionId === 'abdominal_thrusts') {
+      vitalsPatch.spo2 = Math.min(vitals.spo2 + 5, 99);
+      vitalsPatch.mentalStatus = 'airway obstruction improving';
+      message = 'The obstruction begins to clear. Reassess airway patency and breathing now.';
+    }
+    if (actionId === 'control_bleeding' || actionId === 'bleeding_control') {
+      vitalsPatch.hr = Math.max(vitals.hr - 4, 40);
+      message = 'Life-threatening bleeding is controlled. Continue shock care and rapid transport.';
+    }
+    if (actionId === 'left_lateral') {
+      vitalsPatch.rr = Math.max(vitals.rr - 1, 12);
+      message = 'Left-lateral positioning reduces supine compression. Reassess maternal perfusion.';
+    }
+    if (actionId === 'cpr') {
+      message = 'High-quality CPR started. Minimize interruptions and apply the AED immediately.';
+    }
+    if (actionId === 'aed') {
+      message = 'AED attached and rhythm analysis underway. Follow prompts and resume CPR promptly.';
+    }
+    if (actionId === 'rapid_transport') {
+      message = 'Rapid packaging started. Continue indicated care and reassessment during transport.';
+    }
+    if (actionId === 'notify_hospital') {
+      message = 'The receiving facility is alerted early and can prepare the appropriate team.';
     }
     return {
       scoreDelta: 14,
-      message: 'Appropriate EMT-scope intervention.',
+      message,
       skill:
         actionId === 'notify_hospital' || actionId === 'request_als'
           ? 'communication'

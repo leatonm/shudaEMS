@@ -22,8 +22,10 @@ import {
   showHazardDetails,
   showPhaseCoaching,
 } from '@/data/emt/difficulty';
+import { hazardsAreCleared } from '@/data/emt/engine';
 import { describeResourcesOnArrival } from '@/data/emt/resources';
 import { shuffleChoices } from '@/data/emt/walkthrough';
+import type { WalkthroughChoice } from '@/data/emt/types';
 import { useEmtStore } from '@/store/emtStore';
 
 export default function EmtCallScreen() {
@@ -37,6 +39,14 @@ export default function EmtCallScreen() {
   const stepIndex = useEmtStore((s) => s.stepIndex);
   const timeline = useEmtStore((s) => s.timeline);
   const totalScore = useEmtStore((s) => s.totalScore);
+  const safetyActions = useEmtStore((s) => s.safetyActions);
+  const sceneEntered = useEmtStore((s) => s.sceneEntered);
+  const enteredUnsafe = useEmtStore((s) => s.enteredUnsafe);
+  const abcdeCompleted = useEmtStore((s) => s.abcdeCompleted);
+  const historyCompleted = useEmtStore((s) => s.historyCompleted);
+  const treatments = useEmtStore((s) => s.treatments);
+  const transportPriority = useEmtStore((s) => s.transportPriority);
+  const destination = useEmtStore((s) => s.destination);
   const chooseNext = useEmtStore((s) => s.chooseNext);
 
   const tips = showActionTips(difficulty);
@@ -70,12 +80,23 @@ export default function EmtCallScreen() {
 
   const accent = categoryColor(call.category);
   const lastFeedback = timeline[timeline.length - 1];
-  const live =
-    lastFeedback && step.phase !== 'dispatch'
-      ? formatLiveFeedback(difficulty, lastFeedback)
-      : null;
+  const live = lastFeedback ? formatLiveFeedback(difficulty, lastFeedback) : null;
 
   const progress = (stepIndex + 1) / Math.max(1, steps.length);
+  const groups = groupChoices(shuffled);
+  const phaseCompletion = {
+    scene_safety:
+      sceneEntered &&
+      !enteredUnsafe &&
+      hazardsAreCleared(call, safetyActions),
+    primary_survey: call.requiredAbcdeOrder.every((item) =>
+      abcdeCompleted.includes(item)
+    ),
+    treatment: call.recommendedTreatment
+      .filter((item) => item !== 'request_als')
+      .some((item) => treatments.includes(item)),
+    transport: false,
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -98,12 +119,12 @@ export default function EmtCallScreen() {
           {call.unit} · Priority {call.priority} · {difficulty.toUpperCase()}
         </Text>
 
+        <PhaseRail phase={step.phase} accent={accent} completed={phaseCompletion} />
+
         <View style={styles.progressWrap}>
           <ProgressTrack progress={progress} color={accent} />
           <View style={styles.progressMeta}>
-            <Text style={styles.progress}>
-              STEP {stepIndex + 1} / {steps.length}
-            </Text>
+            <Text style={styles.progress}>PROVIDER DECISION BOARD</Text>
             {showScore ? <Text style={styles.score}>{totalScore} PTS</Text> : null}
           </View>
         </View>
@@ -120,62 +141,299 @@ export default function EmtCallScreen() {
           <SituationStrip
             reveal={step.reveal}
             call={call}
-            vitals={vitals}
             hazardDetail={hazardDetail}
             accent={accent}
           />
 
+          <PatientStatus
+            call={call}
+            vitals={vitals}
+            showVitals={step.phase !== 'dispatch' && step.phase !== 'scene_safety'}
+            accent={accent}
+          />
+
+          {live && live.text !== '…' ? (
+            <Animated.View
+              key={`fb-${timeline.length}`}
+              entering={enterUp(0)}
+              style={[
+                styles.feedback,
+                live.showSeverity && lastFeedback?.severity === 'good'
+                  ? styles.feedbackGood
+                  : live.showSeverity && lastFeedback?.severity === 'bad'
+                    ? styles.feedbackBad
+                    : styles.feedbackNeutral,
+              ]}
+            >
+              <Text style={styles.feedbackLabel}>
+                {lastFeedback?.severity === 'good'
+                  ? 'WHY THAT WORKED'
+                  : lastFeedback?.severity === 'bad'
+                    ? 'CLINICAL CONSEQUENCE'
+                    : 'DECISION REVIEW'}
+              </Text>
+              <Text style={styles.feedbackText}>{live.text}</Text>
+            </Animated.View>
+          ) : null}
+
           <View style={[styles.promptCard, { borderLeftColor: accent }]}>
-            <Text style={[styles.promptLabel, { color: accent }]}>WHAT DO YOU DO NEXT?</Text>
+            <Text style={[styles.promptLabel, { color: accent }]}>YOU ARE LEADING THIS CALL</Text>
             <Text style={styles.prompt}>{step.prompt}</Text>
             {coach && step.coachTip ? (
               <Text style={styles.hint}>{step.coachTip}</Text>
             ) : null}
           </View>
 
-          {shuffled.map((choice, index) => (
-            <ChoiceButton
-              key={choice.id}
-              label={choice.label}
-              subtitle={tips ? choice.tip : undefined}
-              onPress={() => chooseNext(choice.id)}
-              index={index}
-              accentColor={accent}
-            />
+          {groups.map((group) => (
+            <View key={group.label} style={styles.choiceGroup}>
+              <Text style={styles.choiceGroupLabel}>{group.label}</Text>
+              {group.choices.map((choice, index) => {
+                const completed = isChoiceCompleted(choice, {
+                  safetyActions,
+                  sceneEntered,
+                  abcdeCompleted,
+                  historyCompleted,
+                  treatments,
+                  transportPriority,
+                  destination,
+                });
+                return (
+                  <ChoiceButton
+                    key={choice.id}
+                    label={completed ? `✓ ${choice.label}` : choice.label}
+                    subtitle={completed ? 'Completed' : tips ? choice.tip : undefined}
+                    onPress={() => chooseNext(choice.id)}
+                    index={index}
+                    accentColor={accent}
+                    variant={completed ? 'success' : 'default'}
+                    disabled={completed}
+                  />
+                );
+              })}
+            </View>
           ))}
         </Animated.View>
-
-        {live && live.text !== '…' ? (
-          <Animated.View
-            key={`fb-${timeline.length}`}
-            entering={enterUp(0)}
-            style={[
-              styles.feedback,
-              live.showSeverity && lastFeedback?.severity === 'good'
-                ? styles.feedbackGood
-                : live.showSeverity && lastFeedback?.severity === 'bad'
-                  ? styles.feedbackBad
-                  : styles.feedbackNeutral,
-            ]}
-          >
-            <Text style={styles.feedbackText}>{live.text}</Text>
-          </Animated.View>
-        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+const PHASES = [
+  { id: 'scene_safety', label: 'SIZE-UP' },
+  { id: 'primary_survey', label: 'PRIMARY' },
+  { id: 'treatment', label: 'PATIENT CARE' },
+  { id: 'transport', label: 'TRANSPORT' },
+] as const;
+
+function PhaseRail({
+  phase,
+  accent,
+  completed,
+}: {
+  phase: string;
+  accent: string;
+  completed: Record<(typeof PHASES)[number]['id'], boolean>;
+}) {
+  const currentIndex =
+    phase === 'dispatch'
+      ? -1
+      : PHASES.findIndex((item) => item.id === phase);
+
+  return (
+    <View style={styles.phaseRail}>
+      {PHASES.map((item, index) => {
+        const active = index === currentIndex;
+        const complete = completed[item.id];
+        const skipped = index < currentIndex && !complete;
+        return (
+          <View key={item.id} style={styles.phaseRailItem}>
+            <View
+              style={[
+                styles.phaseRailDot,
+                complete && { backgroundColor: theme.colors.success },
+                active && { backgroundColor: accent, transform: [{ scale: 1.25 }] },
+                skipped && { backgroundColor: theme.colors.error },
+              ]}
+            />
+            <Text
+              style={[
+                styles.phaseRailText,
+                (active || complete) && { color: active ? accent : theme.colors.success },
+                skipped && { color: theme.colors.error },
+              ]}
+            >
+              {skipped ? `! ${item.label}` : item.label}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function PatientStatus({
+  call,
+  vitals,
+  showVitals,
+  accent,
+}: {
+  call: NonNullable<ReturnType<typeof useEmtStore.getState>['call']>;
+  vitals: NonNullable<ReturnType<typeof useEmtStore.getState>['vitals']>;
+  showVitals: boolean;
+  accent: string;
+}) {
+  const changed =
+    vitals.bp !== call.vitals.bp ||
+    vitals.hr !== call.vitals.hr ||
+    vitals.rr !== call.vitals.rr ||
+    vitals.spo2 !== call.vitals.spo2 ||
+    vitals.mentalStatus !== call.vitals.mentalStatus;
+
+  return (
+    <Animated.View
+      key={`${vitals.bp}-${vitals.hr}-${vitals.rr}-${vitals.spo2}-${vitals.mentalStatus}`}
+      entering={enterFade(0)}
+      style={[styles.patientStatus, changed && { borderColor: accent }]}
+    >
+      <View style={styles.patientStatusHeader}>
+        <Text style={[styles.patientStatusLabel, { color: accent }]}>LIVE PATIENT STATUS</Text>
+        {changed ? <Text style={styles.patientChanged}>PATIENT RESPONSE</Text> : null}
+      </View>
+      {!showVitals ? (
+        <>
+          <Text style={styles.patientStatusSummary}>{call.patientSummary}</Text>
+          <Text style={styles.patientNotAssessed}>
+            Vital signs not yet obtained—complete the primary survey.
+          </Text>
+        </>
+      ) : (
+        <>
+          <View style={styles.vitalGrid}>
+            <VitalTile label="BP" value={vitals.bp} changed={vitals.bp !== call.vitals.bp} />
+            <VitalTile
+              label="HR"
+              value={String(vitals.hr)}
+              changed={vitals.hr !== call.vitals.hr}
+            />
+            <VitalTile
+              label="RR"
+              value={String(vitals.rr)}
+              changed={vitals.rr !== call.vitals.rr}
+            />
+            <VitalTile
+              label="SpO₂"
+              value={`${vitals.spo2}%`}
+              changed={vitals.spo2 !== call.vitals.spo2}
+            />
+          </View>
+          <Text style={styles.mentalStatus}>
+            Mental status: <Text style={styles.mentalStatusValue}>{vitals.mentalStatus}</Text>
+          </Text>
+        </>
+      )}
+    </Animated.View>
+  );
+}
+
+function VitalTile({
+  label,
+  value,
+  changed,
+}: {
+  label: string;
+  value: string;
+  changed: boolean;
+}) {
+  return (
+    <View style={[styles.vitalTile, changed && styles.vitalTileChanged]}>
+      <Text style={styles.vitalTileLabel}>{label}</Text>
+      <Text style={[styles.vitalTileValue, changed && styles.vitalTileValueChanged]}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function groupChoices(choices: WalkthroughChoice[]) {
+  const groups: Array<{ label: string; choices: WalkthroughChoice[] }> = [];
+  const labels = new Map<string, WalkthroughChoice[]>();
+
+  for (const choice of choices) {
+    let label = 'AVAILABLE ACTIONS';
+    if (choice.actionKind === 'abcde') label = 'PRIMARY ASSESSMENT';
+    if (choice.actionKind === 'history' || choice.actionKind === 'check_allergies') {
+      label = 'FOCUSED QUESTIONS';
+    }
+    if (choice.actionKind === 'treatment') label = 'INTERVENTIONS';
+    if (
+      choice.actionKind === 'enter_scene' ||
+      choice.actionKind === 'proceed' ||
+      choice.actionKind === 'trap_early_treat' ||
+      choice.actionKind === 'trap_load_go'
+    ) {
+      label = 'MOVE THE CALL FORWARD';
+    }
+    if (
+      choice.actionKind === 'transport_priority' ||
+      choice.actionKind === 'transport_destination'
+    ) {
+      label = 'CHOOSE ONE';
+    }
+    const group = labels.get(label) ?? [];
+    group.push(choice);
+    labels.set(label, group);
+  }
+
+  for (const [label, groupedChoices] of labels) {
+    groups.push({ label, choices: groupedChoices });
+  }
+  return groups;
+}
+
+function isChoiceCompleted(
+  choice: WalkthroughChoice,
+  state: {
+    safetyActions: string[];
+    sceneEntered: boolean;
+    abcdeCompleted: string[];
+    historyCompleted: string[];
+    treatments: string[];
+    transportPriority: string | null;
+    destination: string | null;
+  }
+): boolean {
+  const payload = choice.payload;
+  if (!payload) return false;
+  if (choice.actionKind === 'ppe' || choice.actionKind === 'stage') {
+    return state.safetyActions.includes(payload);
+  }
+  if (choice.actionKind === 'verbalize_safe') {
+    return state.safetyActions.includes('verbalize_scene_safe');
+  }
+  if (choice.actionKind === 'safety_request') {
+    return state.safetyActions.includes(payload);
+  }
+  if (choice.actionKind === 'enter_scene') return state.sceneEntered;
+  if (choice.actionKind === 'abcde') return state.abcdeCompleted.includes(payload);
+  if (choice.actionKind === 'history' || choice.actionKind === 'check_allergies') {
+    return state.historyCompleted.includes(payload);
+  }
+  if (choice.actionKind === 'treatment') return state.treatments.includes(payload);
+  if (choice.actionKind === 'transport_priority') {
+    return state.transportPriority === payload;
+  }
+  if (choice.actionKind === 'transport_destination') return state.destination === payload;
+  return false;
+}
+
 function SituationStrip({
   reveal,
   call,
-  vitals,
   hazardDetail,
   accent,
 }: {
   reveal: 'dispatch' | 'scene' | 'vitals' | 'none';
   call: NonNullable<ReturnType<typeof useEmtStore.getState>['call']>;
-  vitals: NonNullable<ReturnType<typeof useEmtStore.getState>['vitals']>;
   hazardDetail: boolean;
   accent: string;
 }) {
@@ -195,6 +453,10 @@ function SituationStrip({
     );
 
   if (reveal === 'dispatch' || reveal === 'none') {
+    return dispatchCard;
+  }
+
+  if (reveal === 'vitals') {
     return dispatchCard;
   }
 
@@ -229,15 +491,6 @@ function SituationStrip({
         ))
       )}
 
-      {reveal === 'vitals' ? (
-        <Animated.View entering={enterFade(1)} style={styles.vitals}>
-          <Text style={styles.vitalsLabel}>VITALS</Text>
-          <Text style={styles.vitalsText}>
-            BP {vitals.bp} · HR {vitals.hr} · RR {vitals.rr} · SpO₂ {vitals.spo2}% ·{' '}
-            {vitals.mentalStatus}
-          </Text>
-        </Animated.View>
-      ) : null}
     </View>
   );
 }
@@ -258,6 +511,35 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontFamily: 'IBMPlexMono',
     fontSize: 12,
+  },
+  phaseRail: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: theme.spacing.md,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  phaseRailItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 5,
+  },
+  phaseRailDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: theme.colors.border,
+  },
+  phaseRailText: {
+    color: theme.colors.textMuted,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: 8,
+    letterSpacing: 0.5,
+    textAlign: 'center',
   },
   progressWrap: {
     marginTop: theme.spacing.sm,
@@ -337,6 +619,83 @@ const styles = StyleSheet.create({
     marginTop: 4,
     lineHeight: 18,
   },
+  patientStatus: {
+    backgroundColor: theme.colors.backgroundAlt,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+  },
+  patientStatusHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  patientStatusLabel: {
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: 10,
+    letterSpacing: 1.2,
+  },
+  patientChanged: {
+    color: theme.colors.accent,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: 9,
+    letterSpacing: 0.8,
+  },
+  patientStatusSummary: {
+    color: theme.colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  patientNotAssessed: {
+    color: theme.colors.textMuted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  vitalGrid: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  vitalTile: {
+    flex: 1,
+    minWidth: 58,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  vitalTileChanged: {
+    backgroundColor: theme.colors.amberGlow,
+    borderColor: theme.colors.accent,
+  },
+  vitalTileLabel: {
+    color: theme.colors.textMuted,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: 9,
+  },
+  vitalTileValue: {
+    color: theme.colors.text,
+    fontFamily: 'SpaceMono',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  vitalTileValueChanged: {
+    color: theme.colors.accent,
+  },
+  mentalStatus: {
+    color: theme.colors.textMuted,
+    fontSize: 12,
+    marginTop: 10,
+  },
+  mentalStatusValue: {
+    color: theme.colors.text,
+    fontWeight: '700',
+  },
   situation: { marginBottom: theme.spacing.md },
   promptCard: {
     backgroundColor: theme.colors.surface,
@@ -413,27 +772,21 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     marginBottom: 4,
   },
-  vitals: {
-    backgroundColor: theme.colors.surfaceLight,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    padding: theme.spacing.md,
-    marginTop: theme.spacing.sm,
+  choiceGroup: {
+    marginBottom: theme.spacing.md,
   },
-  vitalsLabel: {
-    color: theme.colors.emsBlue,
+  choiceGroupLabel: {
+    color: theme.colors.textMuted,
+    fontFamily: 'IBMPlexMonoBold',
     fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1,
-    marginBottom: 4,
+    letterSpacing: 1.2,
+    marginBottom: 7,
   },
-  vitalsText: { color: theme.colors.text, fontFamily: 'SpaceMono', fontSize: 13 },
   feedback: {
-    marginTop: theme.spacing.md,
     padding: theme.spacing.md,
     borderRadius: theme.radius.md,
     borderWidth: 1,
+    marginBottom: theme.spacing.md,
   },
   feedbackGood: {
     backgroundColor: theme.colors.successGlow,
@@ -446,6 +799,13 @@ const styles = StyleSheet.create({
   feedbackNeutral: {
     backgroundColor: theme.colors.surface,
     borderColor: theme.colors.border,
+  },
+  feedbackLabel: {
+    color: theme.colors.textMuted,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: 9,
+    letterSpacing: 1.1,
+    marginBottom: 5,
   },
   feedbackText: { color: theme.colors.text, lineHeight: 20 },
   muted: { color: theme.colors.textMuted, textAlign: 'center', marginBottom: 16 },

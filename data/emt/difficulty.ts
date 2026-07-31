@@ -48,13 +48,12 @@ export function formatLiveFeedback(
   }
 
   if (difficulty === 'standard') {
-    if (entry.severity === 'bad') {
-      return { text: 'Patient condition changed. Reassess.', showSeverity: true };
-    }
-    if (entry.severity === 'warn') {
-      return { text: 'Noted.', showSeverity: false };
-    }
-    return { text: 'Action logged.', showSeverity: false };
+    // Standard mode removes pre-decision hints, but still teaches after the
+    // provider commits to an action.
+    return {
+      text: entry.message,
+      showSeverity: entry.severity === 'good' || entry.severity === 'bad',
+    };
   }
 
   // exam — almost silent during play

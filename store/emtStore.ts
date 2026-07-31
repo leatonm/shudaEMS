@@ -3,12 +3,16 @@ import { create } from 'zustand';
 import {
   applyVitals,
   createInitialSkills,
+  evaluateAbcdeStep,
   evaluateTreatmentAction,
   hazardsAreCleared,
   resolveEmtRun,
 } from '@/data/emt/engine';
 import { generateEmtCall } from '@/data/emt/generator';
-import { buildWalkthrough, findStepIndex } from '@/data/emt/walkthrough';
+import {
+  buildDecisionFlow,
+  findDecisionStepIndex,
+} from '@/data/emt/decisionFlow';
 import type {
   AbcdeStep,
   CallCategory,
@@ -93,17 +97,17 @@ function resolveAdvanceIndex(
     case 'next':
       return Math.min(currentIndex + 1, steps.length - 1);
     case 'jump_primary':
-      return findStepIndex(steps, 'primary_survey');
+      return findDecisionStepIndex(steps, 'primary_survey');
     case 'jump_history': {
-      const idx = findStepIndex(steps, 'history');
+      const idx = findDecisionStepIndex(steps, 'history');
       return idx > 0 || steps[0]?.phase === 'history'
         ? idx
-        : findStepIndex(steps, 'treatment');
+        : findDecisionStepIndex(steps, 'treatment');
     }
     case 'jump_treatment':
-      return findStepIndex(steps, 'treatment');
+      return findDecisionStepIndex(steps, 'treatment');
     case 'jump_transport':
-      return findStepIndex(steps, 'transport');
+      return findDecisionStepIndex(steps, 'transport');
     case 'complete':
       return currentIndex;
     default:
@@ -145,7 +149,7 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       category: options?.category,
       archetypeId: options?.archetypeId,
     });
-    const steps = buildWalkthrough(call);
+    const steps = buildDecisionFlow(call);
     set({
       ...emptyState,
       call,
@@ -242,6 +246,11 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
 
     if (kind === 'abcde' && payload) {
       const stepId = payload as AbcdeStep;
+      const effect = evaluateAbcdeStep(state.call, stepId, abcdeCompleted);
+      scoreDelta = effect.scoreDelta;
+      message = effect.message;
+      severity = effect.severity ?? severity;
+      skill = effect.skill ?? skill;
       if (!abcdeCompleted.includes(stepId)) {
         abcdeCompleted.push(stepId);
       }
@@ -278,10 +287,10 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
     }
 
     if (kind === 'treatment' && payload) {
-      if (
+      const medicationSafetyMiss =
         ['aspirin', 'nitroglycerin'].includes(payload) &&
-        !allergiesChecked
-      ) {
+        !allergiesChecked;
+      if (medicationSafetyMiss) {
         flowMiss = true;
         scoreDelta = Math.min(scoreDelta, -12);
         message =
@@ -298,17 +307,16 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
         );
         treatments.push(payload);
         vitals = applyVitals(vitals, fx.vitals);
-        // Prefer engine message for harmful treatments
-        if (state.call.harmfulTreatment.includes(payload)) {
+        if (!medicationSafetyMiss) {
           message = fx.message;
           scoreDelta = fx.scoreDelta;
-          severity = fx.severity ?? 'bad';
-          skill = fx.skill;
-          flowMiss = true;
-        } else if (resourceAlreadyOnSceneCheck(state.call, payload)) {
-          message = fx.message;
-          scoreDelta = fx.scoreDelta;
-          severity = fx.severity ?? 'warn';
+          severity = fx.severity ?? severity;
+          skill = fx.skill ?? skill;
+        }
+        if (
+          state.call.harmfulTreatment.includes(payload) ||
+          resourceAlreadyOnSceneCheck(state.call, payload)
+        ) {
           flowMiss = true;
         }
       }
@@ -321,6 +329,41 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
 
     if (kind === 'trap_full_history') {
       flowMiss = true;
+    }
+
+    if (kind === 'proceed' && payload === 'finish_primary') {
+      const missing = state.call.requiredAbcdeOrder.filter(
+        (item) => !abcdeCompleted.includes(item)
+      );
+      if (missing.length > 0) {
+        scoreDelta = -6 * missing.length;
+        message = `You moved on with ${missing.length} primary assessment item${missing.length === 1 ? '' : 's'} incomplete: ${missing.join(', ')}. Continue care, but reassess these threats.`;
+        severity = 'bad';
+        skill = 'assessment';
+        flowMiss = true;
+      } else {
+        message = 'Primary survey complete. Move into focused patient care.';
+        severity = 'good';
+      }
+    }
+
+    if (kind === 'proceed' && payload === 'choose_transport') {
+      const missingPrimary = state.call.requiredAbcdeOrder.filter(
+        (item) => !abcdeCompleted.includes(item)
+      );
+      if (missingPrimary.length > 0) {
+        scoreDelta = Math.min(scoreDelta, -10);
+        message = `Transport selected with primary threats still unchecked: ${missingPrimary.join(', ')}.`;
+        severity = 'bad';
+        skill = 'assessment';
+        flowMiss = true;
+      } else if (treatments.length === 0) {
+        scoreDelta = Math.min(scoreDelta, -6);
+        message = 'Transport selected without performing an indicated intervention.';
+        severity = 'warn';
+        skill = 'treatment';
+        flowMiss = true;
+      }
     }
 
     if (kind === 'transport_priority' && payload) {

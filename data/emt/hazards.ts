@@ -12,14 +12,14 @@ export const HAZARD_LIBRARY: Record<string, SceneHazard> = {
     id: 'leaking_fluid',
     label: 'Leaking Fluids',
     description: 'Fuel or unknown fluid under vehicle',
-    clearWith: ['request_fire', 'stage_away'],
+    clearWith: ['request_fire'],
     severity: 'high',
   },
   smoke: {
     id: 'smoke',
     label: 'Smoke / Fire Risk',
     description: 'Vehicle smoking — fire potential',
-    clearWith: ['request_fire', 'stage_away'],
+    clearWith: ['request_fire'],
     severity: 'high',
   },
   unstable_surface: {
@@ -33,7 +33,7 @@ export const HAZARD_LIBRARY: Record<string, SceneHazard> = {
     id: 'bystanders',
     label: 'Agitated Bystanders',
     description: 'Crowd interfering with access',
-    clearWith: ['request_pd', 'stage_away'],
+    clearWith: ['request_pd'],
     severity: 'moderate',
   },
   unknown_meds: {
@@ -47,7 +47,7 @@ export const HAZARD_LIBRARY: Record<string, SceneHazard> = {
     id: 'structural_damage',
     label: 'Unstable Structure / Debris',
     description: 'Collapsed area or debris field — do not freestyle entry',
-    clearWith: ['request_fire', 'stage_away', 'establish_command'],
+    clearWith: ['request_fire', 'establish_command'],
     severity: 'high',
   },
   multiple_patients: {

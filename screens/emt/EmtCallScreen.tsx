@@ -13,6 +13,10 @@ import {
   showPhaseCoaching,
 } from '@/data/emt/difficulty';
 import { hazardsAreCleared } from '@/data/emt/engine';
+import {
+  describeResourcesOnArrival,
+  resourceAlreadyOnScene,
+} from '@/data/emt/resources';
 import type { AbcdeStep } from '@/data/emt/types';
 import { useEmtStore } from '@/store/emtStore';
 
@@ -123,6 +127,9 @@ export default function EmtCallScreen() {
         {phase === 'scene_safety' && (
           <View style={styles.section}>
             <Text style={styles.question}>Scene size-up</Text>
+
+            <ResourcesPanel resourcesOnScene={call.resourcesOnScene ?? []} />
+
             {call.hazards.length === 0 ? (
               <Text style={styles.body}>
                 {coach
@@ -142,13 +149,28 @@ export default function EmtCallScreen() {
 
             {call.safetyActions.map((action) => {
               const done = safetyActions.includes(action.id);
+              const alreadyThere = resourceAlreadyOnScene(
+                call.resourcesOnScene ?? [],
+                action.id
+              );
+              const label = done
+                ? `✓ ${action.label}`
+                : alreadyThere
+                  ? `${action.label} (already on scene)`
+                  : action.label;
               return (
                 <ChoiceButton
                   key={action.id}
-                  label={done ? `✓ ${action.label}` : action.label}
-                  subtitle={tips ? action.subtitle : undefined}
+                  label={label}
+                  subtitle={
+                    tips
+                      ? alreadyThere
+                        ? 'Already present — coordinate, do not re-request.'
+                        : action.subtitle
+                      : undefined
+                  }
                   onPress={() => takeSafetyAction(action.id)}
-                  variant={done ? 'success' : 'default'}
+                  variant={done ? 'success' : alreadyThere ? 'error' : 'default'}
                   disabled={done}
                 />
               );
@@ -226,13 +248,28 @@ export default function EmtCallScreen() {
             <Text style={styles.question}>Interventions</Text>
             {call.treatmentActions.map((action) => {
               const done = treatments.includes(action.id);
+              const alreadyThere = resourceAlreadyOnScene(
+                call.resourcesOnScene ?? [],
+                action.id
+              );
+              const label = done
+                ? `✓ ${action.label}`
+                : alreadyThere
+                  ? `${action.label} (already on scene)`
+                  : action.label;
               return (
                 <ChoiceButton
                   key={action.id}
-                  label={done ? `✓ ${action.label}` : action.label}
-                  subtitle={tips ? action.subtitle : undefined}
+                  label={label}
+                  subtitle={
+                    tips
+                      ? alreadyThere
+                        ? 'Already present — coordinate, do not re-request.'
+                        : action.subtitle
+                      : undefined
+                  }
                   onPress={() => applyTreatment(action.id)}
-                  variant={done ? 'success' : 'default'}
+                  variant={done ? 'success' : alreadyThere ? 'error' : 'default'}
                   disabled={done}
                 />
               );
@@ -288,6 +325,27 @@ export default function EmtCallScreen() {
         ) : null}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function ResourcesPanel({
+  resourcesOnScene,
+}: {
+  resourcesOnScene: import('@/data/emt/types').OnSceneResource[];
+}) {
+  const info = describeResourcesOnArrival(resourcesOnScene);
+  const first = resourcesOnScene.length === 0;
+
+  return (
+    <View style={[styles.resources, first ? styles.resourcesFirst : styles.resourcesPresent]}>
+      <Text style={styles.resourcesLabel}>RESOURCES ON ARRIVAL</Text>
+      <Text style={styles.resourcesHeadline}>{info.headline}</Text>
+      {info.lines.map((line) => (
+        <Text key={line} style={styles.resourcesLine}>
+          {line}
+        </Text>
+      ))}
+    </View>
   );
 }
 
@@ -385,6 +443,39 @@ const styles = StyleSheet.create({
   },
   hazardLabel: { color: theme.colors.warning, fontWeight: '800' },
   hazardDesc: { color: theme.colors.text, marginTop: 2 },
+  resources: {
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+  },
+  resourcesFirst: {
+    backgroundColor: theme.colors.amberGlow,
+    borderColor: theme.colors.accent,
+  },
+  resourcesPresent: {
+    backgroundColor: theme.colors.cadGlow,
+    borderColor: theme.colors.emsBlue,
+  },
+  resourcesLabel: {
+    color: theme.colors.textMuted,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: 10,
+    letterSpacing: 1.2,
+    marginBottom: 4,
+  },
+  resourcesHeadline: {
+    color: theme.colors.text,
+    fontWeight: '800',
+    fontSize: 16,
+    marginBottom: 6,
+  },
+  resourcesLine: {
+    color: theme.colors.text,
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 4,
+  },
   warn: { color: theme.colors.warning, textAlign: 'center', marginTop: 8, fontSize: 12 },
   muted: { color: theme.colors.textMuted, textAlign: 'center', marginBottom: 16 },
   vitals: {

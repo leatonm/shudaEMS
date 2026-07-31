@@ -4,14 +4,17 @@ import type {
   EmtCall,
   EmtDifficulty,
 } from '@/data/emt/types';
+import { mergeWithOnSceneActions } from '@/data/emt/resources';
 
 function hazardsCleared(call: EmtCall, safetyActionsTaken: string[]): boolean {
-  const requiredMet = call.requiredSafety.every((id) =>
-    safetyActionsTaken.includes(id)
+  const effective = mergeWithOnSceneActions(
+    call.resourcesOnScene ?? [],
+    safetyActionsTaken
   );
+  const requiredMet = call.requiredSafety.every((id) => effective.includes(id));
   if (call.hazards.length === 0) return requiredMet;
   const hazardsOk = call.hazards.every((hazard) =>
-    hazard.clearWith.some((id) => safetyActionsTaken.includes(id))
+    hazard.clearWith.some((id) => effective.includes(id))
   );
   return requiredMet && hazardsOk;
 }
@@ -64,6 +67,11 @@ export function evaluateCriticalFails(input: CriticalFailInput): CriticalFail[] 
     enteredUnsafe,
   } = input;
 
+  const treatmentsEffective = mergeWithOnSceneActions(
+    call.resourcesOnScene ?? [],
+    treatments
+  );
+
   const fails: CriticalFail[] = [];
 
   if (!safetyActions.includes('don_ppe')) {
@@ -83,7 +91,6 @@ export function evaluateCriticalFails(input: CriticalFailInput): CriticalFail[] 
       detail: 'You made patient contact before hazards were cleared.',
     });
   } else if (call.hazards.length > 0 && !hazardsCleared(call, safetyActions)) {
-    // Completed call without clearing hazards (edge path)
     fails.push({
       id: 'hazards_uncleared',
       sheet: 'both',
@@ -121,7 +128,9 @@ export function evaluateCriticalFails(input: CriticalFailInput): CriticalFail[] 
   const recommendedLifeThreats = call.recommendedTreatment.filter((id) =>
     LIFE_THREAT_ACTIONS.has(id)
   );
-  const lifeThreatHits = recommendedLifeThreats.filter((id) => treatments.includes(id));
+  const lifeThreatHits = recommendedLifeThreats.filter((id) =>
+    treatmentsEffective.includes(id)
+  );
   const lifeThreatFloor = Math.max(1, Math.ceil(recommendedLifeThreats.length * 0.5));
   if (recommendedLifeThreats.length > 0 && lifeThreatHits.length < lifeThreatFloor) {
     fails.push({
@@ -135,7 +144,7 @@ export function evaluateCriticalFails(input: CriticalFailInput): CriticalFail[] 
   // Trauma: C-spine when recommended is a classic critical criterion
   if (
     call.recommendedTreatment.includes('c_spine') &&
-    !treatments.includes('c_spine') &&
+    !treatmentsEffective.includes('c_spine') &&
     !fails.some((f) => f.id === 'no_life_threat_management')
   ) {
     fails.push({

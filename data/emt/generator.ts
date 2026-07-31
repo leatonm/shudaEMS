@@ -8,6 +8,7 @@ import {
   getArchetype,
   pickArchetypeIdForCategory,
 } from '@/data/emt/registry';
+import { pickResourcesOnScene } from '@/data/emt/resources';
 import type { CallCategory, EmtCall, ScenarioArchetype } from '@/data/emt/types';
 import {
   createRng,
@@ -72,6 +73,18 @@ export function generateEmtCall(options: GenerateEmtCallOptions = {}): EmtCall {
       ? appearance
       : `${age}yo ${sex} — ${appearance}`;
 
+  const recommendsAls =
+    archetype.recommendedTreatment.includes('request_als') ||
+    archetype.safetyActions.includes('request_als') ||
+    archetype.treatmentActions.includes('request_als');
+
+  const resourcesOnScene = pickResourcesOnScene({
+    category: archetype.category,
+    hazards,
+    recommendsAls,
+    rng,
+  });
+
   return {
     id: generateId(`emt_${archetype.id}`, rng),
     archetypeId: archetype.id,
@@ -84,6 +97,7 @@ export function generateEmtCall(options: GenerateEmtCallOptions = {}): EmtCall {
     age,
     sex,
     hazards,
+    resourcesOnScene,
     abcde: archetype.abcde,
     history: archetype.history,
     vitals: buildVitals(archetype, rng),

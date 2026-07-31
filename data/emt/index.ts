@@ -5,10 +5,15 @@ export type {
   EmtDifficulty,
   EmtPhase,
   EmtRunResult,
+  OnSceneResource,
   ScenarioArchetype,
 } from '@/data/emt/types';
 export { DIFFICULTY_OPTIONS } from '@/data/emt/difficulty';
 export { evaluateCriticalFails } from '@/data/emt/criticalFails';
+export {
+  describeResourcesOnArrival,
+  pickResourcesOnScene,
+} from '@/data/emt/resources';
 export { generateEmtCall } from '@/data/emt/generator';
 export {
   EMT_ARCHETYPE_IDS,

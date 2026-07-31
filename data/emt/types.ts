@@ -17,6 +17,9 @@ export type CallCategory = 'medical' | 'trauma' | 'peds' | 'ob' | 'mci';
 
 export type EmtDifficulty = 'coach' | 'standard' | 'exam';
 
+/** Agencies already present when you arrive — drives whether to request fire/ALS/PD. */
+export type OnSceneResource = 'fire' | 'als' | 'pd';
+
 export type DestinationType =
   | 'closest_ed'
   | 'stroke_center'
@@ -181,6 +184,8 @@ export interface EmtCall {
   age: number;
   sex: 'Male' | 'Female';
   hazards: SceneHazard[];
+  /** Who is already on scene when you arrive (size-up finding). */
+  resourcesOnScene: OnSceneResource[];
   abcde: AbcdeFinding[];
   history: HistoryPrompt[];
   vitals: EmtVitals;

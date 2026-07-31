@@ -3,6 +3,10 @@ import {
   applyCriticalFailScoring,
   evaluateCriticalFails,
 } from '@/data/emt/criticalFails';
+import {
+  mergeWithOnSceneActions,
+  resourceAlreadyOnScene,
+} from '@/data/emt/resources';
 import type {
   AbcdeStep,
   ConsequenceEffect,
@@ -36,15 +40,18 @@ export function hazardsAreCleared(
   call: EmtCall,
   safetyActionsTaken: string[]
 ): boolean {
+  const effective = mergeWithOnSceneActions(
+    call.resourcesOnScene ?? [],
+    safetyActionsTaken
+  );
+
   if (call.hazards.length === 0) {
-    return call.requiredSafety.every((id) => safetyActionsTaken.includes(id));
+    return call.requiredSafety.every((id) => effective.includes(id));
   }
 
-  const requiredMet = call.requiredSafety.every((id) =>
-    safetyActionsTaken.includes(id)
-  );
+  const requiredMet = call.requiredSafety.every((id) => effective.includes(id));
   const hazardsCleared = call.hazards.every((hazard) =>
-    hazard.clearWith.some((id) => safetyActionsTaken.includes(id))
+    hazard.clearWith.some((id) => effective.includes(id))
   );
   return requiredMet && hazardsCleared;
 }
@@ -59,6 +66,23 @@ export function evaluateSafetyAction(
     return {
       scoreDelta: 0,
       message: 'Already done.',
+      severity: 'warn',
+    };
+  }
+
+  if (resourceAlreadyOnScene(call.resourcesOnScene ?? [], actionId)) {
+    const who =
+      actionId === 'request_fire'
+        ? 'Fire'
+        : actionId === 'request_als'
+          ? 'ALS'
+          : actionId === 'request_pd'
+            ? 'Law enforcement'
+            : 'That unit';
+    return {
+      scoreDelta: -8,
+      message: `${who} is already on scene — coordinate with them instead of re-requesting.`,
+      skill: actionId === 'request_als' ? 'communication' : 'scene_safety',
       severity: 'warn',
     };
   }
@@ -184,6 +208,16 @@ export function evaluateTreatmentAction(
     return { scoreDelta: 0, message: 'Already performed.', severity: 'warn' };
   }
 
+  if (resourceAlreadyOnScene(call.resourcesOnScene ?? [], actionId)) {
+    return {
+      scoreDelta: -8,
+      message:
+        'ALS is already on scene — coordinate care instead of requesting another intercept.',
+      skill: 'communication',
+      severity: 'warn',
+    };
+  }
+
   if (call.harmfulTreatment.includes(actionId)) {
     const spo2 = Math.max((vitals.spo2 ?? 94) - 4, 78);
     return {
@@ -299,6 +333,11 @@ export function resolveEmtRun(input: {
   const whatWentWell: string[] = [];
   const improveNext: string[] = [];
 
+  const effectiveTreatments = mergeWithOnSceneActions(
+    call.resourcesOnScene ?? [],
+    treatments
+  );
+
   if (safetyActions.includes('don_ppe')) {
     whatWentWell.push('BSI / PPE before patient contact');
   } else {
@@ -322,9 +361,11 @@ export function resolveEmtRun(input: {
     );
   }
 
-  const hits = call.recommendedTreatment.filter((id) => treatments.includes(id));
+  const hits = call.recommendedTreatment.filter((id) =>
+    effectiveTreatments.includes(id)
+  );
   const misses = call.recommendedTreatment.filter(
-    (id) => !treatments.includes(id)
+    (id) => !effectiveTreatments.includes(id)
   );
   const harms = call.harmfulTreatment.filter((id) => treatments.includes(id));
 

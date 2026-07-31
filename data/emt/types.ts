@@ -15,6 +15,8 @@ export type TransportPriority = 'emergency' | 'urgent' | 'non_urgent';
 
 export type CallCategory = 'medical' | 'trauma' | 'peds' | 'ob' | 'mci';
 
+export type EmtDifficulty = 'coach' | 'standard' | 'exam';
+
 export type DestinationType =
   | 'closest_ed'
   | 'stroke_center'
@@ -96,6 +98,15 @@ export interface TimelineEntry {
   atMs: number;
 }
 
+/** NREMT Patient Assessment–style automatic fail criterion. */
+export interface CriticalFail {
+  id: string;
+  /** Which skills sheet language this maps to */
+  sheet: 'trauma' | 'medical' | 'both';
+  label: string;
+  detail: string;
+}
+
 export interface EmtDebrief {
   title: string;
   summary: string;
@@ -104,6 +115,9 @@ export interface EmtDebrief {
   pearl: string;
   universalPrinciples: string[];
   protocolNotes?: string[];
+  /** Examiner-style critical criteria language */
+  criticalFails: CriticalFail[];
+  skillsSheetPass: boolean;
 }
 
 export interface SkillScores {
@@ -194,4 +208,6 @@ export interface EmtRunResult {
   timeline: TimelineEntry[];
   debrief: EmtDebrief;
   finalVitals: EmtVitals;
+  criticalFails: CriticalFail[];
+  skillsSheetPass: boolean;
 }

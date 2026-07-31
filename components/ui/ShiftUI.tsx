@@ -106,9 +106,11 @@ const styles = StyleSheet.create({
   },
   primary: {
     backgroundColor: theme.colors.emsBlue,
+    borderWidth: 1,
+    borderColor: theme.colors.primaryDark,
   },
   secondary: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.surfaceLight,
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
@@ -120,7 +122,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: '#041218',
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: 1,

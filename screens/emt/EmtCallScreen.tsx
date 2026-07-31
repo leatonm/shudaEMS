@@ -6,17 +6,23 @@ import { useEffect } from 'react';
 import { ChoiceButton } from '@/components/ui/ChoiceButton';
 import { ShiftButton } from '@/components/ui/ShiftUI';
 import { theme } from '@/constants/theme';
+import {
+  formatLiveFeedback,
+  showActionTips,
+  showHazardDetails,
+  showPhaseCoaching,
+} from '@/data/emt/difficulty';
 import { hazardsAreCleared } from '@/data/emt/engine';
 import type { AbcdeStep } from '@/data/emt/types';
 import { useEmtStore } from '@/store/emtStore';
 
 const PHASE_TITLE: Record<string, string> = {
   dispatch: 'Dispatch',
-  scene_safety: 'Scene Safety',
-  primary_survey: 'Primary Survey (ABCDE)',
-  history: 'History (SAMPLE / OPQRST)',
+  scene_safety: 'Scene Size-Up',
+  primary_survey: 'Primary Survey',
+  history: 'History',
   treatment: 'Treatment',
-  transport: 'Transport Decision',
+  transport: 'Transport',
 };
 
 export default function EmtCallScreen() {
@@ -25,6 +31,7 @@ export default function EmtCallScreen() {
 
   const call = useEmtStore((s) => s.call);
   const phase = useEmtStore((s) => s.phase);
+  const difficulty = useEmtStore((s) => s.difficulty);
   const vitals = useEmtStore((s) => s.vitals);
   const safetyActions = useEmtStore((s) => s.safetyActions);
   const sceneEntered = useEmtStore((s) => s.sceneEntered);
@@ -49,15 +56,15 @@ export default function EmtCallScreen() {
   const chooseDestination = useEmtStore((s) => s.chooseDestination);
   const completeCall = useEmtStore((s) => s.completeCall);
 
+  const tips = showActionTips(difficulty);
+  const coach = showPhaseCoaching(difficulty);
+  const hazardDetail = showHazardDetails(difficulty);
+
   useEffect(() => {
     if (phase === 'debrief') {
       router.replace('/emt/debrief');
     }
   }, [phase, router]);
-
-  if (!call || !vitals || (id && call.id !== id && phase === 'dispatch')) {
-    // Allow mismatch briefly after navigation; store already has call
-  }
 
   if (!call || !vitals) {
     return (
@@ -78,36 +85,57 @@ export default function EmtCallScreen() {
     abcdeCompleted.includes('circulation');
 
   const lastFeedback = timeline[timeline.length - 1];
+  const live =
+    lastFeedback && phase !== 'dispatch'
+      ? formatLiveFeedback(difficulty, lastFeedback)
+      : null;
+
+  // Exam: hide running score so they don't chase points mid-call
+  const showScore = difficulty !== 'exam';
 
   return (
     <SafeAreaView style={styles.safe}>
+      <View style={styles.glow} pointerEvents="none" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.phase}>{PHASE_TITLE[phase] ?? phase}</Text>
-        <Text style={styles.unit}>{call.unit} · Priority {call.priority}</Text>
-        <Text style={styles.score}>Score {totalScore}</Text>
+        <Text style={styles.unit}>
+          {call.unit} · Priority {call.priority} · {difficulty.toUpperCase()}
+        </Text>
+        {difficulty === 'exam' ? (
+          <Text style={styles.examBadge}>EXAM · critical criteria active</Text>
+        ) : null}
+        {showScore ? <Text style={styles.score}>Score {totalScore}</Text> : null}
 
         {phase === 'dispatch' && (
           <View style={styles.card}>
             <Text style={styles.cad}>CAD DISPATCH · {call.category.toUpperCase()}</Text>
             <Text style={styles.dispatch}>{call.dispatch}</Text>
             <Text style={styles.patient}>{call.patientSummary}</Text>
-            <Text style={styles.hint}>
-              Think like an EMT: safety first, then ABCs, then treat and transport.
-            </Text>
+            {coach ? (
+              <Text style={styles.hint}>
+                Size up the scene first. Primary survey before deep history.
+              </Text>
+            ) : null}
             <ShiftButton label="RESPOND" onPress={respond} />
           </View>
         )}
 
         {phase === 'scene_safety' && (
           <View style={styles.section}>
-            <Text style={styles.question}>Is the scene safe?</Text>
+            <Text style={styles.question}>Scene size-up</Text>
             {call.hazards.length === 0 ? (
-              <Text style={styles.body}>No obvious major hazards on arrival. Still don PPE.</Text>
+              <Text style={styles.body}>
+                {coach
+                  ? 'No obvious major hazards on arrival.'
+                  : 'Quiet residential scene on arrival.'}
+              </Text>
             ) : (
               call.hazards.map((h) => (
                 <View key={h.id} style={styles.hazard}>
                   <Text style={styles.hazardLabel}>{h.label}</Text>
-                  <Text style={styles.hazardDesc}>{h.description}</Text>
+                  {hazardDetail ? (
+                    <Text style={styles.hazardDesc}>{h.description}</Text>
+                  ) : null}
                 </View>
               ))
             )}
@@ -118,7 +146,7 @@ export default function EmtCallScreen() {
                 <ChoiceButton
                   key={action.id}
                   label={done ? `✓ ${action.label}` : action.label}
-                  subtitle={action.subtitle}
+                  subtitle={tips ? action.subtitle : undefined}
                   onPress={() => takeSafetyAction(action.id)}
                   variant={done ? 'success' : 'default'}
                   disabled={done}
@@ -131,18 +159,16 @@ export default function EmtCallScreen() {
               onPress={beginPrimarySurvey}
               disabled={!canPrimary}
             />
-            {!canPrimary && (
-              <Text style={styles.warn}>
-                Clear hazards / don PPE, then enter the scene before patient contact.
-              </Text>
-            )}
+            {!canPrimary && coach ? (
+              <Text style={styles.warn}>Secure the scene before patient contact.</Text>
+            ) : null}
           </View>
         )}
 
         {phase === 'primary_survey' && (
           <View style={styles.section}>
-            <Text style={styles.question}>Primary assessment — ABCDE</Text>
-            <Text style={styles.body}>Tap each step. Order matters.</Text>
+            <Text style={styles.question}>Primary survey</Text>
+            {coach ? <Text style={styles.body}>Assess in order when possible.</Text> : null}
             {call.abcde.map((finding) => {
               const done = abcdeCompleted.includes(finding.step);
               return (
@@ -160,24 +186,30 @@ export default function EmtCallScreen() {
               onPress={proceedToHistory}
               disabled={!hasAbc}
             />
-            {!hasAbc && (
+            {!hasAbc && coach ? (
               <Text style={styles.warn}>Complete Airway, Breathing, and Circulation first.</Text>
-            )}
+            ) : null}
           </View>
         )}
 
         {phase === 'history' && (
           <View style={styles.section}>
-            <Text style={styles.question}>Gather history as needed</Text>
-            <Text style={styles.body}>
-              Unstable patients get a focused SAMPLE/OPQRST — don&apos;t delay transport for trivia.
-            </Text>
+            <Text style={styles.question}>History</Text>
+            {coach ? (
+              <Text style={styles.body}>
+                Focused SAMPLE / OPQRST — don&apos;t delay care for trivia.
+              </Text>
+            ) : null}
             {call.history.map((prompt) => {
               const done = historyCompleted.includes(prompt.id);
               return (
                 <ChoiceButton
                   key={prompt.id}
-                  label={done ? `✓ ${prompt.framework}: ${prompt.label}` : `${prompt.framework}: ${prompt.label}`}
+                  label={
+                    done
+                      ? `✓ ${prompt.framework}: ${prompt.label}`
+                      : `${prompt.framework}: ${prompt.label}`
+                  }
                   onPress={() => takeHistory(prompt.id)}
                   variant={done ? 'success' : 'default'}
                   disabled={done}
@@ -191,14 +223,14 @@ export default function EmtCallScreen() {
         {phase === 'treatment' && (
           <View style={styles.section}>
             <VitalsStrip vitals={vitals} />
-            <Text style={styles.question}>EMT-scope interventions</Text>
+            <Text style={styles.question}>Interventions</Text>
             {call.treatmentActions.map((action) => {
               const done = treatments.includes(action.id);
               return (
                 <ChoiceButton
                   key={action.id}
                   label={done ? `✓ ${action.label}` : action.label}
-                  subtitle={action.subtitle}
+                  subtitle={tips ? action.subtitle : undefined}
                   onPress={() => applyTreatment(action.id)}
                   variant={done ? 'success' : 'default'}
                   disabled={done}
@@ -216,7 +248,7 @@ export default function EmtCallScreen() {
               <ChoiceButton
                 key={opt.id}
                 label={opt.label}
-                subtitle={opt.subtitle}
+                subtitle={tips ? opt.subtitle : undefined}
                 onPress={() => chooseTransportPriority(opt.id)}
                 variant={transportPriority === opt.id ? 'success' : 'default'}
               />
@@ -240,20 +272,20 @@ export default function EmtCallScreen() {
           </View>
         )}
 
-        {lastFeedback && phase !== 'dispatch' && (
+        {live && live.text !== '…' ? (
           <View
             style={[
               styles.feedback,
-              lastFeedback.severity === 'good'
+              live.showSeverity && lastFeedback?.severity === 'good'
                 ? styles.feedbackGood
-                : lastFeedback.severity === 'bad'
+                : live.showSeverity && lastFeedback?.severity === 'bad'
                   ? styles.feedbackBad
-                  : styles.feedbackWarn,
+                  : styles.feedbackNeutral,
             ]}
           >
-            <Text style={styles.feedbackText}>{lastFeedback.message}</Text>
+            <Text style={styles.feedbackText}>{live.text}</Text>
           </View>
-        )}
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -266,7 +298,7 @@ function VitalsStrip({
 }) {
   return (
     <View style={styles.vitals}>
-      <Text style={styles.vitalsLabel}>LIVE VITALS</Text>
+      <Text style={styles.vitalsLabel}>VITALS</Text>
       <Text style={styles.vitalsText}>
         BP {vitals.bp} · HR {vitals.hr} · RR {vitals.rr} · SpO₂ {vitals.spo2}% · {vitals.mentalStatus}
       </Text>
@@ -276,17 +308,60 @@ function VitalsStrip({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.background },
+  glow: {
+    position: 'absolute',
+    top: -20,
+    right: -40,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: theme.colors.cadGlow,
+  },
   content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xl },
   centered: { flex: 1, justifyContent: 'center', padding: theme.spacing.lg },
   phase: {
     color: theme.colors.emsBlue,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1.2,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: 11,
+    letterSpacing: 1.6,
     textTransform: 'uppercase',
   },
-  unit: { color: theme.colors.textMuted, marginTop: 4, fontFamily: 'SpaceMono' },
-  score: { color: theme.colors.warning, fontWeight: '800', marginBottom: theme.spacing.md },
+  unit: {
+    color: theme.colors.textMuted,
+    marginTop: 4,
+    fontFamily: 'IBMPlexMono',
+    fontSize: 12,
+  },
+  examBadge: {
+    color: theme.colors.accent,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: 11,
+    letterSpacing: 0.8,
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  score: {
+    color: theme.colors.accent,
+    fontFamily: 'BebasNeue',
+    fontSize: 28,
+    letterSpacing: 1,
+    marginBottom: theme.spacing.md,
+  },
+  cad: {
+    color: theme.colors.critical,
+    fontFamily: 'IBMPlexMonoBold',
+    letterSpacing: 1.5,
+    fontSize: 11,
+    marginBottom: theme.spacing.sm,
+  },
+  dispatch: {
+    color: theme.colors.text,
+    fontFamily: 'BebasNeue',
+    fontSize: 36,
+    letterSpacing: 1,
+    lineHeight: 38,
+    marginBottom: 8,
+  },
   card: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.lg,
@@ -294,14 +369,6 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     padding: theme.spacing.lg,
   },
-  cad: {
-    color: theme.colors.error,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-    fontSize: 11,
-    marginBottom: theme.spacing.sm,
-  },
-  dispatch: { color: theme.colors.text, fontSize: 24, fontWeight: '900', marginBottom: 8 },
   patient: { color: theme.colors.accentLight, fontSize: 16, marginBottom: theme.spacing.md },
   hint: { color: theme.colors.textMuted, marginBottom: theme.spacing.lg, lineHeight: 20 },
   section: { gap: 4 },
@@ -323,6 +390,8 @@ const styles = StyleSheet.create({
   vitals: {
     backgroundColor: theme.colors.surfaceLight,
     borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     padding: theme.spacing.md,
     marginBottom: theme.spacing.md,
   },
@@ -341,16 +410,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   feedbackGood: {
-    backgroundColor: 'rgba(34,197,94,0.12)',
+    backgroundColor: theme.colors.successGlow,
     borderColor: theme.colors.success,
   },
-  feedbackWarn: {
-    backgroundColor: 'rgba(245,158,11,0.12)',
-    borderColor: theme.colors.warning,
-  },
   feedbackBad: {
-    backgroundColor: 'rgba(239,68,68,0.12)',
+    backgroundColor: theme.colors.dangerGlow,
     borderColor: theme.colors.error,
+  },
+  feedbackNeutral: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
   },
   feedbackText: { color: theme.colors.text, lineHeight: 20 },
 });

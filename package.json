@@ -3,6 +3,8 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
+    "@expo-google-fonts/bebas-neue": "^0.4.1",
+    "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
     "expo": "~56.0.8",
     "expo-constants": "~56.0.16",
     "expo-font": "~56.0.5",

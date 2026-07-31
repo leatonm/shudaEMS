@@ -47,11 +47,11 @@ const styles = StyleSheet.create({
   },
   success: {
     borderColor: theme.colors.success,
-    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    backgroundColor: theme.colors.successGlow,
   },
   error: {
     borderColor: theme.colors.error,
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    backgroundColor: theme.colors.dangerGlow,
   },
   pressed: {
     opacity: 0.85,

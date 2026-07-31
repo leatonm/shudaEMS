@@ -1,19 +1,23 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ShiftButton } from '@/components/ui/ShiftUI';
+import { BrandMark } from '@/components/ui/BrandMark';
 import { theme } from '@/constants/theme';
 import { CALL_CATEGORIES } from '@/data/emt/categories';
-import type { CallCategory } from '@/data/emt/types';
+import { DIFFICULTY_OPTIONS } from '@/data/emt/difficulty';
+import type { CallCategory, EmtDifficulty } from '@/data/emt/types';
 import { useEmtStore } from '@/store/emtStore';
 
 export default function HomeScreen() {
   const router = useRouter();
   const startEmtCall = useEmtStore((s) => s.startCall);
+  const difficulty = useEmtStore((s) => s.difficulty);
+  const setDifficulty = useEmtStore((s) => s.setDifficulty);
 
   const handleStartCategory = (category?: CallCategory) => {
-    const callId = startEmtCall(category ? { category } : undefined);
+    const callId = startEmtCall(category ? { category, difficulty } : { difficulty });
     if (callId) {
       router.push(`/emt/call/${callId}`);
     }
@@ -21,31 +25,44 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <View style={styles.glowAmber} pointerEvents="none" />
+      <View style={styles.glowTeal} pointerEvents="none" />
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.hero}>
-          <Text style={styles.academy}>EMT RESPONSE SIMULATOR</Text>
-          <Text style={styles.title}>Think Like an EMT</Text>
-          <Text style={styles.tagline}>
-            Pick a category. The call is generated — chest pain, arrest, choking, MCI, and more.
-            Scene safety → ABCDE → treat → transport.
-          </Text>
-        </View>
+        <BrandMark />
 
         <View style={styles.disclaimer}>
           <Text style={styles.disclaimerTitle}>Training aid only</Text>
           <Text style={styles.disclaimerText}>
             Not a substitute for formal EMT education, certification, medical direction, or local
-            protocols. Universal principles are taught separately from region-specific actions.
+            protocols.
+          </Text>
+        </View>
+
+        <View style={styles.shiftCard}>
+          <Text style={styles.shiftLabel}>DIFFICULTY</Text>
+          <View style={styles.diffRow}>
+            {DIFFICULTY_OPTIONS.map((opt) => (
+              <DifficultyChip
+                key={opt.id}
+                label={opt.label}
+                selected={difficulty === opt.id}
+                accent={opt.id === 'exam' ? 'exam' : 'default'}
+                onPress={() => setDifficulty(opt.id as EmtDifficulty)}
+              />
+            ))}
+          </View>
+          <Text style={styles.diffHelp}>
+            {DIFFICULTY_OPTIONS.find((o) => o.id === difficulty)?.description}
           </Text>
         </View>
 
         <View style={styles.shiftCard}>
           <Text style={styles.shiftLabel}>CHOOSE A CATEGORY</Text>
           <Text style={styles.shiftPrompt}>
-            You do not pick the exact diagnosis. You pick the lane — the generator builds the call.
+            You pick the lane — Medical, Trauma, Peds, OB, or MCI. The generator builds the call.
           </Text>
 
           {CALL_CATEGORIES.map((cat, index) => (
@@ -71,8 +88,7 @@ export default function HomeScreen() {
         <View style={styles.shiftCard}>
           <Text style={styles.shiftLabel}>COMPETE</Text>
           <Text style={styles.shiftPrompt}>
-            Season standings for clinical judgment and patient outcomes. Soft-launch board — live
-            sync later.
+            Season standings for clinical judgment and patient outcomes.
           </Text>
           <ShiftButton
             label="VIEW LEADERBOARD"
@@ -80,46 +96,65 @@ export default function HomeScreen() {
             variant="secondary"
           />
         </View>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Coming next: deeper MCI · PCR · en-route</Text>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+function DifficultyChip({
+  label,
+  selected,
+  onPress,
+  accent,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  accent: 'default' | 'exam';
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.chip,
+        selected && styles.chipSelected,
+        selected && accent === 'exam' && styles.chipExam,
+      ]}
+    >
+      <Text
+        style={[
+          styles.chipText,
+          selected && styles.chipTextSelected,
+          selected && accent === 'exam' && styles.chipTextExam,
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
+  safe: { flex: 1, backgroundColor: theme.colors.background },
+  glowAmber: {
+    position: 'absolute',
+    top: -40,
+    right: -60,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: theme.colors.amberGlow,
   },
-  content: {
-    padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xl,
+  glowTeal: {
+    position: 'absolute',
+    top: 120,
+    left: -80,
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: theme.colors.cadGlow,
   },
-  hero: {
-    marginBottom: theme.spacing.lg,
-  },
-  academy: {
-    color: theme.colors.emsBlue,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 2,
-    marginBottom: theme.spacing.sm,
-  },
-  title: {
-    color: theme.colors.text,
-    fontSize: 32,
-    fontWeight: '900',
-    letterSpacing: -0.5,
-  },
-  tagline: {
-    color: theme.colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
-    marginTop: theme.spacing.sm,
-  },
+  content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xl },
   disclaimer: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.md,
@@ -148,9 +183,9 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
   },
   shiftLabel: {
-    color: theme.colors.textMuted,
+    color: theme.colors.emsBlue,
+    fontFamily: 'IBMPlexMonoBold',
     fontSize: 11,
-    fontWeight: '800',
     letterSpacing: 1.5,
     marginBottom: theme.spacing.sm,
   },
@@ -160,6 +195,33 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: theme.spacing.lg,
   },
+  diffRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  chip: {
+    flex: 1,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: theme.colors.surfaceLight,
+  },
+  chipSelected: {
+    borderColor: theme.colors.emsBlue,
+    backgroundColor: theme.colors.cadGlow,
+  },
+  chipExam: {
+    borderColor: theme.colors.accent,
+    backgroundColor: theme.colors.amberGlow,
+  },
+  chipText: { color: theme.colors.textMuted, fontWeight: '700', fontSize: 13 },
+  chipTextSelected: { color: theme.colors.accentLight },
+  chipTextExam: { color: theme.colors.accent },
+  diffHelp: {
+    color: theme.colors.textMuted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 4,
+  },
   examples: {
     color: theme.colors.textMuted,
     fontSize: 12,
@@ -167,17 +229,5 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     lineHeight: 17,
   },
-  spacer: {
-    height: theme.spacing.sm,
-  },
-  footer: {
-    alignItems: 'center',
-    paddingTop: theme.spacing.md,
-  },
-  footerText: {
-    color: theme.colors.textMuted,
-    fontSize: 12,
-    fontFamily: 'SpaceMono',
-    textAlign: 'center',
-  },
+  spacer: { height: theme.spacing.sm },
 });

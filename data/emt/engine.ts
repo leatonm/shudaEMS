@@ -1,9 +1,14 @@
 import { pickRandom } from '@/data/generators/rng';
+import {
+  applyCriticalFailScoring,
+  evaluateCriticalFails,
+} from '@/data/emt/criticalFails';
 import type {
   AbcdeStep,
   ConsequenceEffect,
   EmtCall,
   EmtDebrief,
+  EmtDifficulty,
   EmtRunResult,
   EmtVitals,
   SkillScores,
@@ -144,7 +149,8 @@ export function evaluateAbcdeStep(
   const expectedIndex = call.requiredAbcdeOrder.indexOf(step);
   const nextExpected = call.requiredAbcdeOrder[completed.length];
   const finding = call.abcde.find((f) => f.step === step);
-  const outOfOrder = nextExpected && step !== nextExpected && expectedIndex > completed.length;
+  const outOfOrder =
+    nextExpected && step !== nextExpected && expectedIndex > completed.length;
 
   let scoreDelta = 12;
   let severity: ConsequenceEffect['severity'] = 'good';
@@ -206,7 +212,10 @@ export function evaluateTreatmentAction(
     return {
       scoreDelta: 14,
       message: 'Appropriate EMT-scope intervention.',
-      skill: actionId === 'notify_hospital' || actionId === 'request_als' ? 'communication' : 'treatment',
+      skill:
+        actionId === 'notify_hospital' || actionId === 'request_als'
+          ? 'communication'
+          : 'treatment',
       severity: 'good',
       vitals: vitalsPatch,
     };
@@ -260,6 +269,7 @@ export function resolveEmtRun(input: {
   transportPriority: string | null;
   destination: string | null;
   enteredUnsafe: boolean;
+  difficulty: EmtDifficulty;
 }): EmtRunResult {
   const {
     call,
@@ -273,7 +283,18 @@ export function resolveEmtRun(input: {
     transportPriority,
     destination,
     enteredUnsafe,
+    difficulty,
   } = input;
+
+  const criticalFails = evaluateCriticalFails({
+    call,
+    safetyActions,
+    abcdeCompleted,
+    treatments,
+    transportPriority,
+    destination,
+    enteredUnsafe,
+  });
 
   const whatWentWell: string[] = [];
   const improveNext: string[] = [];
@@ -290,16 +311,21 @@ export function resolveEmtRun(input: {
     whatWentWell.push('Scene hazards addressed before contact');
   }
 
-  const abcdeComplete =
-    call.requiredAbcdeOrder.every((s) => abcdeCompleted.includes(s));
+  const abcdeComplete = call.requiredAbcdeOrder.every((s) =>
+    abcdeCompleted.includes(s)
+  );
   if (abcdeComplete) {
     whatWentWell.push('Completed primary survey (ABCDE)');
   } else {
-    improveNext.push('Finish airway → breathing → circulation → disability → exposure');
+    improveNext.push(
+      'Finish airway → breathing → circulation → disability → exposure'
+    );
   }
 
   const hits = call.recommendedTreatment.filter((id) => treatments.includes(id));
-  const misses = call.recommendedTreatment.filter((id) => !treatments.includes(id));
+  const misses = call.recommendedTreatment.filter(
+    (id) => !treatments.includes(id)
+  );
   const harms = call.harmfulTreatment.filter((id) => treatments.includes(id));
 
   if (hits.length >= Math.ceil(call.recommendedTreatment.length * 0.6)) {
@@ -315,42 +341,93 @@ export function resolveEmtRun(input: {
   if (transportPriority === call.correctTransportPriority) {
     whatWentWell.push('Correct transport priority');
   } else {
-    improveNext.push(`Transport priority should be ${call.correctTransportPriority}`);
+    improveNext.push(
+      `Transport priority should be ${call.correctTransportPriority}`
+    );
   }
 
   if (destination === call.correctDestination) {
     whatWentWell.push('Correct receiving facility type');
   } else {
-    improveNext.push(`Destination should be ${call.correctDestination.replace(/_/g, ' ')}`);
+    improveNext.push(
+      `Destination should be ${call.correctDestination.replace(/_/g, ' ')}`
+    );
+  }
+
+  for (const fail of criticalFails) {
+    if (!improveNext.includes(fail.detail)) {
+      improveNext.unshift(fail.label);
+    }
   }
 
   let patientOutcome: EmtRunResult['patientOutcome'] = 'stable';
-  if (enteredUnsafe || harms.length > 0 || totalScore < 40) {
-    patientOutcome = 'deteriorated';
+  if (
+    criticalFails.length > 0 ||
+    enteredUnsafe ||
+    harms.length > 0 ||
+    totalScore < 40
+  ) {
+    patientOutcome =
+      criticalFails.length >= 2 || totalScore < 25 ? 'critical' : 'deteriorated';
   } else if (totalScore >= 110 && misses.length <= 1) {
     patientOutcome = 'improved';
-  } else if (totalScore < 25) {
-    patientOutcome = 'critical';
   }
 
-  const stars =
-    totalScore >= 120 ? 5 : totalScore >= 95 ? 4 : totalScore >= 70 ? 3 : totalScore >= 45 ? 2 : 1;
+  let stars =
+    totalScore >= 120
+      ? 5
+      : totalScore >= 95
+        ? 4
+        : totalScore >= 70
+          ? 3
+          : totalScore >= 45
+            ? 2
+            : 1;
+
+  const scored = applyCriticalFailScoring({
+    fails: criticalFails,
+    difficulty,
+    totalScore,
+    stars,
+  });
+  stars = scored.stars;
+  const finalScore = scored.totalScore;
+  const skillsSheetPass = scored.skillsSheetPass;
 
   const pearl = pickRandom(call.pearls, Math.random);
 
+  let summary: string;
+  if (!skillsSheetPass && difficulty === 'exam') {
+    summary =
+      'SKILLS SHEET: FAIL — one or more NREMT-style critical criteria were missed. Review them below; points do not override critical fails.';
+  } else if (!skillsSheetPass) {
+    summary =
+      'Critical criteria were missed — this run would not pass an NREMT skills sheet. Score capped; focus on the fails below.';
+  } else if (patientOutcome === 'improved') {
+    summary =
+      'Solid EMT judgment — systematic assessment and timely transport. Skills sheet: PASS.';
+  } else if (patientOutcome === 'stable') {
+    summary =
+      'Patient cared for with no critical fails — tighten a few decisions for a cleaner run.';
+  } else {
+    summary =
+      'Patient or provider risk increased, but keep drilling the critical criteria.';
+  }
+
   const debrief: EmtDebrief = {
     title: call.archetypeName,
-    summary:
-      patientOutcome === 'improved'
-        ? 'Solid EMT judgment — systematic assessment and timely transport.'
-        : patientOutcome === 'stable'
-          ? 'Patient cared for, but a few decisions could have been sharper.'
-          : 'Patient or provider risk increased due to critical misses.',
-    whatWentWell: whatWentWell.length ? whatWentWell : ['You completed the call — review the timeline.'],
-    improveNext: improveNext.length ? improveNext : ['Keep rehearsing ABCDE and destination choice.'],
+    summary,
+    whatWentWell: whatWentWell.length
+      ? whatWentWell
+      : ['You completed the call — review the timeline.'],
+    improveNext: improveNext.length
+      ? improveNext
+      : ['Keep rehearsing ABCDE and destination choice.'],
     pearl,
     universalPrinciples: call.universalPrinciples,
     protocolNotes: call.protocolNotes,
+    criticalFails,
+    skillsSheetPass,
   };
 
   const normalizedSkills: SkillScores = {
@@ -364,12 +441,14 @@ export function resolveEmtRun(input: {
   return {
     callId: call.id,
     stars,
-    totalScore: Math.max(0, totalScore),
+    totalScore: finalScore,
     skillScores: normalizedSkills,
     patientOutcome,
     timeline,
     debrief,
     finalVitals,
+    criticalFails,
+    skillsSheetPass,
   };
 }
 

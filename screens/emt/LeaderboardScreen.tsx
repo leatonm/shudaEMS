@@ -13,7 +13,7 @@ export default function LeaderboardScreen() {
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.kicker}>{LEADERBOARD_SEASON}</Text>
-        <Text style={styles.title}>Leaderboard</Text>
+        <Text style={styles.title}>Standings</Text>
         <Text style={styles.subtitle}>{LEADERBOARD_NOTE}</Text>
 
         <View style={styles.headerRow}>
@@ -60,16 +60,18 @@ const styles = StyleSheet.create({
   },
   kicker: {
     color: theme.colors.emsBlue,
-    fontSize: 11,
-    fontWeight: '800',
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: 10,
     letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
   title: {
     color: theme.colors.text,
-    fontSize: 28,
-    fontWeight: '900',
-    marginTop: 4,
+    fontFamily: 'BebasNeue',
+    fontSize: 48,
+    letterSpacing: 2,
+    lineHeight: 50,
+    marginTop: 2,
   },
   subtitle: {
     color: theme.colors.textMuted,
@@ -100,7 +102,7 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.border,
   },
   rowTop: {
-    backgroundColor: 'rgba(59, 130, 246, 0.06)',
+    backgroundColor: theme.colors.cadGlow,
     marginHorizontal: -8,
     paddingHorizontal: 8,
     borderRadius: theme.radius.sm,

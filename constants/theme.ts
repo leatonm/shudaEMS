@@ -1,21 +1,28 @@
+/** EMT Response Simulator — dispatch-bay visual language. */
 export const theme = {
   colors: {
-    background: '#0B1020',
-    surface: '#161C2F',
-    surfaceLight: '#1E2640',
-    emsBlue: '#3B82F6',
-    primary: '#3B82F6',
-    primaryDark: '#2563EB',
-    accent: '#3B82F6',
-    accentLight: '#93C5FD',
-    success: '#22C55E',
-    warning: '#F59E0B',
-    error: '#EF4444',
-    critical: '#EF4444',
-    text: '#E2E8F0',
-    textMuted: '#94A3B8',
-    border: '#2A3555',
-    cadGlow: '#3B82F640',
+    background: '#061018',
+    backgroundAlt: '#0A1A24',
+    surface: '#102832',
+    surfaceLight: '#183844',
+    /** Signal teal — primary brand */
+    emsBlue: '#1ECAD4',
+    primary: '#1ECAD4',
+    primaryDark: '#1498A0',
+    /** CAD amber — urgency / highlights */
+    accent: '#F0B429',
+    accentLight: '#7EE8F0',
+    success: '#3DDC97',
+    warning: '#F5A623',
+    error: '#FF5A5F',
+    critical: '#FF3B4A',
+    text: '#E8F4F7',
+    textMuted: '#8AA8B4',
+    border: '#254555',
+    cadGlow: 'rgba(30, 202, 212, 0.28)',
+    amberGlow: 'rgba(240, 180, 41, 0.18)',
+    dangerGlow: 'rgba(255, 90, 95, 0.16)',
+    successGlow: 'rgba(61, 220, 151, 0.14)',
   },
   spacing: {
     xs: 4,
@@ -32,7 +39,7 @@ export const theme = {
 };
 
 export const priorityColors: Record<number, string> = {
-  1: '#EF4444',
-  2: '#F59E0B',
-  3: '#3B82F6',
+  1: '#FF5A5F',
+  2: '#F5A623',
+  3: '#1ECAD4',
 };

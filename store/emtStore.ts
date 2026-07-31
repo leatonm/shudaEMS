@@ -14,9 +14,11 @@ import type {
   AbcdeStep,
   CallCategory,
   EmtCall,
+  EmtDifficulty,
   EmtPhase,
   EmtRunResult,
   EmtVitals,
+  SkillCategory,
   SkillScores,
   TimelineEntry,
 } from '@/data/emt/types';
@@ -26,6 +28,7 @@ import { isDestination, isTransportPriority } from '@/data/emt/actions';
 interface EmtStore {
   call: EmtCall | null;
   phase: EmtPhase;
+  difficulty: EmtDifficulty;
   vitals: EmtVitals | null;
   safetyActions: string[];
   sceneEntered: boolean;
@@ -41,7 +44,12 @@ interface EmtStore {
   result: EmtRunResult | null;
   startedAt: number;
 
-  startCall: (options?: { category?: CallCategory; archetypeId?: string }) => string | null;
+  setDifficulty: (difficulty: EmtDifficulty) => void;
+  startCall: (options?: {
+    category?: CallCategory;
+    archetypeId?: string;
+    difficulty?: EmtDifficulty;
+  }) => string | null;
   respond: () => void;
   takeSafetyAction: (actionId: string) => void;
   beginPrimarySurvey: () => void;
@@ -73,7 +81,7 @@ function pushTimeline(
 
 function applySkill(
   scores: SkillScores,
-  skill: TimelineEntry['severity'] extends never ? never : import('@/data/emt/types').SkillCategory | undefined,
+  skill: SkillCategory | undefined,
   delta: number
 ): SkillScores {
   if (!skill) return scores;
@@ -86,6 +94,7 @@ function applySkill(
 export const useEmtStore = create<EmtStore>((set, get) => ({
   call: null,
   phase: 'dispatch',
+  difficulty: 'standard',
   vitals: null,
   safetyActions: [],
   sceneEntered: false,
@@ -101,13 +110,17 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
   result: null,
   startedAt: 0,
 
+  setDifficulty: (difficulty) => set({ difficulty }),
+
   startCall: (options) => {
+    const difficulty = options?.difficulty ?? get().difficulty;
     const call = generateEmtCall({
       category: options?.category,
       archetypeId: options?.archetypeId,
     });
     set({
       call,
+      difficulty,
       phase: 'dispatch',
       vitals: { ...call.vitals },
       safetyActions: [],
@@ -350,6 +363,7 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       transportPriority: state.transportPriority,
       destination: state.destination,
       enteredUnsafe: state.enteredUnsafe,
+      difficulty: state.difficulty,
     });
 
     set({

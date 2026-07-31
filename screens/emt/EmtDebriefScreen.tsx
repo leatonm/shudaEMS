@@ -12,6 +12,7 @@ export default function EmtDebriefScreen() {
   const router = useRouter();
   const result = useEmtStore((s) => s.result);
   const call = useEmtStore((s) => s.call);
+  const difficulty = useEmtStore((s) => s.difficulty);
   const startCall = useEmtStore((s) => s.startCall);
   const reset = useEmtStore((s) => s.reset);
 
@@ -36,11 +37,30 @@ export default function EmtDebriefScreen() {
     );
   }
 
+  const passed = result.skillsSheetPass;
+
   return (
     <SafeAreaView style={styles.safe}>
+      <View style={styles.glowTop} pointerEvents="none" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.header}>Debrief</Text>
-        <Text style={styles.subheader}>{result.debrief.title}</Text>
+        <Text style={styles.subheader}>
+          {result.debrief.title} · {call.category.toUpperCase()} · {difficulty.toUpperCase()}
+        </Text>
+
+        <View style={[styles.sheetBanner, passed ? styles.sheetPass : styles.sheetFail]}>
+          <Text style={styles.sheetKicker}>NREMT-STYLE SKILLS SHEET</Text>
+          <Text style={[styles.sheetResult, passed ? styles.passText : styles.failText]}>
+            {passed ? 'PASS' : 'FAIL'}
+          </Text>
+          <Text style={styles.sheetHint}>
+            {passed
+              ? 'No critical criteria missed.'
+              : difficulty === 'exam'
+                ? 'Critical fail — automatic exam failure.'
+                : 'Would fail a skills sheet. Score capped for learning.'}
+          </Text>
+        </View>
 
         <View style={styles.summary}>
           <StarRating stars={result.stars} />
@@ -49,6 +69,17 @@ export default function EmtDebriefScreen() {
           </Text>
           <Text style={styles.summaryText}>{result.debrief.summary}</Text>
         </View>
+
+        {result.criticalFails.length > 0 ? (
+          <Section title="Critical criteria">
+            {result.criticalFails.map((fail) => (
+              <View key={fail.id} style={styles.critCard}>
+                <Text style={styles.critLabel}>{fail.label}</Text>
+                <Text style={styles.critDetail}>{fail.detail}</Text>
+              </View>
+            ))}
+          </Section>
+        ) : null}
 
         <SkillRow scores={result.skillScores} />
 
@@ -173,10 +204,63 @@ function formatMs(ms: number): string {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.background },
+  glowTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 160,
+    backgroundColor: theme.colors.cadGlow,
+    opacity: 0.35,
+  },
   content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xl },
   centered: { flex: 1, justifyContent: 'center', padding: theme.spacing.lg },
-  header: { color: theme.colors.text, fontSize: 28, fontWeight: '900' },
-  subheader: { color: theme.colors.textMuted, marginBottom: theme.spacing.lg },
+  header: {
+    color: theme.colors.text,
+    fontFamily: 'BebasNeue',
+    fontSize: 42,
+    letterSpacing: 1.5,
+    lineHeight: 44,
+  },
+  subheader: {
+    color: theme.colors.textMuted,
+    fontFamily: 'IBMPlexMono',
+    fontSize: 11,
+    letterSpacing: 0.5,
+    marginBottom: theme.spacing.md,
+    marginTop: 4,
+  },
+  sheetBanner: {
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    alignItems: 'center',
+  },
+  sheetPass: {
+    backgroundColor: theme.colors.successGlow,
+    borderColor: theme.colors.success,
+  },
+  sheetFail: {
+    backgroundColor: theme.colors.dangerGlow,
+    borderColor: theme.colors.critical,
+  },
+  sheetKicker: {
+    color: theme.colors.textMuted,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+  },
+  sheetResult: { fontSize: 32, fontWeight: '900', marginTop: 4 },
+  passText: { color: theme.colors.success },
+  failText: { color: theme.colors.critical },
+  sheetHint: {
+    color: theme.colors.textMuted,
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 4,
+    lineHeight: 17,
+  },
   summary: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.lg,
@@ -189,10 +273,22 @@ const styles = StyleSheet.create({
   },
   outcome: { color: theme.colors.accentLight, fontWeight: '700' },
   summaryText: { color: theme.colors.text, textAlign: 'center', lineHeight: 21 },
+  critCard: {
+    backgroundColor: theme.colors.dangerGlow,
+    borderRadius: theme.radius.md,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.critical,
+    padding: theme.spacing.md,
+    marginBottom: 8,
+  },
+  critLabel: { color: theme.colors.critical, fontWeight: '800', marginBottom: 4 },
+  critDetail: { color: theme.colors.text, lineHeight: 19, fontSize: 13 },
   skills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: theme.spacing.md },
   skillChip: {
     backgroundColor: theme.colors.surfaceLight,
     borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     paddingHorizontal: 10,
     paddingVertical: 8,
     minWidth: 64,
@@ -213,15 +309,15 @@ const styles = StyleSheet.create({
   bulletIcon: { width: 18, fontWeight: '800' },
   bulletText: { color: theme.colors.text, flex: 1, lineHeight: 20 },
   pearl: {
-    backgroundColor: 'rgba(59,130,246,0.1)',
+    backgroundColor: theme.colors.amberGlow,
     borderRadius: theme.radius.md,
     borderWidth: 1,
-    borderColor: theme.colors.emsBlue,
+    borderColor: theme.colors.accent,
     padding: theme.spacing.md,
     marginBottom: theme.spacing.md,
   },
   pearlLabel: {
-    color: theme.colors.emsBlue,
+    color: theme.colors.accent,
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1,

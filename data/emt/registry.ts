@@ -1,16 +1,16 @@
-import { chestPain } from '@/data/emt/archetypes/chestPain';
+import { chestPain } from './archetypes/chestPain';
 import {
   anaphylaxisMedical,
   cardiacArrest,
   overdoseAms,
   respiratoryDistress,
-} from '@/data/emt/archetypes/medicalExtra';
-import { mciStart } from '@/data/emt/archetypes/mci';
-import { childbirth, obEmergency } from '@/data/emt/archetypes/ob';
-import { pediatricChoking, pediatricFebrile } from '@/data/emt/archetypes/peds';
-import { stroke } from '@/data/emt/archetypes/stroke';
-import { bleedingTrauma, mvcTrauma } from '@/data/emt/archetypes/trauma';
-import type { CallCategory, ScenarioArchetype } from '@/data/emt/types';
+} from './archetypes/medical';
+import { mciStart } from './archetypes/mci';
+import { childbirth, obEmergency } from './archetypes/ob';
+import { pediatricChoking, pediatricFebrile } from './archetypes/peds';
+import { stroke } from './archetypes/stroke';
+import { bleedingTrauma, mvcTrauma } from './archetypes/trauma';
+import type { CallCategory, ScenarioArchetype } from './types';
 
 export const EMT_ARCHETYPE_REGISTRY: Record<string, ScenarioArchetype> = {
   // Medical

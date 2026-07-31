@@ -198,6 +198,65 @@ export function evaluateAbcdeStep(
   };
 }
 
+function shiftBloodPressure(bp: string, systolicDelta: number, diastolicDelta: number): string {
+  const [systolic, diastolic] = bp.split('/').map(Number);
+  if (!Number.isFinite(systolic) || !Number.isFinite(diastolic)) return bp;
+  return `${Math.max(60, systolic + systolicDelta)}/${Math.max(35, diastolic + diastolicDelta)}`;
+}
+
+function delayedCareVitals(call: EmtCall, vitals: EmtVitals): Partial<EmtVitals> {
+  switch (call.archetypeId) {
+    case 'respiratory_distress':
+    case 'anaphylaxis':
+    case 'pediatric_choking':
+      return {
+        hr: vitals.hr + 8,
+        rr: vitals.rr + 4,
+        spo2: Math.max(vitals.spo2 - 5, 70),
+        mentalStatus: 'increasingly fatigued and confused',
+      };
+    case 'overdose_ams':
+      return {
+        rr: Math.max(vitals.rr - 3, 4),
+        spo2: Math.max(vitals.spo2 - 5, 70),
+        mentalStatus: 'less responsive',
+      };
+    case 'bleeding_trauma':
+    case 'mvc_trauma':
+    case 'ob_emergency':
+      return {
+        bp: shiftBloodPressure(vitals.bp, -12, -7),
+        hr: vitals.hr + 10,
+        mentalStatus: 'increasingly restless with poor perfusion',
+      };
+    case 'stroke':
+      return {
+        bp: shiftBloodPressure(vitals.bp, 8, 4),
+        hr: vitals.hr + 5,
+        mentalStatus: 'neurologic deficits worsening',
+      };
+    case 'chest_pain':
+      return {
+        bp: shiftBloodPressure(vitals.bp, -8, -4),
+        hr: vitals.hr + 8,
+        spo2: Math.max(vitals.spo2 - 2, 78),
+        mentalStatus: 'more anxious and diaphoretic',
+      };
+    case 'cardiac_arrest':
+      return {
+        spo2: Math.max(vitals.spo2 - 5, 60),
+        mentalStatus: 'unresponsive — condition remains critical',
+      };
+    default:
+      return {
+        hr: vitals.hr + 6,
+        rr: vitals.rr + 2,
+        spo2: Math.max(vitals.spo2 - 3, 75),
+        mentalStatus: 'condition worsening',
+      };
+  }
+}
+
 export function evaluateTreatmentAction(
   call: EmtCall,
   actionId: string,
@@ -219,19 +278,24 @@ export function evaluateTreatmentAction(
   }
 
   if (call.harmfulTreatment.includes(actionId)) {
-    const spo2 = Math.max((vitals.spo2 ?? 94) - 4, 78);
+    const delayed =
+      actionId === 'wait_and_see' || actionId === 'delay_for_full_history';
+    const vitalsPatch = delayed
+      ? delayedCareVitals(call, vitals)
+      : actionId === 'aspirin' && call.archetypeId === 'stroke'
+        ? { mentalStatus: 'neurologic deficits persist; bleeding risk introduced' }
+        : delayedCareVitals(call, vitals);
     return {
       scoreDelta: -22,
       message:
-        actionId === 'aspirin' && call.archetypeId === 'stroke'
+        delayed
+          ? `Care is delayed and the patient worsens: ${vitalsPatch.mentalStatus ?? 'vital signs are trending in the wrong direction'}. Reassess and intervene now.`
+          : actionId === 'aspirin' && call.archetypeId === 'stroke'
           ? 'Aspirin is generally avoided in suspected stroke unless protocol says otherwise.'
-          : 'That choice delays definitive care or worsens the patient.',
+          : 'That choice worsens the patient. Reassess the new vital-sign trend and redirect care.',
       skill: 'treatment',
       severity: 'bad',
-      vitals: {
-        spo2,
-        mentalStatus: vitals.mentalStatus,
-      },
+      vitals: vitalsPatch,
     };
   }
 

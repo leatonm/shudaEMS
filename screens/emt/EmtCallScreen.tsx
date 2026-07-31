@@ -50,6 +50,7 @@ export default function EmtCallScreen() {
   const transportPriority = useEmtStore((s) => s.transportPriority);
   const destination = useEmtStore((s) => s.destination);
   const chooseNext = useEmtStore((s) => s.chooseNext);
+  const undoChoice = useEmtStore((s) => s.undoChoice);
 
   const tips = showActionTips(difficulty);
   const coach = showPhaseCoaching(difficulty);
@@ -201,16 +202,36 @@ export default function EmtCallScreen() {
                   transportPriority,
                   destination,
                 });
+                const canUndo =
+                  completed &&
+                  !(
+                    choice.actionKind === 'treatment' &&
+                    choice.payload &&
+                    call.harmfulTreatment.includes(choice.payload)
+                  );
                 return (
                   <ChoiceButton
                     key={choice.id}
                     label={choice.label}
-                    subtitle={completed ? undefined : tips ? choice.tip : undefined}
-                    onPress={() => chooseNext(choice.id)}
+                    subtitle={
+                      completed
+                        ? canUndo
+                          ? 'Tap to undo'
+                          : 'Patient response recorded — choose corrective care'
+                        : tips
+                          ? choice.tip
+                          : undefined
+                    }
+                    onPress={() =>
+                      completed && canUndo
+                        ? undoChoice(choice.id)
+                        : chooseNext(choice.id)
+                    }
                     index={index}
                     accentColor={accent}
                     variant={group.forward && !completed ? 'primary' : 'task'}
                     completed={completed}
+                    disabled={completed && !canUndo}
                   />
                 );
               })}

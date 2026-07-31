@@ -11,6 +11,16 @@ function actionLabel(id: string): string {
   return EMT_ACTIONS[id]?.name ?? id.replace(/_/g, ' ');
 }
 
+const RESOURCE_REQUESTS = [
+  ['fire', 'request_fire'],
+  ['als', 'request_als'],
+  ['pd', 'request_pd'],
+] as const;
+
+const RESOURCE_REQUEST_IDS = new Set<string>(
+  RESOURCE_REQUESTS.map(([, request]) => request)
+);
+
 function neededRequests(call: EmtCall): string[] {
   const requests = new Set<string>();
   for (const hazard of call.hazards) {
@@ -142,6 +152,7 @@ export function buildDecisionFlow(call: EmtCall): WalkthroughStep[] {
   ];
 
   for (const request of requests) {
+    if (RESOURCE_REQUEST_IDS.has(request)) continue;
     if (hasBystanders && request === 'stage_away') continue;
     sceneChoices.push({
       id: `scene_${request}`,
@@ -157,12 +168,14 @@ export function buildDecisionFlow(call: EmtCall): WalkthroughStep[] {
     });
   }
 
-  for (const [resource, request] of [
-    ['fire', 'request_fire'],
-    ['als', 'request_als'],
-    ['pd', 'request_pd'],
-  ] as const) {
-    if (call.resourcesOnScene.includes(resource)) {
+  // Every mutual-aid request is always offered. Whether it was the right call is
+  // scored afterwards, so the board never hands the answer to the provider.
+  for (const [resource, request] of RESOURCE_REQUESTS) {
+    const onScene = call.resourcesOnScene.includes(resource);
+    const indicated = requests.includes(request);
+    const skill = request === 'request_als' ? 'communication' : 'scene_safety';
+
+    if (onScene) {
       sceneChoices.push({
         id: `scene_duplicate_${request}`,
         label: actionLabel(request),
@@ -174,10 +187,26 @@ export function buildDecisionFlow(call: EmtCall): WalkthroughStep[] {
         scoreDelta: -8,
         message: `${resource.toUpperCase()} is already present. Coordinate instead of re-requesting.`,
         severity: 'warn',
-        skill: request === 'request_als' ? 'communication' : 'scene_safety',
+        skill,
         flowMiss: true,
       });
+      continue;
     }
+
+    sceneChoices.push({
+      id: `scene_${request}`,
+      label: actionLabel(request),
+      correct: indicated,
+      actionKind: 'safety_request',
+      payload: request,
+      advance: 'stay',
+      scoreDelta: indicated ? 14 : 2,
+      message: indicated
+        ? `${actionLabel(request)} requested to address the scene or patient need.`
+        : `${actionLabel(request)} requested. Not required for this scene, but extra hands are reasonable.`,
+      severity: indicated ? 'good' : 'warn',
+      skill,
+    });
   }
 
   if (hasUnsafeScene) {
@@ -303,16 +332,28 @@ export function buildDecisionFlow(call: EmtCall): WalkthroughStep[] {
       )
       .slice(0, 5)
   );
-  const neutralTreatment = call.treatmentActions
-    .map((option) => option.id)
-    .find(
-      (id) =>
-        !treatmentIds.has(id) &&
-        !call.harmfulTreatment.includes(id) &&
-        id !== 'wait_and_see'
-    );
-  if (neutralTreatment) treatmentIds.add(neutralTreatment);
-  if (call.harmfulTreatment[0]) treatmentIds.add(call.harmfulTreatment[0]);
+  const delayChoice = call.harmfulTreatment.find(
+    (id) => id === 'wait_and_see' || id === 'delay_for_full_history'
+  );
+  const activeHarm = call.harmfulTreatment.find(
+    (id) => id !== 'wait_and_see' && id !== 'delay_for_full_history'
+  );
+  if (activeHarm) treatmentIds.add(activeHarm);
+  if (delayChoice) treatmentIds.add(delayChoice);
+
+  // Only add a neutral option when there is room after the clinically important
+  // choices and the explicit delay/withhold decision.
+  if (treatmentIds.size < 7) {
+    const neutralTreatment = call.treatmentActions
+      .map((option) => option.id)
+      .find(
+        (id) =>
+          !treatmentIds.has(id) &&
+          !call.harmfulTreatment.includes(id) &&
+          id !== 'wait_and_see'
+      );
+    if (neutralTreatment) treatmentIds.add(neutralTreatment);
+  }
 
   for (const treatment of [...treatmentIds].slice(0, 7)) {
     const recommended = call.recommendedTreatment.includes(treatment);

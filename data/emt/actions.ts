@@ -250,16 +250,16 @@ export const EMT_ACTIONS: Record<string, EmtAction> = {
   // Harmful / out of scope traps
   delay_for_full_history: {
     id: 'delay_for_full_history',
-    name: 'Complete Full History First',
-    description: 'Stay on scene until entire SAMPLE/OPQRST is finished',
+    name: 'Delay Care for a Complete History',
+    description: 'Withhold immediate care until the entire SAMPLE/OPQRST is finished',
     category: 'treatment',
     principle: 'universal',
     emtScope: true,
   },
   wait_and_see: {
     id: 'wait_and_see',
-    name: 'Wait and Reassess Only',
-    description: 'No interventions — observe only',
+    name: 'Withhold Treatment and Observe',
+    description: 'Wait longer without an intervention and see whether the patient improves',
     category: 'treatment',
     principle: 'universal',
     emtScope: true,

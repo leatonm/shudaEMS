@@ -54,7 +54,7 @@ export function ChoiceButton({
   return (
     <PressScale
       onPress={onPress}
-      disabled={disabled || completed}
+      disabled={disabled}
       entering={enterUp(index)}
       style={[
         styles.row,
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.xs,
   },
   rowCompleted: {
-    opacity: 0.55,
+    opacity: 0.7,
   },
   marker: {
     width: fs(20),

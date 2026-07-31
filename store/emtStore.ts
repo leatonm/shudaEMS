@@ -57,8 +57,21 @@ interface EmtStore {
     difficulty?: EmtDifficulty;
   }) => string | null;
   chooseNext: (choiceId: string) => void;
+  undoChoice: (choiceId: string) => void;
   reset: () => void;
 }
+
+/** Actions a provider can take back before committing to the next step. */
+const UNDOABLE_KINDS = new Set<WalkthroughChoice['actionKind']>([
+  'ppe',
+  'stage',
+  'verbalize_safe',
+  'safety_request',
+  'abcde',
+  'history',
+  'check_allergies',
+  'treatment',
+]);
 
 function pushTimeline(
   timeline: TimelineEntry[],
@@ -405,6 +418,7 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       message,
       scoreDelta,
       severity,
+      skill,
       flowMiss,
       startedAt: state.startedAt,
     });
@@ -479,10 +493,103 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
     });
   },
 
+  undoChoice: (choiceId) => {
+    const state = get();
+    if (!state.call || state.result || state.phase === 'debrief') return;
+
+    const step = state.steps[state.stepIndex];
+    const choice = step?.choices.find((c) => c.id === choiceId);
+    if (!choice || !UNDOABLE_KINDS.has(choice.actionKind)) return;
+    if (
+      choice.actionKind === 'treatment' &&
+      choice.payload &&
+      state.call.harmfulTreatment.includes(choice.payload)
+    ) {
+      return;
+    }
+
+    const entries = state.timeline.filter((e) => e.actionId === choiceId);
+    if (entries.length === 0) return;
+
+    const payload = choice.payload;
+    const kind = choice.actionKind;
+
+    const safetyActions = state.safetyActions.filter((id) => {
+      if (kind === 'verbalize_safe') return id !== 'verbalize_scene_safe';
+      if (kind === 'ppe' || kind === 'stage' || kind === 'safety_request') {
+        return id !== payload;
+      }
+      return true;
+    });
+    const abcdeCompleted =
+      kind === 'abcde'
+        ? state.abcdeCompleted.filter((id) => id !== payload)
+        : state.abcdeCompleted;
+    const historyCompleted =
+      kind === 'history' || kind === 'check_allergies'
+        ? state.historyCompleted.filter((id) => id !== payload)
+        : state.historyCompleted;
+    const treatments =
+      kind === 'treatment' || (kind === 'safety_request' && payload === 'request_als')
+        ? state.treatments.filter((id) => id !== payload)
+        : state.treatments;
+
+    const allergyPayloads = new Set(
+      state.steps
+        .flatMap((s) => s.choices)
+        .filter((c) => c.actionKind === 'check_allergies' && c.payload)
+        .map((c) => c.payload as string)
+    );
+    const allergiesChecked = historyCompleted.some(
+      (id) => allergyPayloads.has(id) || /allerg/i.test(id)
+    );
+
+    let skillScores = state.skillScores;
+    let totalScore = state.totalScore;
+    for (const entry of entries) {
+      totalScore -= entry.scoreDelta;
+      skillScores = applySkill(skillScores, entry.skill, -entry.scoreDelta);
+    }
+
+    set({
+      safetyActions,
+      abcdeCompleted,
+      historyCompleted,
+      treatments,
+      allergiesChecked,
+      vitals: recomputeVitals(state.call, treatments, state.enteredUnsafe),
+      timeline: state.timeline.filter((e) => e.actionId !== choiceId),
+      skillScores,
+      totalScore,
+    });
+  },
+
   reset: () => {
     set({ ...emptyState, difficulty: get().difficulty });
   },
 }));
+
+/**
+ * Treatments mutate vitals as they are applied, so undoing one means replaying the
+ * remaining treatments from the patient's presenting vitals.
+ */
+function recomputeVitals(
+  call: EmtCall,
+  treatments: string[],
+  enteredUnsafe: boolean
+): EmtVitals {
+  let vitals: EmtVitals = { ...call.vitals };
+  if (enteredUnsafe) {
+    vitals = applyVitals(vitals, { mentalStatus: 'scene chaotic — delayed care' });
+  }
+  const applied: string[] = [];
+  for (const treatment of treatments) {
+    const fx = evaluateTreatmentAction(call, treatment, applied, vitals);
+    vitals = applyVitals(vitals, fx.vitals);
+    applied.push(treatment);
+  }
+  return vitals;
+}
 
 function resourceAlreadyOnSceneCheck(
   call: EmtCall,

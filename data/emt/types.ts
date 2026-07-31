@@ -99,6 +99,8 @@ export interface TimelineEntry {
   scoreDelta: number;
   severity: 'good' | 'warn' | 'bad' | 'neutral';
   atMs: number;
+  /** Which skill bucket this scored — needed to reverse an undone action. */
+  skill?: SkillCategory;
   /** Out-of-order / trap choice for debrief "Flow misses" */
   flowMiss?: boolean;
 }

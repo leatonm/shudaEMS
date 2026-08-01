@@ -9,6 +9,7 @@ import { ScreenScroll } from '@/components/ui/ScreenScroll';
 import { ShiftButton } from '@/components/ui/ShiftUI';
 import {
   LiveDot,
+  PressScale,
   ProgressTrack,
   PulseOrb,
   enterFade,
@@ -52,6 +53,10 @@ export default function EmtCallScreen() {
   const destination = useEmtStore((s) => s.destination);
   const chooseNext = useEmtStore((s) => s.chooseNext);
   const undoChoice = useEmtStore((s) => s.undoChoice);
+  const goBack = useEmtStore((s) => s.goBack);
+  const canGoBack = useEmtStore(
+    (s) => s.snapshots.length > 0 && !s.result && s.phase !== 'debrief'
+  );
 
   const tips = showActionTips(difficulty);
   const coach = showPhaseCoaching(difficulty);
@@ -122,7 +127,14 @@ export default function EmtCallScreen() {
               {call.unit} · P{call.priority} · {difficulty.toUpperCase()}
             </Text>
           </View>
-          {showScore ? <Text style={styles.score}>{totalScore} PTS</Text> : null}
+          <View style={styles.topBarRight}>
+            {canGoBack ? (
+              <PressScale onPress={goBack} style={styles.backButton}>
+                <Text style={styles.backButtonText}>‹ BACK</Text>
+              </PressScale>
+            ) : null}
+            {showScore ? <Text style={styles.score}>{totalScore} PTS</Text> : null}
+          </View>
         </View>
 
         <PhaseRail phase={step.phase} accent={accent} completed={phaseCompletion} />
@@ -657,8 +669,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 10,
   },
-  topBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  topBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
+  topBarRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  backButton: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceLight,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  backButtonText: {
+    color: theme.colors.accentLight,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(11),
+    letterSpacing: 1,
+  },
   unit: {
     color: theme.colors.textMuted,
     fontFamily: 'IBMPlexMono',

@@ -34,6 +34,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build": "expo export -p web",
+    "build:android": "eas build --platform android --profile preview",
+    "build:android:store": "eas build --platform android --profile production",
+    "prebuild:android": "expo prebuild --platform android",
     "generate:calls": "npx tsx scripts/generateCalls.ts",
     "demo:dispatch": "npx tsx scripts/demoDispatchCalls.ts"
   },

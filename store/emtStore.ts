@@ -29,6 +29,26 @@ import type {
   WalkthroughStep,
 } from '@/data/emt/types';
 
+/** Restorable call state for step-level Back (not used after the final destination). */
+interface CallSnapshot {
+  phase: EmtPhase;
+  vitals: EmtVitals | null;
+  safetyActions: string[];
+  sceneEntered: boolean;
+  enteredUnsafe: boolean;
+  sceneSecuredAfterDelay: boolean;
+  abcdeCompleted: AbcdeStep[];
+  historyCompleted: string[];
+  treatments: string[];
+  allergiesChecked: boolean;
+  transportPriority: string | null;
+  destination: string | null;
+  timeline: TimelineEntry[];
+  skillScores: SkillScores;
+  totalScore: number;
+  stepIndex: number;
+}
+
 interface EmtStore {
   call: EmtCall | null;
   phase: EmtPhase;
@@ -51,6 +71,7 @@ interface EmtStore {
   startedAt: number;
   steps: WalkthroughStep[];
   stepIndex: number;
+  snapshots: CallSnapshot[];
 
   setDifficulty: (difficulty: EmtDifficulty) => void;
   startCall: (options?: {
@@ -60,7 +81,46 @@ interface EmtStore {
   }) => string | null;
   chooseNext: (choiceId: string) => void;
   undoChoice: (choiceId: string) => void;
+  goBack: () => void;
   reset: () => void;
+}
+
+function captureSnapshot(state: {
+  phase: EmtPhase;
+  vitals: EmtVitals | null;
+  safetyActions: string[];
+  sceneEntered: boolean;
+  enteredUnsafe: boolean;
+  sceneSecuredAfterDelay: boolean;
+  abcdeCompleted: AbcdeStep[];
+  historyCompleted: string[];
+  treatments: string[];
+  allergiesChecked: boolean;
+  transportPriority: string | null;
+  destination: string | null;
+  timeline: TimelineEntry[];
+  skillScores: SkillScores;
+  totalScore: number;
+  stepIndex: number;
+}): CallSnapshot {
+  return {
+    phase: state.phase,
+    vitals: state.vitals ? { ...state.vitals } : null,
+    safetyActions: [...state.safetyActions],
+    sceneEntered: state.sceneEntered,
+    enteredUnsafe: state.enteredUnsafe,
+    sceneSecuredAfterDelay: state.sceneSecuredAfterDelay,
+    abcdeCompleted: [...state.abcdeCompleted],
+    historyCompleted: [...state.historyCompleted],
+    treatments: [...state.treatments],
+    allergiesChecked: state.allergiesChecked,
+    transportPriority: state.transportPriority,
+    destination: state.destination,
+    timeline: state.timeline.map((entry) => ({ ...entry })),
+    skillScores: { ...state.skillScores },
+    totalScore: state.totalScore,
+    stepIndex: state.stepIndex,
+  };
 }
 
 /** Actions a provider can take back before committing to the next step. */
@@ -151,6 +211,7 @@ const emptyState = {
   startedAt: 0,
   steps: [] as WalkthroughStep[],
   stepIndex: 0,
+  snapshots: [] as CallSnapshot[],
 };
 
 export const useEmtStore = create<EmtStore>((set, get) => ({
@@ -460,6 +521,7 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
         difficulty: state.difficulty,
       });
 
+      // Final destination locks the run — no Back from debrief.
       set({
         safetyActions,
         sceneEntered,
@@ -477,6 +539,7 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
         totalScore: result.totalScore,
         result,
         phase: 'debrief',
+        snapshots: [],
       });
       return;
     }
@@ -487,6 +550,10 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       advance
     );
     const nextStep = state.steps[nextIndex];
+    const leftStep = nextIndex !== state.stepIndex;
+    const snapshots = leftStep
+      ? [...state.snapshots, captureSnapshot(state)]
+      : state.snapshots;
 
     set({
       safetyActions,
@@ -505,6 +572,7 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       totalScore,
       stepIndex: nextIndex,
       phase: nextStep?.phase ?? state.phase,
+      snapshots,
     });
   },
 
@@ -576,6 +644,26 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       timeline: state.timeline.filter((e) => e.actionId !== choiceId),
       skillScores,
       totalScore,
+    });
+  },
+
+  goBack: () => {
+    const state = get();
+    if (!state.call || state.result || state.phase === 'debrief') return;
+    if (state.snapshots.length === 0) return;
+
+    const previous = state.snapshots[state.snapshots.length - 1];
+    set({
+      ...previous,
+      vitals: previous.vitals ? { ...previous.vitals } : null,
+      safetyActions: [...previous.safetyActions],
+      abcdeCompleted: [...previous.abcdeCompleted],
+      historyCompleted: [...previous.historyCompleted],
+      treatments: [...previous.treatments],
+      timeline: previous.timeline.map((entry) => ({ ...entry })),
+      skillScores: { ...previous.skillScores },
+      snapshots: state.snapshots.slice(0, -1),
+      result: null,
     });
   },
 

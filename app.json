@@ -42,6 +42,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a2f8c5f1-45a1-4a4c-bb85-bc7bf498999f"
+      }
+    },
+    "owner": "leatonm"
   }
 }

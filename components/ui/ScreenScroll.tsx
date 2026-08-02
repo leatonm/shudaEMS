@@ -7,13 +7,14 @@ import { theme } from '@/constants/theme';
 interface ScreenScrollProps {
   children: ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
+  maxWidth?: number;
 }
 
 /** Scrolling body capped to a centered reading column. */
-export function ScreenScroll({ children, contentStyle }: ScreenScrollProps) {
+export function ScreenScroll({ children, contentStyle, maxWidth = CONTENT_MAX_WIDTH }: ScreenScrollProps) {
   return (
     <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-      <View style={[styles.column, contentStyle]}>{children}</View>
+      <View style={[styles.column, { maxWidth }, contentStyle]}>{children}</View>
     </ScrollView>
   );
 }
@@ -25,7 +26,6 @@ const styles = StyleSheet.create({
   },
   column: {
     width: '100%',
-    maxWidth: CONTENT_MAX_WIDTH,
     alignSelf: 'center',
   },
 });

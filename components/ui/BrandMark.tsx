@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -8,9 +8,10 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { enterDown, enterUp } from '@/components/ui/motion';
+import { Icons } from '@/constants/icons';
 import { fs } from '@/constants/layout';
 import { theme } from '@/constants/theme';
-import { enterDown, enterUp } from '@/components/ui/motion';
 
 interface BrandMarkProps {
   /** Compact for stacked nav headers */
@@ -37,17 +38,21 @@ export function BrandMark({ compact = false }: BrandMarkProps) {
   if (compact) {
     return (
       <View style={styles.compactWrap}>
-        <Text style={styles.compactKicker}>TRAINING NET</Text>
-        <Text style={styles.compactTitle}>RESPONSE</Text>
+        <Image source={Icons.appLogo} style={styles.compactLogo} />
+        <View>
+          <Text style={styles.compactKicker}>TRAINING NET</Text>
+          <Text style={styles.compactTitle}>RESPONSE</Text>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.hero}>
-      <Animated.Text entering={enterDown(0)} style={styles.wordmark}>
-        RESPONSE
-      </Animated.Text>
+      <Animated.View entering={enterDown(0)} style={styles.logoRow}>
+        <Image source={Icons.appLogo} style={styles.logo} />
+        <Animated.Text style={styles.wordmark}>RESPONSE</Animated.Text>
+      </Animated.View>
       <Animated.View entering={enterUp(1)} style={styles.subRow}>
         <Text style={styles.emt}>EMT</Text>
         <Animated.View style={[styles.subRule, ruleStyle]} />
@@ -77,6 +82,12 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
     alignItems: 'center',
   },
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  logo: { width: 64, height: 64 },
   wordmark: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',
@@ -114,8 +125,11 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   compactWrap: {
-    alignItems: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
+  compactLogo: { width: 28, height: 28 },
   compactKicker: {
     color: theme.colors.emsBlue,
     fontFamily: 'IBMPlexMono',

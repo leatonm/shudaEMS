@@ -41,6 +41,9 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# icon pack extraction previews
+assets/_preview/
+
 # generated native folders
 /ios
 /android

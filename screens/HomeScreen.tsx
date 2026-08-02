@@ -1,13 +1,29 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import {
+  Alert,
+  Image,
+  type ImageSourcePropType,
+  LayoutChangeEvent,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
 
 import { ScreenScroll } from '@/components/ui/ScreenScroll';
-import { ShiftButton } from '@/components/ui/ShiftUI';
-import { BrandMark } from '@/components/ui/BrandMark';
 import { PressScale, PulseOrb, enterUp } from '@/components/ui/motion';
-import { fs } from '@/constants/layout';
+import {
+  CATEGORY_ICONS,
+  CATEGORY_MASCOTS,
+  DIFFICULTY_CARD_COPY,
+  DIFFICULTY_ICONS,
+  HOW_IT_WORKS,
+  Icons,
+} from '@/constants/icons';
+import { HOME_MAX_WIDTH, HOME_SIDEBAR_BREAKPOINT, fs } from '@/constants/layout';
 import { categoryColor, theme } from '@/constants/theme';
 import { CALL_CATEGORIES } from '@/data/emt/categories';
 import { DIFFICULTY_OPTIONS } from '@/data/emt/difficulty';
@@ -19,6 +35,11 @@ export default function HomeScreen() {
   const startEmtCall = useEmtStore((s) => s.startCall);
   const difficulty = useEmtStore((s) => s.difficulty);
   const setDifficulty = useEmtStore((s) => s.setDifficulty);
+  const [wide, setWide] = useState(false);
+
+  const onLayout = (e: LayoutChangeEvent) => {
+    setWide(e.nativeEvent.layout.width >= HOME_SIDEBAR_BREAKPOINT);
+  };
 
   const handleStartCategory = (category?: CallCategory) => {
     const callId = startEmtCall(category ? { category, difficulty } : { difficulty });
@@ -27,213 +48,602 @@ export default function HomeScreen() {
     }
   };
 
+  const comingSoon = (label: string) => {
+    Alert.alert(label, 'Progression is warming up — leaderboard is live now.');
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
-      <PulseOrb color={theme.colors.amberGlow} size={240} top={-50} right={-70} />
+      <PulseOrb color={theme.colors.amberGlow} size={220} top={-60} right={-80} />
       <PulseOrb
         color={theme.colors.cadGlow}
-        size={280}
-        top={140}
-        left={-90}
+        size={260}
+        top={120}
+        left={-100}
         duration={4400}
         delay={600}
       />
-      <PulseOrb
-        color={theme.colors.violetGlow}
-        size={220}
-        bottom={-60}
-        right={-40}
-        duration={5200}
-        delay={1200}
-      />
 
-      <ScreenScroll>
-        <BrandMark />
+      <ScreenScroll maxWidth={HOME_MAX_WIDTH} contentStyle={styles.scrollInner}>
+        <View onLayout={onLayout} style={[styles.shell, wide && styles.shellWide]}>
+          <View style={[styles.mainCol, wide && styles.mainColWide]}>
+            <Animated.View entering={enterUp(0)}>
+              <HeroBanner />
+            </Animated.View>
 
-        <Animated.View entering={enterUp(3)} style={styles.disclaimer}>
-          <Text style={styles.disclaimerTitle}>Training aid only</Text>
-          <Text style={styles.disclaimerText}>
-            Not a substitute for formal EMT education, certification, medical direction, or local
-            protocols.
-          </Text>
-        </Animated.View>
+            {!wide ? (
+              <Animated.View entering={enterUp(1)}>
+                <XpCard />
+              </Animated.View>
+            ) : null}
 
-        <Animated.View entering={enterUp(4)} style={styles.shiftCard}>
-          <Text style={styles.shiftLabel}>DIFFICULTY</Text>
-          <View style={styles.diffRow}>
-            {DIFFICULTY_OPTIONS.map((opt) => (
-              <DifficultyChip
-                key={opt.id}
-                label={opt.label}
-                selected={difficulty === opt.id}
-                accent={opt.id === 'exam' ? 'exam' : 'default'}
-                onPress={() => setDifficulty(opt.id as EmtDifficulty)}
+            <Animated.View entering={enterUp(1)} style={styles.disclaimer}>
+              <View style={styles.disclaimerTextCol}>
+                <Text style={styles.disclaimerTitle}>TRAINING AID ONLY</Text>
+                <Text style={styles.disclaimerText}>
+                  Not a substitute for formal EMT education, certification, medical direction, or
+                  local protocols.
+                </Text>
+              </View>
+              <Image source={Icons.trainingShield} style={styles.disclaimerIcon} />
+            </Animated.View>
+
+            <Animated.View entering={enterUp(2)} style={styles.section}>
+              <Text style={styles.sectionLabel}>CHOOSE DIFFICULTY</Text>
+              <View style={styles.diffRow}>
+                {DIFFICULTY_OPTIONS.map((opt) => {
+                  const copy = DIFFICULTY_CARD_COPY[opt.id];
+                  const selected = difficulty === opt.id;
+                  return (
+                    <PressScale
+                      key={opt.id}
+                      onPress={() => setDifficulty(opt.id as EmtDifficulty)}
+                      style={[
+                        styles.diffCard,
+                        selected && {
+                          borderColor: copy.accent,
+                          backgroundColor: copy.glow,
+                          shadowColor: copy.accent,
+                          shadowOpacity: 0.55,
+                        },
+                      ]}
+                    >
+                      <Image source={DIFFICULTY_ICONS[opt.id]} style={styles.diffIcon} />
+                      <Text style={[styles.diffTitle, selected && { color: copy.accent }]}>
+                        {opt.label}
+                      </Text>
+                      <Text style={styles.diffTag}>{copy.tagline}</Text>
+                    </PressScale>
+                  );
+                })}
+              </View>
+              <Text style={styles.diffHelp}>
+                {DIFFICULTY_OPTIONS.find((o) => o.id === difficulty)?.description}
+              </Text>
+            </Animated.View>
+
+            <Animated.View entering={enterUp(3)} style={styles.catSection}>
+              <Text style={styles.sectionLabel}>CHOOSE A CATEGORY</Text>
+              {CALL_CATEGORIES.map((cat, index) => (
+                <CategoryRow
+                  key={cat.id}
+                  label={cat.label}
+                  examples={cat.examples}
+                  accent={categoryColor(cat.id)}
+                  icon={CATEGORY_ICONS[cat.id]}
+                  mascot={CATEGORY_MASCOTS[cat.id]}
+                  index={index}
+                  onPress={() => handleStartCategory(cat.id)}
+                />
+              ))}
+              <CategoryRow
+                label="Random"
+                examples="Surprise me!"
+                accent="#7A93A3"
+                icon={Icons.random}
+                mascot={CATEGORY_MASCOTS.random}
+                index={CALL_CATEGORIES.length}
+                onPress={() => handleStartCategory()}
               />
-            ))}
+            </Animated.View>
+
+            <Animated.View entering={enterUp(4)} style={styles.section}>
+              <Text style={styles.funHeadline}>MAKE IT FUN. MAKE IT COUNT.</Text>
+              <View style={styles.funRow}>
+                <FunTile
+                  icon={Icons.streak}
+                  label="Streaks"
+                  onPress={() => comingSoon('Streaks')}
+                />
+                <FunTile
+                  icon={Icons.trophy}
+                  label="Leaderboard"
+                  onPress={() => router.push('/emt/leaderboard')}
+                />
+                <FunTile
+                  icon={Icons.badge}
+                  label="Badges"
+                  onPress={() => comingSoon('Badges')}
+                />
+                <FunTile
+                  icon={Icons.challenge}
+                  label="Daily Challenge"
+                  onPress={() => comingSoon('Daily Challenge')}
+                />
+              </View>
+            </Animated.View>
+
+            <Animated.View entering={enterUp(5)} style={styles.quoteBar}>
+              <Image source={Icons.appLogo} style={styles.quoteLogo} />
+              <Text style={styles.quote}>
+                Train like a pro. Respond with confidence. Make a difference.
+              </Text>
+              <Image source={Icons.appLogo} style={styles.quoteLogo} />
+            </Animated.View>
+
+            {!wide ? (
+              <Animated.View entering={enterUp(6)} style={styles.sidebarInline}>
+                <HowItWorksPanel />
+              </Animated.View>
+            ) : null}
           </View>
-          <Text style={styles.diffHelp}>
-            {DIFFICULTY_OPTIONS.find((o) => o.id === difficulty)?.description}
-          </Text>
-        </Animated.View>
 
-        <Animated.View entering={enterUp(5)} style={styles.shiftCard}>
-          <Text style={styles.shiftLabel}>CHOOSE A CATEGORY</Text>
-
-          {CALL_CATEGORIES.map((cat, index) => (
-            <View key={cat.id}>
-              {index > 0 ? <View style={styles.spacer} /> : null}
-              <ShiftButton
-                label={cat.label.toUpperCase()}
-                onPress={() => handleStartCategory(cat.id)}
-                variant={index === 0 ? 'primary' : 'secondary'}
-                accentColor={categoryColor(cat.id)}
-                index={index}
-              />
-              <Text style={styles.examples}>{cat.examples}</Text>
-            </View>
-          ))}
-
-          <View style={styles.spacer} />
-          <ShiftButton
-            label="RANDOM ANY CATEGORY"
-            onPress={() => handleStartCategory()}
-            variant="secondary"
-            index={CALL_CATEGORIES.length}
-          />
-        </Animated.View>
-
-        <Animated.View entering={enterUp(6)} style={styles.shiftCard}>
-          <Text style={styles.shiftLabel}>COMPETE</Text>
-          <Text style={styles.shiftPrompt}>
-            Season standings for clinical judgment and patient outcomes.
-          </Text>
-          <ShiftButton
-            label="VIEW LEADERBOARD"
-            onPress={() => router.push('/emt/leaderboard')}
-            variant="secondary"
-            accentColor={theme.colors.accent}
-          />
-        </Animated.View>
+          {wide ? (
+            <Animated.View entering={enterUp(2)} style={styles.sidebar}>
+              <XpCard />
+              <HowItWorksPanel />
+            </Animated.View>
+          ) : null}
+        </View>
       </ScreenScroll>
     </SafeAreaView>
   );
 }
 
-function DifficultyChip({
+function HeroBanner() {
+  return (
+    <View style={styles.hero}>
+      <LinearGradient
+        colors={['#1a0a14', '#0a1628', '#051018']}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={styles.heroGlowRed} />
+      <View style={styles.heroGlowBlue} />
+      <Image source={Icons.ambulance} style={styles.heroAmbulance} />
+      <View style={styles.heroBrand}>
+        <Image source={Icons.appLogo} style={styles.heroLogo} />
+        <View>
+          <Text style={styles.heroTitle}>EMT RESPONSE</Text>
+          <Text style={styles.heroSub}>SIMULATOR</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function XpCard() {
+  return (
+    <View style={styles.xpCard}>
+      <View style={styles.xpTop}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.xpLevel}>XP LEVEL 12</Text>
+          <View style={styles.xpTrack}>
+            <View style={[styles.xpFill, { width: '50%' }]} />
+          </View>
+          <Text style={styles.xpMeta}>1,250 / 2,500 XP</Text>
+        </View>
+        <View style={styles.avatarWrap}>
+          <Image source={Icons.medicMascot} style={styles.avatar} />
+          <Text style={styles.avatarLabel}>EMT Rookie</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function HowItWorksPanel() {
+  return (
+    <View style={styles.howCard}>
+      <Text style={styles.howTitle}>HOW IT WORKS</Text>
+      {HOW_IT_WORKS.map((step) => (
+        <View key={step.n} style={styles.howRow}>
+          <View style={[styles.howNum, { borderColor: step.color, shadowColor: step.color }]}>
+            <Text style={[styles.howNumText, { color: step.color }]}>{step.n}</Text>
+          </View>
+          <View style={styles.howCopy}>
+            <Text style={styles.howStepTitle}>{step.title}</Text>
+            <Text style={styles.howStepBody}>{step.body}</Text>
+          </View>
+          <Image source={step.icon} style={styles.howIcon} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function CategoryRow({
   label,
-  selected,
-  onPress,
+  examples,
   accent,
+  icon,
+  mascot,
+  index,
+  onPress,
 }: {
   label: string;
-  selected: boolean;
+  examples: string;
+  accent: string;
+  icon: ImageSourcePropType;
+  mascot: ImageSourcePropType;
+  index: number;
   onPress: () => void;
-  accent: 'default' | 'exam';
 }) {
   return (
     <PressScale
       onPress={onPress}
-      style={[
-        styles.chip,
-        selected && styles.chipSelected,
-        selected && accent === 'exam' && styles.chipExam,
-      ]}
+      entering={enterUp(index + 3)}
+      style={[styles.catRow, { borderColor: accent, shadowColor: accent }]}
     >
-      <Text
-        style={[
-          styles.chipText,
-          selected && styles.chipTextSelected,
-          selected && accent === 'exam' && styles.chipTextExam,
-        ]}
-      >
-        {label}
-      </Text>
+      <LinearGradient
+        colors={[`${accent}44`, `${accent}14`, 'transparent']}
+        locations={[0, 0.45, 1]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <Image source={icon} style={styles.catIcon} />
+      <View style={styles.catCopy}>
+        <Text style={[styles.catLabel, { color: accent }]}>{label.toUpperCase()}</Text>
+        <Text style={styles.catExamples} numberOfLines={1}>
+          {examples}
+        </Text>
+      </View>
+      <Image source={mascot} style={styles.catMascot} />
+      <Image source={Icons.arrowRight} style={styles.catChevron} />
+    </PressScale>
+  );
+}
+
+function FunTile({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: ImageSourcePropType;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <PressScale onPress={onPress} style={styles.funTile}>
+      <Image source={icon} style={styles.funIcon} />
+      <Text style={styles.funLabel}>{label}</Text>
     </PressScale>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.background },
+  scrollInner: { paddingTop: theme.spacing.md },
+  shell: {
+    width: '100%',
+    gap: 14,
+  },
+  shellWide: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+  },
+  mainCol: { width: '100%', gap: 14 },
+  mainColWide: { flex: 1, minWidth: 0 },
+  sidebar: {
+    width: 268,
+    gap: 12,
+    paddingTop: 2,
+  },
+  sidebarInline: { marginTop: 4 },
+
+  hero: {
+    height: 128,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.md,
+  },
+  heroGlowRed: {
+    position: 'absolute',
+    right: 36,
+    top: -24,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255, 45, 85, 0.24)',
+  },
+  heroGlowBlue: {
+    position: 'absolute',
+    right: 110,
+    bottom: -36,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(0, 120, 255, 0.22)',
+  },
+  heroAmbulance: {
+    position: 'absolute',
+    right: 8,
+    bottom: 4,
+    width: 108,
+    height: 108,
+    opacity: 0.5,
+  },
+  heroBrand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    zIndex: 2,
+  },
+  heroLogo: { width: 64, height: 64 },
+  heroTitle: {
+    color: theme.colors.text,
+    fontFamily: 'BebasNeue',
+    fontSize: fs(42),
+    lineHeight: fs(44),
+    letterSpacing: 1.5,
+    textShadowColor: theme.colors.cadGlowStrong,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 16,
+  },
+  heroSub: {
+    color: theme.colors.emsBlue,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(12),
+    letterSpacing: 2.5,
+    marginTop: -2,
+  },
+
   disclaimer: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(255, 176, 32, 0.08)',
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: theme.colors.warning,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
+  disclaimerTextCol: { flex: 1 },
   disclaimerTitle: {
     color: theme.colors.warning,
-    fontWeight: '800',
-    marginBottom: 4,
-    fontSize: fs(12),
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(10),
+    letterSpacing: 1.2,
+    marginBottom: 2,
   },
   disclaimerText: {
     color: theme.colors.textMuted,
-    fontSize: fs(12),
-    lineHeight: fs(18),
+    fontSize: fs(11),
+    lineHeight: fs(16),
   },
-  shiftCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.lg,
-    shadowColor: theme.colors.emsBlue,
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  shiftLabel: {
+  disclaimerIcon: { width: 36, height: 36 },
+
+  section: { gap: 8 },
+  catSection: { gap: 6 },
+  sectionLabel: {
     color: theme.colors.emsBlue,
     fontFamily: 'IBMPlexMonoBold',
     fontSize: fs(11),
     letterSpacing: 1.5,
-    marginBottom: theme.spacing.sm,
+    marginBottom: 2,
     textShadowColor: theme.colors.cadGlow,
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 8,
   },
-  shiftPrompt: {
-    color: theme.colors.text,
-    fontSize: fs(15),
-    lineHeight: fs(22),
-    marginBottom: theme.spacing.lg,
-  },
-  diffRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-  chip: {
+
+  diffRow: { flexDirection: 'row', gap: 8 },
+  diffCard: {
     flex: 1,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    paddingVertical: 10,
     alignItems: 'center',
-    backgroundColor: theme.colors.surfaceLight,
+    gap: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
   },
-  chipSelected: {
-    borderColor: theme.colors.emsBlue,
-    backgroundColor: theme.colors.cadGlow,
+  diffIcon: { width: 52, height: 52 },
+  diffTitle: {
+    color: theme.colors.text,
+    fontFamily: 'BebasNeue',
+    fontSize: fs(22),
+    letterSpacing: 1,
   },
-  chipExam: {
-    borderColor: theme.colors.accent,
-    backgroundColor: theme.colors.amberGlow,
+  diffTag: {
+    color: theme.colors.textMuted,
+    fontSize: fs(10),
+    textAlign: 'center',
+    lineHeight: fs(13),
   },
-  chipText: { color: theme.colors.textMuted, fontWeight: '700', fontSize: fs(13) },
-  chipTextSelected: { color: theme.colors.accentLight },
-  chipTextExam: { color: theme.colors.accent },
   diffHelp: {
     color: theme.colors.textMuted,
+    fontSize: fs(11),
+    lineHeight: fs(16),
+  },
+
+  catRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    height: 76,
+    paddingLeft: 10,
+    paddingRight: 8,
+    borderRadius: 14,
+    borderWidth: 2,
+    backgroundColor: theme.colors.surface,
+    overflow: 'visible',
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  catIcon: { width: 58, height: 58 },
+  catCopy: { flex: 1, minWidth: 0, justifyContent: 'center' },
+  catLabel: {
+    fontFamily: 'BebasNeue',
+    fontSize: fs(24),
+    letterSpacing: 1,
+    lineHeight: fs(26),
+  },
+  catExamples: {
+    color: theme.colors.textMuted,
+    fontSize: fs(11),
+    lineHeight: fs(14),
+    marginTop: 1,
+  },
+  catMascot: {
+    width: 78,
+    height: 78,
+    marginVertical: -8,
+    marginRight: -2,
+  },
+  catChevron: { width: 16, height: 16, opacity: 0.65 },
+
+  funHeadline: {
+    color: theme.colors.text,
+    fontFamily: 'BebasNeue',
+    fontSize: fs(24),
+    letterSpacing: 1.5,
+    textAlign: 'center',
+  },
+  funRow: { flexDirection: 'row', gap: 8 },
+  funTile: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+  },
+  funIcon: { width: 42, height: 42 },
+  funLabel: {
+    color: theme.colors.textMuted,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(9),
+    letterSpacing: 0.4,
+    textAlign: 'center',
+  },
+
+  quoteBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceLight,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+  },
+  quoteLogo: { width: 22, height: 22, opacity: 0.45 },
+  quote: {
+    flex: 1,
+    color: theme.colors.emsBlue,
     fontSize: fs(12),
     lineHeight: fs(18),
-    marginBottom: 4,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
-  examples: {
+
+  xpCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    padding: 12,
+  },
+  xpTop: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  xpLevel: {
+    color: theme.colors.accent,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(11),
+    letterSpacing: 1.2,
+    marginBottom: 6,
+  },
+  xpTrack: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: theme.colors.surfaceLight,
+    overflow: 'hidden',
+  },
+  xpFill: {
+    height: '100%',
+    backgroundColor: theme.colors.emsBlue,
+    borderRadius: 4,
+  },
+  xpMeta: {
     color: theme.colors.textMuted,
-    fontSize: fs(12),
-    marginTop: 6,
-    marginBottom: 4,
-    lineHeight: fs(17),
+    fontSize: fs(11),
+    marginTop: 5,
   },
-  spacer: { height: theme.spacing.sm },
+  avatarWrap: { alignItems: 'center', width: 68 },
+  avatar: { width: 58, height: 58 },
+  avatarLabel: {
+    color: theme.colors.textMuted,
+    fontSize: fs(9),
+    marginTop: 2,
+    textAlign: 'center',
+  },
+
+  howCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    padding: 12,
+    gap: 10,
+  },
+  howTitle: {
+    color: theme.colors.emsBlue,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(11),
+    letterSpacing: 1.5,
+  },
+  howRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  howNum: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.background,
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  howNumText: {
+    fontFamily: 'BebasNeue',
+    fontSize: fs(15),
+  },
+  howCopy: { flex: 1 },
+  howStepTitle: {
+    color: theme.colors.text,
+    fontWeight: '700',
+    fontSize: fs(12),
+  },
+  howStepBody: {
+    color: theme.colors.textMuted,
+    fontSize: fs(10),
+    lineHeight: fs(14),
+    marginTop: 1,
+  },
+  howIcon: { width: 22, height: 22, opacity: 0.85 },
 });

@@ -1,1092 +1,549 @@
-import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated from 'react-native-reanimated';
 
 import { ResourceFlash } from '@/components/characters/AlsFlash';
-import { ChoiceButton } from '@/components/ui/ChoiceButton';
-import { ScreenScroll } from '@/components/ui/ScreenScroll';
+import { PressScale } from '@/components/ui/motion';
 import { ShiftButton } from '@/components/ui/ShiftUI';
-import {
-  type AlsFlashMode,
-  type ResourceCrew,
-  type ResponseCode,
-  resourceCrewFromChoice,
-} from '@/lib/characterDialogue';
-import {
-  LiveDot,
-  PressScale,
-  ProgressTrack,
-  PulseOrb,
-  enterFade,
-  enterStepIn,
-  enterUp,
-  exitStepOut,
-} from '@/components/ui/motion';
+import { Characters } from '@/constants/characters';
 import { fs } from '@/constants/layout';
-import { categoryColor, theme } from '@/constants/theme';
+import { theme } from '@/constants/theme';
 import {
-  formatLiveFeedback,
-  showActionTips,
-  showHazardDetails,
-  showPhaseCoaching,
-} from '@/data/emt/difficulty';
-import { hazardsAreCleared, unresolvedSceneHazards } from '@/data/emt/engine';
-import { describeResourcesOnArrival } from '@/data/emt/resources';
-import { shuffleChoices } from '@/data/emt/walkthrough';
-import type { WalkthroughChoice, WalkthroughStep } from '@/data/emt/types';
+  ACTION_MENU_ROOTS,
+  ACTION_MENUS,
+  type ActionMenuNode,
+  type ActionMenuRoot,
+} from '@/data/emt/actionMenu';
+import { showActionTips } from '@/data/emt/difficulty';
+import type { ResponseCode } from '@/lib/characterDialogue';
 import { useEmtStore } from '@/store/emtStore';
 
+const RESPONDING_ACTIONS: ActionMenuNode[] = [
+  { id: 'read_cad', label: 'Review CAD Information', actionId: 'read_cad' },
+  { id: 'read_dispatch', label: 'Review Dispatch Notes', actionId: 'read_dispatch_notes' },
+  { id: 'req_als', label: 'Request Additional Units', actionId: 'request_als' },
+  { id: 'req_fire', label: 'Request Fire', actionId: 'request_fire' },
+  { id: 'req_pd', label: 'Request Law Enforcement', actionId: 'request_pd' },
+  { id: 'equip', label: 'Select Equipment', actionId: 'consider_equipment' },
+  {
+    id: 'protocols',
+    label: 'Review Protocol (Coach Mode)',
+    actionId: 'review_protocols',
+  },
+];
+
+/**
+ * Oral practical layout:
+ * Lauren (evaluator) · Patient status (known vitals only) · What would you like to do?
+ */
 export default function EmtCallScreen() {
   const router = useRouter();
-
+  const { id } = useLocalSearchParams<{ id: string }>();
   const call = useEmtStore((s) => s.call);
   const phase = useEmtStore((s) => s.phase);
-  const difficulty = useEmtStore((s) => s.difficulty);
   const vitals = useEmtStore((s) => s.vitals);
-  const steps = useEmtStore((s) => s.steps);
-  const stepIndex = useEmtStore((s) => s.stepIndex);
-  const timeline = useEmtStore((s) => s.timeline);
-  const totalScore = useEmtStore((s) => s.totalScore);
-  const safetyActions = useEmtStore((s) => s.safetyActions);
-  const sceneEntered = useEmtStore((s) => s.sceneEntered);
-  const enteredUnsafe = useEmtStore((s) => s.enteredUnsafe);
-  const sceneSecuredAfterDelay = useEmtStore((s) => s.sceneSecuredAfterDelay);
-  const abcdeCompleted = useEmtStore((s) => s.abcdeCompleted);
-  const historyCompleted = useEmtStore((s) => s.historyCompleted);
-  const treatments = useEmtStore((s) => s.treatments);
-  const transportPriority = useEmtStore((s) => s.transportPriority);
-  const destination = useEmtStore((s) => s.destination);
-  const chooseNext = useEmtStore((s) => s.chooseNext);
-  const undoChoice = useEmtStore((s) => s.undoChoice);
-  const goBack = useEmtStore((s) => s.goBack);
-  const canGoBack = useEmtStore(
-    (s) => s.snapshots.length > 0 && !s.result && s.phase !== 'debrief'
-  );
-  const [resourceFlash, setResourceFlash] = useState(false);
-  const [resourceFlashMode, setResourceFlashMode] = useState<AlsFlashMode>('enroute');
-  const [resourceCrew, setResourceCrew] = useState<ResourceCrew>('als');
-  const [pendingResourceChoiceId, setPendingResourceChoiceId] = useState<string | null>(null);
+  const difficulty = useEmtStore((s) => s.difficulty);
+  const instructorLog = useEmtStore((s) => s.instructorLog);
+  const revealedVitals = useEmtStore((s) => s.revealedVitals);
+  const pendingFollowUps = useEmtStore((s) => s.pendingFollowUps);
+  const completedActions = useEmtStore((s) => s.completedActions);
+  const performMenuAction = useEmtStore((s) => s.performMenuAction);
+  const continueFromResponding = useEmtStore((s) => s.continueFromResponding);
+  const acknowledgeArrival = useEmtStore((s) => s.acknowledgeArrival);
+  const clearFollowUps = useEmtStore((s) => s.clearFollowUps);
+  const tickPhysio = useEmtStore((s) => s.tickPhysio);
+  const arrivedAt = useEmtStore((s) => s.arrivedAt);
+  const pendingResourceFlash = useEmtStore((s) => s.pendingResourceFlash);
+  const clearPendingResourceFlash = useEmtStore((s) => s.clearPendingResourceFlash);
   const setResourceResponseCode = useEmtStore((s) => s.setResourceResponseCode);
-  const clearResourceResponseCode = useEmtStore((s) => s.clearResourceResponseCode);
 
+  const [root, setRoot] = useState<ActionMenuRoot | null>(null);
+  const [path, setPath] = useState<string[]>([]);
+  const [askOpen, setAskOpen] = useState(false);
+  const [askText, setAskText] = useState('');
+  const [elapsed, setElapsed] = useState('00:00');
+  const logRef = useRef<ScrollView>(null);
   const tips = showActionTips(difficulty);
-  const coach = showPhaseCoaching(difficulty);
-  const hazardDetail = showHazardDetails(difficulty);
-  const showScore = difficulty !== 'exam';
-
-  const step = steps[stepIndex];
-
-  const shuffled = useMemo(() => {
-    if (!call || !step) return [];
-    return shuffleChoices(step.choices, `${call.id}:${step.id}`);
-  }, [call, step]);
 
   useEffect(() => {
-    if (phase === 'debrief') {
-      router.replace('/emt/debrief');
-    }
+    if (phase === 'handoff') router.replace('/emt/handoff' as Href);
   }, [phase, router]);
 
-  if (!call || !vitals || !step) {
+  useEffect(() => {
+    logRef.current?.scrollToEnd({ animated: true });
+  }, [instructorLog.length]);
+
+  useEffect(() => {
+    if (phase !== 'on_scene' && phase !== 'arrival') return;
+    const id = setInterval(() => tickPhysio(), 2000);
+    return () => clearInterval(id);
+  }, [phase, tickPhysio]);
+
+  useEffect(() => {
+    if (!arrivedAt) {
+      setElapsed('00:00');
+      return;
+    }
+    const tick = () => {
+      const sec = Math.max(0, Math.floor((Date.now() - arrivedAt) / 1000));
+      const m = String(Math.floor(sec / 60)).padStart(2, '0');
+      const s = String(sec % 60).padStart(2, '0');
+      setElapsed(`${m}:${s}`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [arrivedAt]);
+
+  const nodes = useMemo(() => {
+    if (!root) return [];
+    let list = ACTION_MENUS[root];
+    for (const seg of path) {
+      const next = list.find((n) => n.id === seg);
+      list = next?.children ?? [];
+    }
+    return list.filter((n) => !n.alsOnly);
+  }, [root, path]);
+
+  if (!call || call.id !== id || !vitals) {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.centered}>
           <Text style={styles.muted}>No active call.</Text>
-          <ShiftButton label="BACK" onPress={() => router.replace('/')} />
         </View>
       </SafeAreaView>
     );
   }
 
-  const accent = categoryColor(call.category);
-  const lastFeedback = timeline[timeline.length - 1];
-  const live = lastFeedback ? formatLiveFeedback(difficulty, lastFeedback) : null;
-
-  const progress = (stepIndex + 1) / Math.max(1, steps.length);
-  const groups = groupChoices(shuffled);
-  const phaseCompletion = {
-    scene_safety:
-      sceneEntered &&
-      !enteredUnsafe &&
-      (sceneSecuredAfterDelay || hazardsAreCleared(call, safetyActions)),
-    primary_survey: call.requiredAbcdeOrder.every((item) =>
-      abcdeCompleted.includes(item)
-    ),
-    treatment: call.recommendedTreatment
-      .filter((item) => item !== 'request_als')
-      .some((item) => treatments.includes(item)),
-    transport: false,
+  const act = (actionId: string) => {
+    clearFollowUps();
+    performMenuAction(actionId);
+    setRoot(null);
+    setPath([]);
+    setAskOpen(false);
+    setAskText('');
   };
+
+  const openNode = (node: ActionMenuNode) => {
+    if (node.children?.length) {
+      setPath((p) => [...p, node.id]);
+      return;
+    }
+    if (node.actionId) act(node.actionId);
+  };
+
+  const interpretAsk = () => {
+    const q = askText.trim().toLowerCase();
+    if (!q) return;
+    const map: Array<[RegExp, string]> = [
+      [/blood pressure|bp\b/, 'vital_bp'],
+      [/pulse(?! ox)|heart rate|\bhr\b/, 'vital_pulse'],
+      [/respirat|breathing rate|\brr\b/, 'vital_rr'],
+      [/spo2|pulse ox|oximetry/, 'check_spo2'],
+      [/glucose|bgl|sugar/, 'blood_glucose'],
+      [/lung/, 'lung_sounds'],
+      [/pupil/, 'disability'],
+      [/airway/, 'airway'],
+      [/breathing/, 'breathing'],
+      [/circulation|pulse check/, 'circulation'],
+      [/impression/, 'general_impression'],
+      [/oxygen|\bo2\b/, 'oxygen'],
+      [/aspirin|asa/, 'aspirin'],
+      [/nitro/, 'nitroglycerin'],
+      [/scene safe|is the scene/, 'verbalize_scene_safe'],
+      [/bsi|ppe|gloves/, 'don_ppe'],
+      [/reassess/, 'reassessment'],
+    ];
+    const hit = map.find(([re]) => re.test(q));
+    if (hit) {
+      act(hit[1]);
+      return;
+    }
+    if (difficulty === 'coach') {
+      act('consider_resources');
+    }
+  };
+
+  const portrait =
+    call && revealedVitals.bp === undefined
+      ? Characters.lauren.image
+      : Characters.lauren.image;
 
   return (
     <SafeAreaView style={styles.safe}>
-      <PulseOrb color={theme.colors.cadGlow} size={200} top={-30} right={-50} />
-      <PulseOrb
-        color={theme.colors.violetGlow}
-        size={180}
-        bottom={-50}
-        left={-60}
-        duration={4800}
-        delay={800}
-      />
-
-      <ScreenScroll>
-        <View style={styles.topBar}>
-          <View style={styles.topBarLeft}>
-            <LiveDot color={accent} />
-            <Text style={styles.unit}>
-              {call.unit} · P{call.priority} · {difficulty.toUpperCase()}
-            </Text>
-          </View>
-          <View style={styles.topBarRight}>
-            {canGoBack ? (
-              <PressScale onPress={goBack} style={styles.backButton}>
-                <Text style={styles.backButtonText}>‹ BACK</Text>
-              </PressScale>
-            ) : null}
-            {showScore ? <Text style={styles.score}>{totalScore} PTS</Text> : null}
+      <View style={styles.shell}>
+        {/* Lauren evaluator panel */}
+        <View style={styles.laurenPanel}>
+          <Image source={portrait} resizeMode="contain" style={styles.lauren} />
+          <View style={styles.logWrap}>
+            <Text style={styles.callsign}>LAUREN · EVALUATOR</Text>
+            <ScrollView
+              ref={logRef}
+              style={styles.log}
+              contentContainerStyle={styles.logContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {instructorLog.slice(-12).map((msg) => (
+                <View
+                  key={msg.id}
+                  style={[styles.bubble, msg.role === 'you' ? styles.youBubble : styles.laurenBubble]}
+                >
+                  {msg.role === 'you' ? (
+                    <Text style={styles.youLabel}>YOU</Text>
+                  ) : null}
+                  <Text style={styles.bubbleText}>{msg.text}</Text>
+                </View>
+              ))}
+            </ScrollView>
           </View>
         </View>
 
-        <PhaseRail phase={step.phase} accent={accent} completed={phaseCompletion} />
-
-        <View style={styles.progressWrap}>
-          <ProgressTrack progress={progress} color={accent} />
-        </View>
-
-        {difficulty === 'exam' ? (
-          <Text style={styles.examBadge}>EXAM · critical criteria active</Text>
-        ) : null}
-
-        <Animated.View
-          key={`${step.id}-${stepIndex}`}
-          entering={enterStepIn}
-          exiting={exitStepOut}
-        >
-          <SituationStrip
-            reveal={step.reveal}
-            call={call}
-            vitals={vitals}
-            showVitals={step.phase !== 'dispatch' && step.phase !== 'scene_safety'}
-            hazardDetail={hazardDetail}
-            accent={accent}
-          />
-
-          {step.development ? (
-            <SceneDevelopment
-              development={step.development}
-              accent={accent}
-              delayed={sceneSecuredAfterDelay}
-              unresolved={unresolvedSceneHazards(call, safetyActions).map(
-                (hazard) => hazard.label
-              )}
+        {/* Patient demographics + known vitals only */}
+        <View style={styles.status}>
+          <Text style={styles.statusTitle}>PATIENT STATUS</Text>
+          <View style={styles.demoRow}>
+            <StatusChip label="Age" value={String(call.age)} />
+            <StatusChip label="Sex" value={call.sex} />
+            <StatusChip
+              label="Status"
+              value={
+                phase === 'responding'
+                  ? 'En route'
+                  : phase === 'arrival'
+                    ? 'On scene'
+                    : 'Waiting'
+              }
             />
-          ) : null}
-
-          {live && live.text !== '…' ? (
-            <Animated.View
-              key={`fb-${timeline.length}`}
-              entering={enterUp(0)}
-              style={[
-                styles.feedback,
-                live.showSeverity && lastFeedback?.severity === 'good'
-                  ? styles.feedbackGood
-                  : live.showSeverity && lastFeedback?.severity === 'bad'
-                    ? styles.feedbackBad
-                    : styles.feedbackNeutral,
-              ]}
-            >
-              <Text style={styles.feedbackLabel}>
-                {lastFeedback?.severity === 'good'
-                  ? 'WHY THAT WORKED'
-                  : lastFeedback?.severity === 'bad'
-                    ? 'CLINICAL CONSEQUENCE'
-                    : 'DECISION REVIEW'}
-              </Text>
-              <Text style={styles.feedbackText}>{live.text}</Text>
-            </Animated.View>
-          ) : null}
-
-          <View style={styles.promptBlock}>
-            <Text style={[styles.promptEyebrow, { color: accent }]}>{step.title}</Text>
-            <Text style={styles.prompt}>{step.prompt}</Text>
-            {coach && step.coachTip ? (
-              <Text style={styles.hint}>{step.coachTip}</Text>
-            ) : null}
+            <StatusChip label="Time Since Arrival" value={elapsed} />
           </View>
+          <View style={styles.statusRow}>
+            <StatusChip label="HR" value={revealedVitals.hr ? String(vitals.hr) : 'Unknown'} />
+            <StatusChip label="BP" value={revealedVitals.bp ? vitals.bp : 'Unknown'} />
+            <StatusChip label="RR" value={revealedVitals.rr ? String(vitals.rr) : 'Unknown'} />
+            <StatusChip
+              label="SpO₂"
+              value={revealedVitals.spo2 ? `${vitals.spo2}%` : 'Unknown'}
+            />
+          </View>
+        </View>
 
-          {groups.map((group) => (
-            <View
-              key={group.label || 'forward'}
-              style={group.forward ? styles.forwardGroup : styles.choiceGroup}
-            >
-              {group.label ? (
-                <Text style={styles.choiceGroupLabel}>{group.label}</Text>
-              ) : null}
-              {group.choices.map((choice, index) => {
-                const completed = isChoiceCompleted(choice, {
-                  safetyActions,
-                  sceneEntered,
-                  abcdeCompleted,
-                  historyCompleted,
-                  treatments,
-                  transportPriority,
-                  destination,
-                });
-                const canUndo =
-                  completed &&
-                  !(
-                    choice.actionKind === 'treatment' &&
-                    choice.payload &&
-                    call.harmfulTreatment.includes(choice.payload)
-                  );
-                return (
-                  <ChoiceButton
-                    key={choice.id}
-                    label={choice.label}
-                    subtitle={
-                      completed
-                        ? canUndo
-                          ? 'Tap to undo'
-                          : 'Patient response recorded — choose corrective care'
-                        : tips
-                          ? choice.tip
-                          : undefined
-                    }
+        {/* Phase-specific controls */}
+        <View style={styles.actions}>
+          {phase === 'responding' ? (
+            <>
+              <Text style={styles.prompt}>Response phase — prepare if you want.</Text>
+              {RESPONDING_ACTIONS.filter(
+                (a) => a.actionId !== 'review_protocols' || tips
+              ).map((node) => (
+                <PressScale
+                  key={node.id}
+                  onPress={() => node.actionId && act(node.actionId)}
+                  style={[
+                    styles.actionBtn,
+                    node.actionId && completedActions.includes(node.actionId)
+                      ? styles.actionDone
+                      : null,
+                  ]}
+                >
+                  <Text style={styles.actionLabel}>{node.label}</Text>
+                </PressScale>
+              ))}
+              <ShiftButton
+                label="CONTINUE TO SCENE"
+                onPress={continueFromResponding}
+                accentColor={theme.colors.emsBlue}
+              />
+            </>
+          ) : null}
+
+          {phase === 'arrival' ? (
+            <>
+              <Text style={styles.prompt}>You are on scene.</Text>
+              <ShiftButton
+                label="BEGIN ASSESSMENT"
+                onPress={acknowledgeArrival}
+                accentColor={theme.colors.emsBlue}
+              />
+            </>
+          ) : null}
+
+          {phase === 'on_scene' ? (
+            <>
+              {pendingFollowUps.length > 0 ? (
+                <View style={styles.followUps}>
+                  <Text style={styles.prompt}>How do you want to handle this?</Text>
+                  {pendingFollowUps.map((fu) => (
+                    <PressScale
+                      key={fu.id}
+                      onPress={() => act(fu.actionId)}
+                      style={styles.actionBtn}
+                    >
+                      <Text style={styles.actionLabel}>{fu.label}</Text>
+                    </PressScale>
+                  ))}
+                </View>
+              ) : !root ? (
+                <>
+                  <Text style={styles.prompt}>What would you like to do?</Text>
+                  <View style={styles.rootGrid}>
+                    {ACTION_MENU_ROOTS.map((item) => (
+                      <PressScale
+                        key={item.id}
+                        onPress={() => {
+                          setRoot(item.id);
+                          setPath([]);
+                        }}
+                        style={styles.rootChip}
+                      >
+                        <Text style={styles.rootChipText}>{item.label}</Text>
+                      </PressScale>
+                    ))}
+                    <PressScale
+                      onPress={() => setAskOpen((v) => !v)}
+                      style={[styles.rootChip, styles.askChip]}
+                    >
+                      <Text style={styles.rootChipText}>Ask Lauren</Text>
+                    </PressScale>
+                  </View>
+                  {askOpen ? (
+                    <View style={styles.askBox}>
+                      <TextInput
+                        style={styles.askInput}
+                        placeholder={'e.g. "I\'d like to obtain a blood pressure."'}
+                        placeholderTextColor={theme.colors.textMuted}
+                        value={askText}
+                        onChangeText={setAskText}
+                        onSubmitEditing={interpretAsk}
+                      />
+                      <ShiftButton label="ASK" onPress={interpretAsk} accentColor={theme.colors.emsBlue} />
+                    </View>
+                  ) : null}
+                </>
+              ) : (
+                <View style={styles.subMenu}>
+                  <PressScale
                     onPress={() => {
-                      const crew = resourceCrewFromChoice(choice);
-                      if (completed && canUndo) {
-                        if (crew) {
-                          setResourceCrew(crew);
-                          setResourceFlashMode('cancel');
-                          setPendingResourceChoiceId(null);
-                          clearResourceResponseCode(crew);
-                          setResourceFlash(true);
-                        }
-                        undoChoice(choice.id);
-                        return;
-                      }
-                      if (crew) {
-                        setResourceCrew(crew);
-                        setResourceFlashMode('enroute');
-                        setPendingResourceChoiceId(choice.id);
-                        setResourceFlash(true);
-                        return;
-                      }
-                      chooseNext(choice.id);
+                      if (path.length) setPath((p) => p.slice(0, -1));
+                      else setRoot(null);
                     }}
-                    index={index}
-                    accentColor={accent}
-                    variant={group.forward && !completed ? 'primary' : 'task'}
-                    completed={completed}
-                    disabled={completed && !canUndo}
-                  />
-                );
-              })}
-            </View>
-          ))}
-        </Animated.View>
-      </ScreenScroll>
+                  >
+                    <Text style={styles.back}>‹ BACK</Text>
+                  </PressScale>
+                  <Text style={styles.prompt}>
+                    {ACTION_MENU_ROOTS.find((r) => r.id === root)?.label}
+                  </Text>
+                  {nodes.map((node) => (
+                    <PressScale
+                      key={node.id}
+                      onPress={() => openNode(node)}
+                      style={[
+                        styles.actionBtn,
+                        node.actionId && completedActions.includes(node.actionId)
+                          ? styles.actionDone
+                          : null,
+                      ]}
+                    >
+                      <Text style={styles.actionLabel}>{node.label}</Text>
+                      {node.children?.length ? (
+                        <Text style={styles.more}>›</Text>
+                      ) : null}
+                    </PressScale>
+                  ))}
+                </View>
+              )}
+            </>
+          ) : null}
+        </View>
+      </View>
 
       <ResourceFlash
-        visible={resourceFlash}
-        crew={resourceCrew}
-        mode={resourceFlashMode}
+        visible={!!pendingResourceFlash}
+        crew={pendingResourceFlash ?? 'als'}
+        mode="enroute"
         onConfirm={(code?: ResponseCode) => {
-          if (resourceFlashMode === 'enroute' && pendingResourceChoiceId && code) {
-            setResourceResponseCode(resourceCrew, code);
-            chooseNext(pendingResourceChoiceId);
+          if (pendingResourceFlash && code) {
+            setResourceResponseCode(pendingResourceFlash, code);
           }
-          setPendingResourceChoiceId(null);
-          setResourceFlash(false);
+          clearPendingResourceFlash();
         }}
       />
     </SafeAreaView>
   );
 }
 
-const PHASES = [
-  { id: 'scene_safety', label: 'SIZE-UP' },
-  { id: 'primary_survey', label: 'PRIMARY' },
-  { id: 'treatment', label: 'PATIENT CARE' },
-  { id: 'transport', label: 'TRANSPORT' },
-] as const;
-
-function PhaseRail({
-  phase,
-  accent,
-  completed,
-}: {
-  phase: string;
-  accent: string;
-  completed: Record<(typeof PHASES)[number]['id'], boolean>;
-}) {
-  const currentIndex =
-    phase === 'dispatch'
-      ? -1
-      : PHASES.findIndex((item) => item.id === phase);
-
+function StatusChip({ label, value }: { label: string; value: string }) {
+  const unknown = value === 'Unknown';
   return (
-    <View style={styles.phaseRail}>
-      {PHASES.map((item, index) => {
-        const active = index === currentIndex;
-        const complete = completed[item.id];
-        const skipped = index < currentIndex && !complete;
-        return (
-          <View key={item.id} style={styles.phaseRailItem}>
-            <View
-              style={[
-                styles.phaseRailDot,
-                complete && { backgroundColor: theme.colors.success },
-                active && { backgroundColor: accent, transform: [{ scale: 1.25 }] },
-                skipped && { backgroundColor: theme.colors.error },
-              ]}
-            />
-            <Text
-              style={[
-                styles.phaseRailText,
-                (active || complete) && { color: active ? accent : theme.colors.success },
-                skipped && { color: theme.colors.error },
-              ]}
-            >
-              {skipped ? `! ${item.label}` : item.label}
-            </Text>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-/**
- * Single source of truth for the call: the CAD line, who the patient is, and their
- * current vitals once they've been assessed.
- */
-function CallStatusCard({
-  call,
-  vitals,
-  showVitals,
-  prominent,
-  accent,
-}: {
-  call: NonNullable<ReturnType<typeof useEmtStore.getState>['call']>;
-  vitals: NonNullable<ReturnType<typeof useEmtStore.getState>['vitals']>;
-  showVitals: boolean;
-  prominent: boolean;
-  accent: string;
-}) {
-  const changed =
-    vitals.bp !== call.vitals.bp ||
-    vitals.hr !== call.vitals.hr ||
-    vitals.rr !== call.vitals.rr ||
-    vitals.spo2 !== call.vitals.spo2 ||
-    vitals.mentalStatus !== call.vitals.mentalStatus;
-
-  return (
-    <Animated.View
-      entering={enterFade(0)}
-      style={[styles.statusCard, changed && showVitals && { borderColor: accent }]}
-    >
-      <View style={styles.statusHeader}>
-        <View style={styles.statusHeaderLeft}>
-          <LiveDot color={theme.colors.critical} size={7} />
-          <Text style={styles.cad}>CAD DISPATCH · {call.category.toUpperCase()}</Text>
-        </View>
-        {showVitals ? (
-          changed ? <Text style={styles.patientChanged}>PATIENT RESPONSE</Text> : null
-        ) : (
-          <Text style={styles.vitalsPending}>VITALS PENDING</Text>
-        )}
-      </View>
-
-      <Text
-        style={[
-          prominent ? styles.dispatchHero : styles.dispatchLine,
-          prominent && { textShadowColor: accent },
-        ]}
-      >
-        {call.dispatch}
-      </Text>
-      <Text style={styles.patientSummary}>{call.patientSummary}</Text>
-
-      {showVitals ? (
-        <Animated.View
-          key={`${vitals.bp}-${vitals.hr}-${vitals.rr}-${vitals.spo2}-${vitals.mentalStatus}`}
-          entering={enterFade(0)}
-          style={styles.vitalsBlock}
-        >
-          <Text style={[styles.vitalsLabel, { color: accent }]}>LIVE VITALS</Text>
-          {call.archetypeId === 'cardiac_arrest' ||
-          (vitals.hr === 0 && vitals.rr === 0) ? (
-            <View style={styles.arrestBanner}>
-              <Text style={styles.arrestBannerTitle}>PULSELESS · APNEIC</Text>
-              <Text style={styles.arrestBannerText}>
-                No blood pressure to obtain. Confirm pulse ≤10 seconds, then start high-quality
-                CPR and apply the AED.
-              </Text>
-              <Text style={styles.mentalStatus}>
-                Status: <Text style={styles.mentalStatusValue}>{vitals.mentalStatus}</Text>
-              </Text>
-            </View>
-          ) : (
-            <>
-              <View style={styles.vitalGrid}>
-                <VitalTile label="BP" value={vitals.bp} changed={vitals.bp !== call.vitals.bp} />
-                <VitalTile
-                  label="HR"
-                  value={String(vitals.hr)}
-                  changed={vitals.hr !== call.vitals.hr}
-                />
-                <VitalTile
-                  label="RR"
-                  value={String(vitals.rr)}
-                  changed={vitals.rr !== call.vitals.rr}
-                />
-                <VitalTile
-                  label="SpO₂"
-                  value={`${vitals.spo2}%`}
-                  changed={vitals.spo2 !== call.vitals.spo2}
-                />
-              </View>
-              <Text style={styles.mentalStatus}>
-                Mental status: <Text style={styles.mentalStatusValue}>{vitals.mentalStatus}</Text>
-              </Text>
-            </>
-          )}
-        </Animated.View>
-      ) : null}
-    </Animated.View>
-  );
-}
-
-function VitalTile({
-  label,
-  value,
-  changed,
-}: {
-  label: string;
-  value: string;
-  changed: boolean;
-}) {
-  return (
-    <View style={[styles.vitalTile, changed && styles.vitalTileChanged]}>
-      <Text style={styles.vitalTileLabel}>{label}</Text>
-      <Text style={[styles.vitalTileValue, changed && styles.vitalTileValueChanged]}>
-        {value}
-      </Text>
-    </View>
-  );
-}
-
-function SceneDevelopment({
-  development,
-  accent,
-  delayed,
-  unresolved,
-}: {
-  development: NonNullable<WalkthroughStep['development']>;
-  accent: string;
-  delayed: boolean;
-  unresolved: string[];
-}) {
-  const elapsed = development.elapsedMinutes + (delayed ? 9 : 0);
-  const headline = delayed
-    ? 'Scene secured after an avoidable delay'
-    : development.headline;
-  const lines = delayed
-    ? [
-        unresolved.length > 0
-          ? `${unresolved.join(', ')} remained uncontrolled when you chose to wait.`
-          : 'Required scene-safety actions were incomplete when you chose to wait.',
-        'Dispatch eventually escalated the response and the scene was secured.',
-        'Patient contact was delayed; expect the patient’s condition to have worsened.',
-      ]
-    : development.lines;
-
-  return (
-    <Animated.View
-      entering={enterUp(0)}
-      style={[
-        styles.development,
-        { borderColor: delayed ? theme.colors.error : accent },
-      ]}
-    >
-      <View style={styles.developmentHeader}>
-        <Text
-          style={[
-            styles.developmentLabel,
-            { color: delayed ? theme.colors.error : accent },
-          ]}
-        >
-          SCENE DEVELOPMENT
-        </Text>
-        <Text style={styles.developmentTime}>+{elapsed} MIN</Text>
-      </View>
-      <Text style={styles.developmentHeadline}>{headline}</Text>
-      {lines.map((line) => (
-        <View key={line} style={styles.developmentRow}>
-          <View
-            style={[
-              styles.developmentDot,
-              { backgroundColor: delayed ? theme.colors.error : accent },
-            ]}
-          />
-          <Text style={styles.developmentText}>{line}</Text>
-        </View>
-      ))}
-    </Animated.View>
-  );
-}
-
-interface ChoiceGroup {
-  label: string;
-  choices: WalkthroughChoice[];
-  /** Ends the step — rendered last as a solid call to action. */
-  forward: boolean;
-}
-
-/** Ordered so the work to do reads top-down and the exit is always at the bottom. */
-const GROUP_ORDER = [
-  'PROTECT YOURSELF',
-  'SCENE CONTROL',
-  'ON-SCENE ACTIONS',
-  'PRIMARY ASSESSMENT',
-  'FOCUSED QUESTIONS',
-  'INTERVENTIONS',
-  'CHOOSE ONE',
-  '',
-];
-
-function groupLabel(choice: WalkthroughChoice): string {
-  switch (choice.actionKind) {
-    case 'respond':
-    case 'enter_scene':
-    case 'proceed':
-      return '';
-    case 'ppe':
-    case 'stage':
-      return 'PROTECT YOURSELF';
-    case 'verbalize_safe':
-    case 'safety_request':
-      return 'SCENE CONTROL';
-    case 'abcde':
-      return 'PRIMARY ASSESSMENT';
-    case 'history':
-    case 'check_allergies':
-      return 'FOCUSED QUESTIONS';
-    case 'treatment':
-      return 'INTERVENTIONS';
-    case 'transport_priority':
-    case 'transport_destination':
-      return 'CHOOSE ONE';
-    default:
-      return 'ON-SCENE ACTIONS';
-  }
-}
-
-function groupChoices(choices: WalkthroughChoice[]): ChoiceGroup[] {
-  const labels = new Map<string, WalkthroughChoice[]>();
-
-  for (const choice of choices) {
-    const label = groupLabel(choice);
-    const group = labels.get(label) ?? [];
-    group.push(choice);
-    labels.set(label, group);
-  }
-
-  return [...labels.entries()]
-    .map(([label, groupedChoices]) => ({
-      label,
-      choices: groupedChoices,
-      forward: label === '',
-    }))
-    .sort((a, b) => GROUP_ORDER.indexOf(a.label) - GROUP_ORDER.indexOf(b.label));
-}
-
-function isChoiceCompleted(
-  choice: WalkthroughChoice,
-  state: {
-    safetyActions: string[];
-    sceneEntered: boolean;
-    abcdeCompleted: string[];
-    historyCompleted: string[];
-    treatments: string[];
-    transportPriority: string | null;
-    destination: string | null;
-  }
-): boolean {
-  const payload = choice.payload;
-  if (!payload) return false;
-  if (choice.actionKind === 'ppe' || choice.actionKind === 'stage') {
-    return state.safetyActions.includes(payload);
-  }
-  if (choice.actionKind === 'verbalize_safe') {
-    return state.safetyActions.includes('verbalize_scene_safe');
-  }
-  if (choice.actionKind === 'safety_request') {
-    return state.safetyActions.includes(payload);
-  }
-  if (choice.actionKind === 'enter_scene') return state.sceneEntered;
-  if (choice.actionKind === 'abcde') return state.abcdeCompleted.includes(payload);
-  if (choice.actionKind === 'history' || choice.actionKind === 'check_allergies') {
-    return state.historyCompleted.includes(payload);
-  }
-  if (choice.actionKind === 'treatment') return state.treatments.includes(payload);
-  if (choice.actionKind === 'transport_priority') {
-    return state.transportPriority === payload;
-  }
-  if (choice.actionKind === 'transport_destination') return state.destination === payload;
-  return false;
-}
-
-function SituationStrip({
-  reveal,
-  call,
-  vitals,
-  showVitals,
-  hazardDetail,
-  accent,
-}: {
-  reveal: 'dispatch' | 'scene' | 'vitals' | 'none';
-  call: NonNullable<ReturnType<typeof useEmtStore.getState>['call']>;
-  vitals: NonNullable<ReturnType<typeof useEmtStore.getState>['vitals']>;
-  showVitals: boolean;
-  hazardDetail: boolean;
-  accent: string;
-}) {
-  const statusCard = (
-    <CallStatusCard
-      call={call}
-      vitals={vitals}
-      showVitals={showVitals}
-      prominent={reveal === 'dispatch'}
-      accent={accent}
-    />
-  );
-
-  if (reveal !== 'scene') {
-    return statusCard;
-  }
-
-  const resources = describeResourcesOnArrival(call.resourcesOnScene ?? []);
-  const first = (call.resourcesOnScene ?? []).length === 0;
-
-  return (
-    <View style={styles.situation}>
-      {statusCard}
-
-      <Text style={styles.sceneSectionLabel}>WHAT YOU SEE ON ARRIVAL</Text>
-
-      <Animated.View
-        entering={enterFade(0)}
-        style={[styles.resources, first ? styles.resourcesFirst : styles.resourcesPresent]}
-      >
-        <Text style={styles.resourcesHeadline}>{resources.headline}</Text>
-        {resources.lines.map((line) => (
-          <Text key={line} style={styles.resourcesLine}>
-            {line}
-          </Text>
-        ))}
-      </Animated.View>
-
-      {call.hazards.length === 0 ? (
-        <Text style={styles.body}>No obvious major hazards visible.</Text>
-      ) : (
-        call.hazards.map((h, index) => (
-          <Animated.View key={h.id} entering={enterUp(index + 1)} style={styles.hazard}>
-            <Text style={styles.hazardLabel}>{h.label}</Text>
-            {hazardDetail ? <Text style={styles.hazardDesc}>{h.description}</Text> : null}
-          </Animated.View>
-        ))
-      )}
-
+    <View style={[styles.chip, unknown && styles.chipUnknown]}>
+      <Text style={styles.chipLabel}>{label}</Text>
+      <Text style={[styles.chipValue, unknown && styles.chipValueUnknown]}>{value}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.background },
-  centered: { flex: 1, justifyContent: 'center', padding: theme.spacing.lg },
-  topBar: {
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  muted: { color: theme.colors.textMuted },
+  shell: { flex: 1, paddingHorizontal: 12, paddingBottom: 8 },
+  laurenPanel: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
+    gap: 8,
+    flex: 1,
+    minHeight: 220,
+    maxHeight: 320,
   },
-  topBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
-  topBarRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  backButton: {
+  lauren: { width: 100, height: 200, alignSelf: 'flex-end' },
+  logWrap: { flex: 1, paddingTop: 8 },
+  callsign: {
+    color: theme.colors.emsBlue,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(10),
+    letterSpacing: 1.3,
+    marginBottom: 6,
+  },
+  log: { flex: 1 },
+  logContent: { gap: 8, paddingBottom: 8 },
+  bubble: {
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+  },
+  laurenBubble: {
+    backgroundColor: 'rgba(2, 10, 18, 0.88)',
+    borderColor: 'rgba(0, 229, 255, 0.28)',
+  },
+  youBubble: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    alignSelf: 'flex-end',
+    maxWidth: '92%',
+  },
+  youLabel: {
+    color: theme.colors.textMuted,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(9),
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  bubbleText: {
+    color: theme.colors.text,
+    fontSize: fs(14),
+    lineHeight: fs(20),
+    fontWeight: '600',
+  },
+  status: {
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.border,
+    paddingVertical: 10,
+    marginVertical: 6,
+  },
+  statusTitle: {
+    color: theme.colors.textMuted,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(9),
+    letterSpacing: 1.3,
+    marginBottom: 8,
+  },
+  demoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 6 },
+  statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceLight,
-    borderRadius: theme.radius.sm,
     paddingHorizontal: 10,
     paddingVertical: 6,
+    minWidth: 70,
   },
-  backButtonText: {
-    color: theme.colors.accentLight,
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(11),
-    letterSpacing: 1,
-  },
-  unit: {
-    color: theme.colors.textMuted,
-    fontFamily: 'IBMPlexMono',
-    fontSize: fs(12),
-  },
-  phaseRail: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: theme.spacing.md,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  phaseRailItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 6,
-  },
-  phaseRailDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: theme.colors.border,
-  },
-  phaseRailText: {
+  chipUnknown: { opacity: 0.75 },
+  chipLabel: {
     color: theme.colors.textMuted,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(8),
-    letterSpacing: 0.5,
-    textAlign: 'center',
+    fontSize: fs(9),
   },
-  progressWrap: {
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
-  },
-  score: {
-    color: theme.colors.accent,
-    fontFamily: 'BebasNeue',
-    fontSize: fs(26),
-    letterSpacing: 1,
-    textShadowColor: theme.colors.amberGlow,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
-  },
-  examBadge: {
-    color: theme.colors.accent,
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(11),
-    letterSpacing: 0.8,
-    marginBottom: theme.spacing.sm,
-  },
-  statusCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderLeftWidth: 4,
-    borderLeftColor: theme.colors.critical,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    shadowColor: theme.colors.critical,
-    shadowOpacity: 0.25,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  statusHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing.sm,
-  },
-  statusHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-  },
-  cad: {
-    color: theme.colors.critical,
-    fontFamily: 'IBMPlexMonoBold',
-    letterSpacing: 1.5,
-    fontSize: fs(11),
-  },
-  dispatchHero: {
+  chipValue: {
     color: theme.colors.text,
-    fontFamily: 'BebasNeue',
-    fontSize: fs(36),
-    letterSpacing: 1,
-    lineHeight: fs(38),
-    marginBottom: 6,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 14,
-  },
-  dispatchLine: {
-    color: theme.colors.text,
+    fontFamily: 'IBMPlexMonoBold',
     fontSize: fs(15),
-    fontWeight: '700',
-    lineHeight: fs(21),
-  },
-  patientSummary: {
-    color: theme.colors.accentLight,
-    fontSize: fs(14),
-    lineHeight: fs(20),
-    marginTop: 4,
-  },
-  patientChanged: {
-    color: theme.colors.accent,
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(9),
-    letterSpacing: 0.8,
-  },
-  vitalsPending: {
-    color: theme.colors.textMuted,
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(9),
-    letterSpacing: 0.8,
-  },
-  vitalsBlock: {
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-  },
-  vitalsLabel: {
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(10),
-    letterSpacing: 1.2,
-    marginBottom: 8,
-  },
-  arrestBanner: {
-    backgroundColor: theme.colors.dangerGlow,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.critical,
-    padding: theme.spacing.md,
-  },
-  arrestBannerTitle: {
-    color: theme.colors.critical,
-    fontFamily: 'BebasNeue',
-    fontSize: fs(28),
-    letterSpacing: 1.5,
-    marginBottom: 4,
-  },
-  arrestBannerText: {
-    color: theme.colors.text,
-    fontSize: fs(13),
-    lineHeight: fs(19),
-    marginBottom: 8,
-  },
-  vitalGrid: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  vitalTile: {
-    flex: 1,
-    minWidth: 58,
-    backgroundColor: theme.colors.backgroundAlt,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  vitalTileChanged: {
-    backgroundColor: theme.colors.amberGlow,
-    borderColor: theme.colors.accent,
-  },
-  vitalTileLabel: {
-    color: theme.colors.textMuted,
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(9),
-  },
-  vitalTileValue: {
-    color: theme.colors.text,
-    fontFamily: 'SpaceMono',
-    fontSize: fs(13),
     marginTop: 2,
   },
-  vitalTileValueChanged: {
-    color: theme.colors.accent,
-  },
-  mentalStatus: {
-    color: theme.colors.textMuted,
-    fontSize: fs(12),
-    marginTop: 10,
-  },
-  mentalStatusValue: {
+  chipValueUnknown: { color: theme.colors.textMuted, fontSize: fs(13) },
+  actions: { gap: 8, paddingTop: 4, maxHeight: '42%' },
+  prompt: {
     color: theme.colors.text,
-    fontWeight: '700',
+    fontFamily: 'BebasNeue',
+    fontSize: fs(22),
+    letterSpacing: 0.6,
+    marginBottom: 4,
   },
-  situation: { marginBottom: theme.spacing.md },
-  development: {
-    backgroundColor: theme.colors.cadGlow,
-    borderRadius: theme.radius.lg,
+  rootGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  rootChip: {
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
+    borderColor: theme.colors.border,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    minWidth: '30%',
+    flexGrow: 1,
   },
-  developmentHeader: {
+  askChip: { borderColor: theme.colors.emsBlue },
+  rootChipText: {
+    color: theme.colors.text,
+    fontFamily: 'BebasNeue',
+    fontSize: fs(18),
+    textAlign: 'center',
+  },
+  actionBtn: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
   },
-  developmentLabel: {
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(10),
-    letterSpacing: 1.4,
-  },
-  developmentTime: {
-    color: theme.colors.textMuted,
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(10),
-    letterSpacing: 0.8,
-  },
-  developmentHeadline: {
-    color: theme.colors.text,
-    fontSize: fs(20),
-    fontWeight: '800',
-    marginBottom: 10,
-  },
-  developmentRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    marginTop: 5,
-  },
-  developmentDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginTop: 7,
-  },
-  developmentText: {
-    color: theme.colors.text,
-    flex: 1,
-    fontSize: fs(14),
-    lineHeight: fs(20),
-  },
-  promptBlock: {
-    marginBottom: theme.spacing.lg,
-    marginTop: theme.spacing.sm,
-  },
-  promptEyebrow: {
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(10),
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
-    marginBottom: 6,
-  },
-  prompt: {
-    color: theme.colors.text,
-    fontSize: fs(22),
-    fontWeight: '700',
-    lineHeight: fs(28),
-  },
-  hint: {
-    color: theme.colors.textMuted,
-    marginTop: 8,
-    lineHeight: fs(20),
-    fontSize: fs(13),
-  },
-  body: {
-    color: theme.colors.textMuted,
-    marginBottom: theme.spacing.sm,
-    lineHeight: fs(20),
-    fontSize: fs(14),
-  },
-  hazard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.md,
-    borderLeftWidth: 3,
-    borderLeftColor: theme.colors.warning,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-  },
-  hazardLabel: { color: theme.colors.warning, fontWeight: '800', fontSize: fs(14) },
-  hazardDesc: { color: theme.colors.text, marginTop: 2, fontSize: fs(14), lineHeight: fs(20) },
-  resources: {
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-  },
-  resourcesFirst: {
-    backgroundColor: theme.colors.amberGlow,
-    borderColor: theme.colors.accent,
-  },
-  resourcesPresent: {
-    backgroundColor: theme.colors.cadGlow,
-    borderColor: theme.colors.emsBlue,
-  },
-  sceneSectionLabel: {
-    color: theme.colors.textMuted,
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(10),
-    letterSpacing: 1.2,
-    marginBottom: 7,
-  },
-  resourcesHeadline: {
-    color: theme.colors.text,
-    fontWeight: '800',
-    fontSize: fs(15),
-    marginBottom: 4,
-  },
-  resourcesLine: {
-    color: theme.colors.text,
-    fontSize: fs(13),
-    lineHeight: fs(19),
-  },
-  choiceGroup: {
-    marginBottom: theme.spacing.lg,
-  },
-  forwardGroup: {
-    marginTop: theme.spacing.xs,
-    marginBottom: theme.spacing.md,
-  },
-  choiceGroupLabel: {
-    color: theme.colors.textMuted,
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(10),
-    letterSpacing: 1.2,
-    marginBottom: 4,
-  },
-  feedback: {
-    padding: theme.spacing.md,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    marginBottom: theme.spacing.md,
-  },
-  feedbackGood: {
-    backgroundColor: theme.colors.successGlow,
+  actionDone: {
     borderColor: theme.colors.success,
+    backgroundColor: theme.colors.successGlow,
   },
-  feedbackBad: {
-    backgroundColor: theme.colors.dangerGlow,
-    borderColor: theme.colors.error,
+  actionLabel: {
+    color: theme.colors.text,
+    fontSize: fs(15),
+    fontWeight: '700',
+    flex: 1,
   },
-  feedbackNeutral: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-  },
-  feedbackLabel: {
-    color: theme.colors.textMuted,
+  more: { color: theme.colors.emsBlue, fontSize: fs(18) },
+  back: {
+    color: theme.colors.emsBlue,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(9),
-    letterSpacing: 1.1,
-    marginBottom: 5,
+    fontSize: fs(12),
+    marginBottom: 4,
   },
-  feedbackText: { color: theme.colors.text, lineHeight: fs(20), fontSize: fs(14) },
-  muted: {
-    color: theme.colors.textMuted,
-    textAlign: 'center',
-    marginBottom: 16,
+  subMenu: { gap: 6 },
+  followUps: { gap: 6 },
+  askBox: { gap: 8, marginTop: 4 },
+  askInput: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 10,
+    backgroundColor: theme.colors.surface,
+    color: theme.colors.text,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     fontSize: fs(14),
   },
 });

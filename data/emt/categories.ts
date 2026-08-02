@@ -22,7 +22,7 @@ export const CALL_CATEGORIES: CallCategoryInfo[] = [
   },
   {
     id: 'peds',
-    label: 'Peds',
+    label: 'Pediatric',
     description: 'Infants and children — airway, choking, fever, trauma.',
     examples: 'Choking · Febrile seizure · Pediatric trauma',
   },
@@ -34,7 +34,7 @@ export const CALL_CATEGORIES: CallCategoryInfo[] = [
   },
   {
     id: 'mci',
-    label: 'MCI / START',
+    label: 'MCI',
     description: 'Multi-casualty — command, mutual aid, and START triage.',
     examples: 'Tornado · Bus crash · Mass casualty triage',
   },

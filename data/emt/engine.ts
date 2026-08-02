@@ -7,6 +7,10 @@ import {
   mergeWithOnSceneActions,
   resourceAlreadyOnScene,
 } from '@/data/emt/resources';
+import {
+  evaluateSkillSheet,
+  scoreToPercent,
+} from '@/data/emt/skillSheetChecklist';
 import type {
   AbcdeStep,
   ConsequenceEffect,
@@ -317,7 +321,12 @@ export function evaluateTreatmentAction(
     let message = 'Appropriate EMT-scope intervention. Continue reassessment.';
     if (actionId === 'oxygen') {
       vitalsPatch.spo2 = Math.min(vitals.spo2 + 4, 99);
+      vitalsPatch.rr = Math.max(vitals.rr - 2, 12);
       message = `Oxygen applied. SpO₂ improves from ${vitals.spo2}% to ${vitalsPatch.spo2}%.`;
+    }
+    if (actionId === 'nitroglycerin') {
+      vitalsPatch.bp = shiftBloodPressure(vitals.bp, -16, -10);
+      message = `Nitroglycerin assisted. Pain eases; blood pressure trends from ${vitals.bp} toward ${vitalsPatch.bp}.`;
     }
     if (actionId === 'position_comfort') {
       vitalsPatch.rr = Math.max(vitals.rr - 2, 12);
@@ -369,6 +378,10 @@ export function evaluateTreatmentAction(
     message: 'Intervention performed — not critical for this presentation.',
     skill: 'treatment',
     severity: 'warn',
+    vitals:
+      actionId === 'nitroglycerin'
+        ? { bp: shiftBloodPressure(vitals.bp, -14, -8) }
+        : undefined,
   };
 }
 
@@ -413,6 +426,7 @@ export function resolveEmtRun(input: {
   destination: string | null;
   enteredUnsafe: boolean;
   difficulty: EmtDifficulty;
+  completedActions?: string[];
 }): EmtRunResult {
   const {
     call,
@@ -427,6 +441,7 @@ export function resolveEmtRun(input: {
     destination,
     enteredUnsafe,
     difficulty,
+    completedActions = [],
   } = input;
 
   const criticalFails = evaluateCriticalFails({
@@ -601,6 +616,7 @@ export function resolveEmtRun(input: {
     callId: call.id,
     stars,
     totalScore: finalScore,
+    percentScore: scoreToPercent(finalScore, skillsSheetPass),
     skillScores: normalizedSkills,
     patientOutcome,
     timeline,
@@ -608,6 +624,12 @@ export function resolveEmtRun(input: {
     finalVitals,
     criticalFails,
     skillsSheetPass,
+    skillSheetChecklist: evaluateSkillSheet([
+      ...completedActions,
+      ...safetyActions,
+      ...treatments,
+      ...timeline.map((e) => e.actionId),
+    ]),
   };
 }
 

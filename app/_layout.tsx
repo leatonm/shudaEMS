@@ -55,11 +55,47 @@ export default function RootLayout() {
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen
+          name="emt/difficulty"
+          options={{
+            headerBackTitle: 'Home',
+            headerTitle: () => (
+              <CadHeaderTitle title="DIFFICULTY" channel="SELECT" />
+            ),
+          }}
+        />
+        <Stack.Screen
+          name="emt/dispatch/[id]"
+          options={{
+            headerBackVisible: false,
+            headerTitle: () => (
+              <CadHeaderTitle title="DISPATCH" channel="CAD" />
+            ),
+          }}
+        />
+        <Stack.Screen
           name="emt/call/[id]"
           options={{
             headerBackTitle: 'Home',
             headerTitle: () => (
               <CadHeaderTitle title="ACTIVE CALL" channel="IN PROGRESS" />
+            ),
+          }}
+        />
+        <Stack.Screen
+          name="emt/handoff"
+          options={{
+            headerBackVisible: false,
+            headerTitle: () => (
+              <CadHeaderTitle title="HANDOFF" channel="ED ARRIVAL" />
+            ),
+          }}
+        />
+        <Stack.Screen
+          name="emt/settings"
+          options={{
+            headerBackTitle: 'Home',
+            headerTitle: () => (
+              <CadHeaderTitle title="SETTINGS" channel="TRAINING NET" />
             ),
           }}
         />

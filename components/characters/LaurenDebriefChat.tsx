@@ -71,8 +71,8 @@ export function LaurenDebriefChat({
         >
           <Text style={[styles.rankTitle, { color: accent }]}>{rank.toUpperCase()}</Text>
           <Text style={styles.rankSub}>
-            {result.stars}★ · Score {result.totalScore} ·{' '}
-            {result.skillsSheetPass ? 'SHEET PASS' : 'SHEET FAIL'}
+            {result.percentScore}% · {result.stars}★ ·{' '}
+            {result.skillsSheetPass ? 'PASS' : 'FAIL'}
           </Text>
 
           <View style={styles.dots}>

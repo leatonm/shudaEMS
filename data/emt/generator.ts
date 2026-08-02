@@ -85,6 +85,26 @@ export function generateEmtCall(options: GenerateEmtCallOptions = {}): EmtCall {
     rng,
   });
 
+  const weather = pickRandom(
+    ['Clear', 'Overcast', 'Light rain', 'Windy', 'Hot / humid', 'Cold'],
+    rng
+  );
+  const timeOfDay = pickRandom(
+    ['Daytime', 'Evening', 'Night', 'Early morning', 'Rush hour'],
+    rng
+  );
+  const distanceMiles = randomInt(1, 12, rng);
+  const cadNotes = pickRandom(
+    [
+      `Caller reports ${complaint.toLowerCase()}. PD advising.`,
+      'No further updates. Stage if scene not secure.',
+      'Multiple callers. Confirm patient count on arrival.',
+      'Access may be limited — watch for bystanders.',
+      'Previous medical history unknown to caller.',
+    ],
+    rng
+  );
+
   return {
     id: generateId(`emt_${archetype.id}`, rng),
     archetypeId: archetype.id,
@@ -93,6 +113,10 @@ export function generateEmtCall(options: GenerateEmtCallOptions = {}): EmtCall {
     unit: pickRandom(UNITS, rng),
     priority: pickRandom([1, 1, 2] as const, rng),
     dispatch: complaint,
+    cadNotes,
+    weather,
+    distanceMiles,
+    timeOfDay,
     patientSummary,
     age,
     sex,

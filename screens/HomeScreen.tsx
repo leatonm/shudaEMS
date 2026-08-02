@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import {
   Image,
-  type ImageSourcePropType,
-  LayoutChangeEvent,
+  Modal,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated from 'react-native-reanimated';
 
 import { LaurenWelcome } from '@/components/characters/LaurenWelcome';
 import {
@@ -19,669 +19,549 @@ import {
   StreaksSheet,
   useXpCardModel,
 } from '@/components/ui/ProgressSheets';
-import { ScreenScroll } from '@/components/ui/ScreenScroll';
-import { PressScale, PulseOrb, enterUp } from '@/components/ui/motion';
+import { PressScale } from '@/components/ui/motion';
+import { AppBackdrop } from '@/components/ui/AppBackdrop';
 import {
   CATEGORY_ICONS,
   CATEGORY_MASCOTS,
-  DIFFICULTY_CARD_COPY,
-  DIFFICULTY_ICONS,
   HOW_IT_WORKS,
   Icons,
 } from '@/constants/icons';
-import { HOME_MAX_WIDTH, HOME_SIDEBAR_BREAKPOINT, fs } from '@/constants/layout';
+import { fs } from '@/constants/layout';
 import { categoryColor, theme } from '@/constants/theme';
 import { CALL_CATEGORIES } from '@/data/emt/categories';
-import { DIFFICULTY_OPTIONS } from '@/data/emt/difficulty';
-import type { CallCategory, EmtDifficulty } from '@/data/emt/types';
+import type { CallCategory } from '@/data/emt/types';
 import { useEmtStore } from '@/store/emtStore';
 import { useProgressStore } from '@/store/progressStore';
 
+/** Single-viewport home — no vertical page scroll on phone. */
 export default function HomeScreen() {
   const router = useRouter();
-  const startEmtCall = useEmtStore((s) => s.startCall);
   const difficulty = useEmtStore((s) => s.difficulty);
-  const setDifficulty = useEmtStore((s) => s.setDifficulty);
+  const startEmtCall = useEmtStore((s) => s.startCall);
+  const setPendingCategory = useEmtStore((s) => s.setPendingCategory);
   const beginDailyRun = useProgressStore((s) => s.beginDailyRun);
   const clearDailyRunFlag = useProgressStore((s) => s.clearDailyRunFlag);
   const ensureDaily = useProgressStore((s) => s.ensureDaily);
-  const [wide, setWide] = useState(false);
+  const daily = useProgressStore((s) => s.daily);
   const [sheet, setSheet] = useState<'streaks' | 'badges' | 'daily' | null>(null);
+  const [howOpen, setHowOpen] = useState(false);
+  const [dailyDismissed, setDailyDismissed] = useState(false);
 
   useEffect(() => {
     ensureDaily();
   }, [ensureDaily]);
 
-  const onLayout = (e: LayoutChangeEvent) => {
-    setWide(e.nativeEvent.layout.width >= HOME_SIDEBAR_BREAKPOINT);
-  };
-
-  const handleStartCategory = (category?: CallCategory) => {
+  const pickCategory = (category: CallCategory | null) => {
     clearDailyRunFlag();
-    const callId = startEmtCall(category ? { category, difficulty } : { difficulty });
-    if (callId) {
-      router.push(`/emt/call/${callId}`);
-    }
+    setPendingCategory(category);
+    router.push('/emt/difficulty');
   };
 
-  const handleStartDaily = () => {
+  const handleDaily = () => {
     const category = beginDailyRun();
     setSheet(null);
     const callId = startEmtCall({ category, difficulty });
-    if (callId) {
-      router.push(`/emt/call/${callId}`);
-    }
+    if (callId) router.push(`/emt/dispatch/${callId}` as Href);
   };
 
+  const showDailyBanner = !dailyDismissed && !daily.completed;
+
   return (
-    <SafeAreaView style={styles.safe}>
-      <PulseOrb color={theme.colors.amberGlow} size={220} top={-60} right={-80} />
-      <PulseOrb
-        color={theme.colors.cadGlow}
-        size={260}
-        top={120}
-        left={-100}
-        duration={4400}
-        delay={600}
-      />
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+      <AppBackdrop />
 
-      <ScreenScroll maxWidth={HOME_MAX_WIDTH} contentStyle={styles.scrollInner}>
-        <View onLayout={onLayout} style={[styles.shell, wide && styles.shellWide]}>
-          <View style={[styles.mainCol, wide && styles.mainColWide]}>
-            <Animated.View entering={enterUp(0)}>
-              <HeroBanner />
-            </Animated.View>
-
-            {!wide ? (
-              <Animated.View entering={enterUp(1)}>
-                <XpCard />
-              </Animated.View>
-            ) : null}
-
-            <Animated.View entering={enterUp(1)} style={styles.disclaimer}>
-              <View style={styles.disclaimerTextCol}>
-                <Text style={styles.disclaimerTitle}>TRAINING AID ONLY</Text>
-                <Text style={styles.disclaimerText}>
-                  Not a substitute for formal EMT education, certification, medical direction, or
-                  local protocols.
-                </Text>
+      <View style={styles.shell}>
+        <View style={styles.headerBlock}>
+          <View style={styles.topBar}>
+            <View style={styles.topSide} />
+            <View style={styles.brandCopy}>
+              <Image source={Icons.appLogo} style={styles.logo} />
+              <View>
+                <Text style={styles.brandTitle}>EMT RESPONSE</Text>
+                <Text style={styles.brandSub}>SIMULATOR</Text>
               </View>
-              <Image source={Icons.trainingShield} style={styles.disclaimerIcon} />
-            </Animated.View>
-
-            <Animated.View entering={enterUp(2)} style={styles.section}>
-              <Text style={styles.sectionLabel}>CHOOSE DIFFICULTY</Text>
-              <View style={styles.diffRow}>
-                {DIFFICULTY_OPTIONS.map((opt) => {
-                  const copy = DIFFICULTY_CARD_COPY[opt.id];
-                  const selected = difficulty === opt.id;
-                  return (
-                    <PressScale
-                      key={opt.id}
-                      onPress={() => setDifficulty(opt.id as EmtDifficulty)}
-                      style={[
-                        styles.diffCard,
-                        selected && {
-                          borderColor: copy.accent,
-                          backgroundColor: copy.glow,
-                          shadowColor: copy.accent,
-                          shadowOpacity: 0.55,
-                        },
-                      ]}
-                    >
-                      <Image source={DIFFICULTY_ICONS[opt.id]} style={styles.diffIcon} />
-                      <Text style={[styles.diffTitle, selected && { color: copy.accent }]}>
-                        {opt.label}
-                      </Text>
-                      <Text style={styles.diffTag}>{copy.tagline}</Text>
-                    </PressScale>
-                  );
-                })}
-              </View>
-              <Text style={styles.diffHelp}>
-                {DIFFICULTY_OPTIONS.find((o) => o.id === difficulty)?.description}
-              </Text>
-            </Animated.View>
-
-            <Animated.View entering={enterUp(3)} style={styles.catSection}>
-              <Text style={styles.sectionLabel}>CHOOSE A CATEGORY</Text>
-              {CALL_CATEGORIES.map((cat, index) => (
-                <CategoryRow
-                  key={cat.id}
-                  label={cat.label}
-                  examples={cat.examples}
-                  accent={categoryColor(cat.id)}
-                  icon={CATEGORY_ICONS[cat.id]}
-                  mascot={CATEGORY_MASCOTS[cat.id]}
-                  index={index}
-                  onPress={() => handleStartCategory(cat.id)}
-                />
-              ))}
-              <CategoryRow
-                label="Random"
-                examples="Surprise me!"
-                accent="#7A93A3"
-                icon={Icons.random}
-                mascot={CATEGORY_MASCOTS.random}
-                index={CALL_CATEGORIES.length}
-                onPress={() => handleStartCategory()}
-              />
-            </Animated.View>
-
-            <Animated.View entering={enterUp(4)} style={styles.section}>
-              <Text style={styles.funHeadline}>MAKE IT FUN. MAKE IT COUNT.</Text>
-              <View style={styles.funRow}>
-                <FunTile
-                  icon={Icons.streak}
-                  label="Streaks"
-                  onPress={() => setSheet('streaks')}
-                />
-                <FunTile
-                  icon={Icons.trophy}
-                  label="Leaderboard"
-                  onPress={() => router.push('/emt/leaderboard')}
-                />
-                <FunTile
-                  icon={Icons.badge}
-                  label="Badges"
-                  onPress={() => setSheet('badges')}
-                />
-                <FunTile
-                  icon={Icons.challenge}
-                  label="Daily Challenge"
-                  onPress={() => setSheet('daily')}
-                />
-              </View>
-            </Animated.View>
-
-            <Animated.View entering={enterUp(5)} style={styles.quoteBar}>
-              <Image source={Icons.appLogo} style={styles.quoteLogo} />
-              <Text style={styles.quote}>
-                Train like a pro. Respond with confidence. Make a difference.
-              </Text>
-              <Image source={Icons.appLogo} style={styles.quoteLogo} />
-            </Animated.View>
-
-            {!wide ? (
-              <Animated.View entering={enterUp(6)} style={styles.sidebarInline}>
-                <HowItWorksPanel />
-              </Animated.View>
-            ) : null}
+            </View>
+            <View style={[styles.topSide, styles.topSideRight]}>
+              <PressScale onPress={() => setSheet('streaks')} style={styles.xpChip}>
+                <XpChip />
+              </PressScale>
+            </View>
           </View>
 
-          {wide ? (
-            <Animated.View entering={enterUp(2)} style={styles.sidebar}>
-              <XpCard />
-              <HowItWorksPanel />
-            </Animated.View>
+          {showDailyBanner ? (
+            <PressScale onPress={() => setSheet('daily')} style={styles.dailyBanner}>
+              <View style={styles.dailyDot} />
+              <Image source={Icons.challenge} style={styles.dailyIcon} />
+              <Text style={styles.dailyText} numberOfLines={1}>
+                Daily Challenge · Tap for bonus XP
+              </Text>
+              <Pressable
+                onPress={() => setDailyDismissed(true)}
+                hitSlop={10}
+                style={styles.dailyDismiss}
+              >
+                <Text style={styles.dailyDismissText}>✕</Text>
+              </Pressable>
+            </PressScale>
           ) : null}
         </View>
-      </ScreenScroll>
 
+        <View style={styles.categoryBlock}>
+          <Text style={styles.sectionTitle}>CHOOSE A CATEGORY</Text>
+
+          <ScrollView
+            style={styles.listScroll}
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            {CALL_CATEGORIES.map((cat) => {
+              const accent = categoryColor(cat.id);
+              return (
+                <PressScale
+                  key={cat.id}
+                  onPress={() => pickCategory(cat.id)}
+                  style={styles.rowOuter}
+                >
+                  <LinearGradient
+                    colors={categoryGradient(accent)}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.row, { borderColor: accent }]}
+                  >
+                    <Image
+                      source={CATEGORY_ICONS[cat.id]}
+                      style={styles.rowIcon}
+                      resizeMode="contain"
+                    />
+                    <View style={styles.rowCopy}>
+                      <Text style={[styles.rowTitle, { color: accent }]}>
+                        {homeCategoryLabel(cat.id)}
+                      </Text>
+                      <Text style={styles.rowExamples}>{cat.examples}</Text>
+                    </View>
+                    <Image
+                      source={CATEGORY_MASCOTS[cat.id]}
+                      style={styles.rowMascot}
+                      resizeMode="contain"
+                    />
+                    <Image source={Icons.arrowRight} style={styles.rowChevron} />
+                  </LinearGradient>
+                </PressScale>
+              );
+            })}
+
+            <PressScale onPress={() => pickCategory(null)} style={styles.rowOuter}>
+              <LinearGradient
+                colors={['rgba(20,28,36,0.98)', 'rgba(8,14,20,0.99)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.row, styles.rowRandom]}
+              >
+                <Image source={Icons.random} style={styles.rowIcon} resizeMode="contain" />
+                <View style={styles.rowCopy}>
+                  <Text style={styles.rowTitle}>RANDOM</Text>
+                  <Text style={styles.rowExamples}>Surprise me!</Text>
+                </View>
+                <Image
+                  source={CATEGORY_MASCOTS.random}
+                  style={styles.rowMascot}
+                  resizeMode="contain"
+                />
+                <Image source={Icons.arrowRight} style={styles.rowChevron} />
+              </LinearGradient>
+            </PressScale>
+          </ScrollView>
+        </View>
+
+        <View style={styles.bottomBlock}>
+          <PressScale onPress={() => setHowOpen(true)} style={styles.howBtn}>
+            <Text style={styles.howBtnText}>HOW IT WORKS</Text>
+            <Text style={styles.howBtnChevron}>▾</Text>
+          </PressScale>
+
+          <View style={styles.footerRow}>
+            <FooterIcon
+              icon={Icons.badge}
+              label="Badges"
+              onPress={() => setSheet('badges')}
+            />
+            <FooterIcon
+              icon={Icons.trophy}
+              label="Board"
+              onPress={() => router.push('/emt/leaderboard')}
+            />
+            <FooterIcon
+              icon={Icons.trainingShield}
+              label="Settings"
+              onPress={() => router.push('/emt/settings')}
+            />
+          </View>
+        </View>
+      </View>
+
+      <HowItWorksModal visible={howOpen} onClose={() => setHowOpen(false)} />
+      <LaurenWelcome />
       <StreaksSheet visible={sheet === 'streaks'} onClose={() => setSheet(null)} />
       <BadgesSheet visible={sheet === 'badges'} onClose={() => setSheet(null)} />
       <DailyChallengeSheet
         visible={sheet === 'daily'}
         onClose={() => setSheet(null)}
-        onStart={handleStartDaily}
+        onStart={handleDaily}
       />
-      <LaurenWelcome />
     </SafeAreaView>
   );
 }
 
-function HeroBanner() {
+function homeCategoryLabel(id: CallCategory): string {
+  switch (id) {
+    case 'peds':
+      return 'Peds';
+    case 'mci':
+      return 'MCI / START';
+    default:
+      return id.charAt(0).toUpperCase() + id.slice(1);
+  }
+}
+
+/** Soft category tint → deep navy, matching the earlier home cards. */
+function categoryGradient(accent: string): [string, string] {
+  return [`${accent}33`, 'rgba(8,18,28,0.98)'];
+}
+
+function XpChip() {
+  const xp = useXpCardModel();
   return (
-    <View style={styles.hero}>
-      <LinearGradient
-        colors={['#1a0a14', '#0a1628', '#051018']}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={styles.heroGlowRed} />
-      <View style={styles.heroGlowBlue} />
-      <Image source={Icons.ambulance} style={styles.heroAmbulance} />
-      <View style={styles.heroBrand}>
-        <Image source={Icons.appLogo} style={styles.heroLogo} />
-        <View>
-          <Text style={styles.heroTitle}>EMT RESPONSE</Text>
-          <Text style={styles.heroSub}>SIMULATOR</Text>
-        </View>
+    <View>
+      <Text style={styles.xpLevel}>LVL {xp.level.level}</Text>
+      <View style={styles.xpTrack}>
+        <View style={[styles.xpFill, { width: `${Math.round(xp.level.ratio * 100)}%` }]} />
       </View>
     </View>
   );
 }
 
-function XpCard() {
-  const { totalXp, level, rank } = useXpCardModel();
-  const streak = useProgressStore((s) => s.currentStreak);
-
-  return (
-    <View style={styles.xpCard}>
-      <View style={styles.xpTop}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.xpLevel}>XP LEVEL {level.level}</Text>
-          <View style={styles.xpTrack}>
-            <View style={[styles.xpFill, { width: `${Math.round(level.ratio * 100)}%` }]} />
-          </View>
-          <Text style={styles.xpMeta}>
-            {level.intoLevel.toLocaleString()} / {level.need.toLocaleString()} XP
-            {' · '}
-            {totalXp.toLocaleString()} total
-            {streak > 0 ? ` · ${streak}d streak` : ''}
-          </Text>
-        </View>
-        <View style={styles.avatarWrap}>
-          <Image source={Icons.medicMascot} style={styles.avatar} />
-          <Text style={styles.avatarLabel}>{rank}</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function HowItWorksPanel() {
-  return (
-    <View style={styles.howCard}>
-      <Text style={styles.howTitle}>HOW IT WORKS</Text>
-      {HOW_IT_WORKS.map((step) => (
-        <View key={step.n} style={styles.howRow}>
-          <View style={[styles.howNum, { borderColor: step.color, shadowColor: step.color }]}>
-            <Text style={[styles.howNumText, { color: step.color }]}>{step.n}</Text>
-          </View>
-          <View style={styles.howCopy}>
-            <Text style={styles.howStepTitle}>{step.title}</Text>
-            <Text style={styles.howStepBody}>{step.body}</Text>
-          </View>
-          <Image source={step.icon} style={styles.howIcon} />
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function CategoryRow({
-  label,
-  examples,
-  accent,
-  icon,
-  mascot,
-  index,
-  onPress,
-}: {
-  label: string;
-  examples: string;
-  accent: string;
-  icon: ImageSourcePropType;
-  mascot: ImageSourcePropType;
-  index: number;
-  onPress: () => void;
-}) {
-  return (
-    <PressScale
-      onPress={onPress}
-      entering={enterUp(index + 3)}
-      style={[styles.catRow, { borderColor: accent, shadowColor: accent }]}
-    >
-      <LinearGradient
-        colors={[`${accent}44`, `${accent}14`, 'transparent']}
-        locations={[0, 0.45, 1]}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <Image source={icon} style={styles.catIcon} />
-      <View style={styles.catCopy}>
-        <Text style={[styles.catLabel, { color: accent }]}>{label.toUpperCase()}</Text>
-        <Text style={styles.catExamples} numberOfLines={1}>
-          {examples}
-        </Text>
-      </View>
-      <Image source={mascot} style={styles.catMascot} />
-      <Image source={Icons.arrowRight} style={styles.catChevron} />
-    </PressScale>
-  );
-}
-
-function FunTile({
+function FooterIcon({
   icon,
   label,
   onPress,
 }: {
-  icon: ImageSourcePropType;
+  icon: (typeof Icons)[keyof typeof Icons];
   label: string;
   onPress: () => void;
 }) {
   return (
-    <PressScale onPress={onPress} style={styles.funTile}>
-      <Image source={icon} style={styles.funIcon} />
-      <Text style={styles.funLabel}>{label}</Text>
+    <PressScale onPress={onPress} style={styles.footerIconBtn}>
+      <Image source={icon} style={styles.footerIcon} />
+      <Text style={styles.footerLabel}>{label}</Text>
     </PressScale>
+  );
+}
+
+function HowItWorksModal({
+  visible,
+  onClose,
+}: {
+  visible: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
+      <Pressable style={styles.modalBackdrop} onPress={onClose}>
+        <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.howBtnText}>HOW IT WORKS</Text>
+            <Pressable onPress={onClose} hitSlop={12} style={styles.modalClose}>
+              <Text style={styles.dailyDismissText}>✕</Text>
+            </Pressable>
+          </View>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {HOW_IT_WORKS.map((step) => (
+              <View key={step.n} style={styles.howRow}>
+                <View style={[styles.howBadge, { borderColor: step.color }]}>
+                  <Text style={[styles.howNum, { color: step.color }]}>{step.n}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.howTitle}>{step.title}</Text>
+                  <Text style={styles.howBody}>{step.body}</Text>
+                </View>
+                <Image source={step.icon} style={styles.howIcon} />
+              </View>
+            ))}
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.background },
-  scrollInner: { paddingTop: theme.spacing.md },
   shell: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingTop: 36,
+    paddingBottom: 10,
     width: '100%',
-    gap: 14,
+    alignSelf: 'center',
   },
-  shellWide: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 16,
+  headerBlock: {
+    marginTop: 28,
+    marginBottom: 16,
   },
-  mainCol: { width: '100%', gap: 14 },
-  mainColWide: { flex: 1, minWidth: 0 },
-  sidebar: {
-    width: 268,
-    gap: 12,
-    paddingTop: 2,
-  },
-  sidebarInline: { marginTop: 4 },
-
-  hero: {
-    height: 128,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+  categoryBlock: {
+    flex: 1,
+    minHeight: 0,
     justifyContent: 'center',
-    paddingHorizontal: theme.spacing.md,
   },
-  heroGlowRed: {
-    position: 'absolute',
-    right: 36,
-    top: -24,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(255, 45, 85, 0.24)',
+  bottomBlock: {
+    paddingTop: 8,
   },
-  heroGlowBlue: {
-    position: 'absolute',
-    right: 110,
-    bottom: -36,
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(0, 120, 255, 0.22)',
-  },
-  heroAmbulance: {
-    position: 'absolute',
-    right: 8,
-    bottom: 4,
-    width: 108,
-    height: 108,
-    opacity: 0.5,
-  },
-  heroBrand: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    zIndex: 2,
+    marginBottom: 10,
   },
-  heroLogo: { width: 96, height: 96 },
-  heroTitle: {
+  topSide: {
+    width: 88,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  topSideRight: {
+    alignItems: 'flex-end',
+  },
+  logo: { width: 96, height: 96 },
+  brandCopy: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  brandTitle: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',
-    fontSize: fs(42),
-    lineHeight: fs(44),
-    letterSpacing: 1.5,
-    textShadowColor: theme.colors.cadGlowStrong,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 16,
+    fontSize: fs(26),
+    letterSpacing: 1,
+    lineHeight: fs(28),
   },
-  heroSub: {
+  brandSub: {
     color: theme.colors.emsBlue,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(12),
-    letterSpacing: 2.5,
+    fontSize: fs(9),
+    letterSpacing: 1.6,
     marginTop: -2,
   },
-
-  disclaimer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: 'rgba(255, 176, 32, 0.08)',
-    borderRadius: 12,
+  xpChip: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: theme.colors.warning,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    minWidth: 72,
   },
-  disclaimerTextCol: { flex: 1 },
-  disclaimerTitle: {
-    color: theme.colors.warning,
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(10),
-    letterSpacing: 1.2,
-    marginBottom: 2,
-  },
-  disclaimerText: {
-    color: theme.colors.textMuted,
-    fontSize: fs(11),
-    lineHeight: fs(16),
-  },
-  disclaimerIcon: { width: 36, height: 36 },
-
-  section: { gap: 8 },
-  catSection: { gap: 6 },
-  sectionLabel: {
+  xpLevel: {
     color: theme.colors.emsBlue,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(11),
-    letterSpacing: 1.5,
-    marginBottom: 2,
-    textShadowColor: theme.colors.cadGlow,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
-  },
-
-  diffRow: { flexDirection: 'row', gap: 8 },
-  diffCard: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 12,
-    paddingHorizontal: 6,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  diffIcon: { width: 52, height: 52 },
-  diffTitle: {
-    color: theme.colors.text,
-    fontFamily: 'BebasNeue',
-    fontSize: fs(22),
-    letterSpacing: 1,
-  },
-  diffTag: {
-    color: theme.colors.textMuted,
     fontSize: fs(10),
+    letterSpacing: 0.8,
     textAlign: 'center',
-    lineHeight: fs(13),
   },
-  diffHelp: {
-    color: theme.colors.textMuted,
-    fontSize: fs(11),
-    lineHeight: fs(16),
+  xpTrack: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.colors.backgroundAlt,
+    marginTop: 4,
+    overflow: 'hidden',
   },
-
-  catRow: {
+  xpFill: { height: '100%', backgroundColor: theme.colors.emsBlue },
+  dailyBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    height: 76,
-    paddingLeft: 10,
-    paddingRight: 8,
-    borderRadius: 14,
-    borderWidth: 2,
-    backgroundColor: theme.colors.surface,
-    overflow: 'visible',
-    shadowOpacity: 0.35,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  catIcon: { width: 58, height: 58 },
-  catCopy: { flex: 1, minWidth: 0, justifyContent: 'center' },
-  catLabel: {
-    fontFamily: 'BebasNeue',
-    fontSize: fs(24),
-    letterSpacing: 1,
-    lineHeight: fs(26),
-  },
-  catExamples: {
-    color: theme.colors.textMuted,
-    fontSize: fs(11),
-    lineHeight: fs(14),
-    marginTop: 1,
-  },
-  catMascot: {
-    width: 78,
-    height: 78,
-    marginVertical: -8,
-    marginRight: -2,
-  },
-  catChevron: { width: 16, height: 16, opacity: 0.65 },
-
-  funHeadline: {
-    color: theme.colors.text,
-    fontFamily: 'BebasNeue',
-    fontSize: fs(24),
-    letterSpacing: 1.5,
-    textAlign: 'center',
-  },
-  funRow: { flexDirection: 'row', gap: 8 },
-  funTile: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 12,
-    borderRadius: 12,
+    backgroundColor: 'rgba(255,197,49,0.12)',
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.accent,
+    borderRadius: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    marginBottom: 8,
   },
-  funIcon: { width: 42, height: 42 },
-  funLabel: {
-    color: theme.colors.textMuted,
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(9),
-    letterSpacing: 0.4,
+  dailyDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: theme.colors.accent,
+  },
+  dailyIcon: { width: 22, height: 22 },
+  dailyText: {
+    flex: 1,
+    color: theme.colors.text,
+    fontSize: fs(14),
+    fontWeight: '700',
+  },
+  dailyDismiss: { padding: 4 },
+  dailyDismissText: { color: theme.colors.textMuted, fontSize: fs(13) },
+  sectionTitle: {
+    color: theme.colors.emsBlue,
+    fontFamily: 'BebasNeue',
+    fontSize: fs(26),
+    letterSpacing: 0.8,
+    marginBottom: 10,
     textAlign: 'center',
   },
-
-  quoteBar: {
+  listScroll: {
+    flexGrow: 0,
+    flexShrink: 1,
+  },
+  list: {
+    gap: 8,
+    justifyContent: 'center',
+  },
+  rowOuter: {
+    borderRadius: 14,
+  },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceLight,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-  },
-  quoteLogo: { width: 22, height: 22, opacity: 0.45 },
-  quote: {
-    flex: 1,
-    color: theme.colors.emsBlue,
-    fontSize: fs(12),
-    lineHeight: fs(18),
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-
-  xpCard: {
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-    padding: 12,
-  },
-  xpTop: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-  xpLevel: {
-    color: theme.colors.accent,
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(11),
-    letterSpacing: 1.2,
-    marginBottom: 6,
-  },
-  xpTrack: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: theme.colors.surfaceLight,
+    borderWidth: 1.5,
+    paddingVertical: 8,
+    paddingLeft: 10,
+    paddingRight: 6,
     overflow: 'hidden',
+    minHeight: 100,
   },
-  xpFill: {
-    height: '100%',
-    backgroundColor: theme.colors.emsBlue,
-    borderRadius: 4,
+  rowRandom: {
+    borderColor: theme.colors.border,
   },
-  xpMeta: {
+  rowIcon: {
+    width: 56,
+    height: 56,
+  },
+  rowCopy: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+    paddingRight: 2,
+  },
+  rowTitle: {
+    color: theme.colors.text,
+    fontFamily: 'BebasNeue',
+    fontSize: fs(32),
+    letterSpacing: 0.7,
+    lineHeight: fs(34),
+  },
+  rowExamples: {
     color: theme.colors.textMuted,
-    fontSize: fs(11),
-    marginTop: 5,
+    fontSize: fs(14),
+    lineHeight: fs(19),
+    marginTop: 4,
+    fontWeight: '500',
   },
-  avatarWrap: { alignItems: 'center', width: 68 },
-  avatar: { width: 58, height: 58 },
-  avatarLabel: {
-    color: theme.colors.textMuted,
-    fontSize: fs(9),
-    marginTop: 2,
-    textAlign: 'center',
+  rowMascot: {
+    width: 96,
+    height: 96,
+    marginVertical: -6,
   },
-
-  howCard: {
-    borderRadius: 14,
+  rowChevron: {
+    width: 14,
+    height: 14,
+    opacity: 0.55,
+  },
+  howBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.surface,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-    padding: 12,
-    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+    position: 'relative',
   },
-  howTitle: {
+  howBtnText: {
     color: theme.colors.emsBlue,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(11),
-    letterSpacing: 1.5,
+    fontSize: fs(12),
+    letterSpacing: 1.4,
+    textAlign: 'center',
   },
-  howRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  howNum: {
+  howBtnChevron: {
+    color: theme.colors.textMuted,
+    fontSize: fs(14),
+    position: 'absolute',
+    right: 12,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingTop: 2,
+  },
+  footerIconBtn: { alignItems: 'center', gap: 2, paddingHorizontal: 12, paddingVertical: 4 },
+  footerIcon: { width: 28, height: 28 },
+  footerLabel: {
+    color: theme.colors.textMuted,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(11),
+    letterSpacing: 0.6,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: 16,
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    position: 'relative',
+  },
+  modalClose: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  howRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  howBadge: {
     width: 26,
     height: 26,
     borderRadius: 13,
-    borderWidth: 1.5,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.background,
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 0 },
   },
-  howNumText: {
-    fontFamily: 'BebasNeue',
-    fontSize: fs(15),
-  },
-  howCopy: { flex: 1 },
-  howStepTitle: {
+  howNum: { fontFamily: 'IBMPlexMonoBold', fontSize: fs(11) },
+  howTitle: {
     color: theme.colors.text,
-    fontWeight: '700',
-    fontSize: fs(12),
+    fontFamily: 'BebasNeue',
+    fontSize: fs(18),
   },
-  howStepBody: {
+  howBody: {
     color: theme.colors.textMuted,
-    fontSize: fs(10),
-    lineHeight: fs(14),
-    marginTop: 1,
+    fontSize: fs(11),
+    lineHeight: fs(15),
   },
-  howIcon: { width: 22, height: 22, opacity: 0.85 },
+  howIcon: { width: 28, height: 28 },
 });

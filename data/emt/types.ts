@@ -2,12 +2,33 @@
 
 export type EmtPhase =
   | 'dispatch'
+  | 'responding'
+  | 'arrival'
+  | 'on_scene'
+  | 'handoff'
   | 'scene_safety'
   | 'primary_survey'
   | 'history'
   | 'treatment'
   | 'transport'
   | 'debrief';
+
+export interface InstructorMessage {
+  id: string;
+  role: 'lauren' | 'you';
+  text: string;
+  atMs: number;
+}
+
+export type RevealedVitals = Partial<
+  Record<'bp' | 'hr' | 'rr' | 'spo2' | 'glucose' | 'temp' | 'pain' | 'etco2' | 'ecg', true>
+>;
+
+export interface FollowUpChoice {
+  id: string;
+  label: string;
+  actionId: string;
+}
 
 export type AbcdeStep = 'airway' | 'breathing' | 'circulation' | 'disability' | 'exposure';
 
@@ -252,6 +273,11 @@ export interface EmtCall {
   unit: string;
   priority: 1 | 2 | 3;
   dispatch: string;
+  /** Short CAD / dispatcher notes for the dispatch screen. */
+  cadNotes: string;
+  weather: string;
+  distanceMiles: number;
+  timeOfDay: string;
   patientSummary: string;
   age: number;
   sex: 'Male' | 'Female';
@@ -276,10 +302,18 @@ export interface EmtCall {
   protocolNotes: string[];
 }
 
+export interface SkillSheetCheck {
+  id: string;
+  label: string;
+  done: boolean;
+}
+
 export interface EmtRunResult {
   callId: string;
   stars: number;
   totalScore: number;
+  /** Overall percentage shown on debrief (0–100). */
+  percentScore: number;
   skillScores: SkillScores;
   patientOutcome: 'improved' | 'stable' | 'deteriorated' | 'critical';
   timeline: TimelineEntry[];
@@ -287,4 +321,6 @@ export interface EmtRunResult {
   finalVitals: EmtVitals;
   criticalFails: CriticalFail[];
   skillsSheetPass: boolean;
+  /** Official checklist reveal after Lauren’s debrief. */
+  skillSheetChecklist: SkillSheetCheck[];
 }

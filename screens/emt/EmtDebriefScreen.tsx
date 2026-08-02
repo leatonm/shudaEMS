@@ -1,15 +1,16 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
 
 import { LaurenDebriefChat } from '@/components/characters/LaurenDebriefChat';
+import { AppBackdrop } from '@/components/ui/AppBackdrop';
 import { ScreenScroll } from '@/components/ui/ScreenScroll';
 import { ShiftButton } from '@/components/ui/ShiftUI';
 import { StarRating } from '@/components/ui/StarRating';
-import { PopIn, PulseOrb, enterUp } from '@/components/ui/motion';
+import { PopIn, enterUp } from '@/components/ui/motion';
 import { fs } from '@/constants/layout';
 import { categoryColor, theme } from '@/constants/theme';
 import { useEmtStore } from '@/store/emtStore';
@@ -29,7 +30,7 @@ export default function EmtDebriefScreen() {
   const handleNext = (category?: import('@/data/emt/types').CallCategory) => {
     clearDailyRunFlag();
     const id = startCall(category ? { category } : undefined);
-    if (id) router.replace(`/emt/call/${id}`);
+    if (id) router.replace(`/emt/dispatch/${id}` as Href);
   };
 
   const handleHome = () => {
@@ -57,13 +58,7 @@ export default function EmtDebriefScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.glowTop} pointerEvents="none" />
-      <PulseOrb
-        color={passed ? theme.colors.successGlow : theme.colors.dangerGlow}
-        size={300}
-        top={-90}
-        right={-90}
-      />
+      <AppBackdrop tone={passed ? 'success' : 'danger'} />
       <ScreenScroll>
         <Animated.Text entering={enterUp(0)} style={styles.header}>
           Debrief
@@ -82,10 +77,14 @@ export default function EmtDebriefScreen() {
           delay={140}
           style={[styles.sheetBanner, passed ? styles.sheetPass : styles.sheetFail]}
         >
-          <Text style={styles.sheetKicker}>NREMT-STYLE SKILLS SHEET</Text>
+          <Text style={styles.sheetKicker}>OVERALL SCORE</Text>
+          <Text style={[styles.percentScore, passed ? styles.passText : styles.failText]}>
+            {result.percentScore}%
+          </Text>
           <Text style={[styles.sheetResult, passed ? styles.passText : styles.failText]}>
             {passed ? 'PASS' : 'FAIL'}
           </Text>
+          <StarRating stars={result.stars} />
           <Text style={styles.sheetHint}>
             {passed
               ? 'No critical criteria missed.'
@@ -99,9 +98,8 @@ export default function EmtDebriefScreen() {
           entering={enterUp(3)}
           style={[styles.summary, { borderColor: accent }]}
         >
-          <StarRating stars={result.stars} />
           <Text style={styles.outcome}>
-            Patient: {result.patientOutcome.toUpperCase()} · Score {result.totalScore}
+            Patient: {result.patientOutcome.toUpperCase()} · Points {result.totalScore}
           </Text>
           {awardForThisRun ? (
             <Text style={styles.xpEarned}>
@@ -120,6 +118,44 @@ export default function EmtDebriefScreen() {
           />
         ) : (
           <>
+            <Section title="NREMT skill sheet review" index={3}>
+              {(
+                [
+                  ['Scene Size-Up', result.skillScores.scene_safety],
+                  ['Primary Assessment', result.skillScores.assessment],
+                  ['History', result.skillScores.assessment],
+                  ['Vitals', result.skillScores.assessment],
+                  ['Treatment', result.skillScores.treatment],
+                  ['Transport', result.skillScores.transport],
+                  ['Communication', result.skillScores.communication],
+                ] as const
+              ).map(([label, score]) => (
+                <View key={label} style={styles.skillSheetRow}>
+                  <Text style={styles.skillSheetLabel}>{label}</Text>
+                  <StarRating stars={skillToStars(score)} />
+                </View>
+              ))}
+            </Section>
+
+            <Section title="Official checklist" index={3}>
+              {result.skillSheetChecklist.map((item) => (
+                <View key={item.id} style={styles.checkRow}>
+                  <Text style={[styles.checkMark, item.done ? styles.checkDone : styles.checkMiss]}>
+                    {item.done ? '✓' : '○'}
+                  </Text>
+                  <Text style={styles.checkLabel}>{item.label}</Text>
+                </View>
+              ))}
+              <Text
+                style={[
+                  styles.checklistVerdict,
+                  passed ? styles.passText : styles.failText,
+                ]}
+              >
+                {passed ? 'PASS' : 'FAIL'}
+              </Text>
+            </Section>
+
             {result.criticalFails.length > 0 ? (
               <Section title="Critical criteria" index={4}>
                 {result.criticalFails.map((fail) => (
@@ -172,15 +208,15 @@ export default function EmtDebriefScreen() {
               <Text style={styles.pearlText}>{result.debrief.pearl}</Text>
             </View>
 
-            <Section title="Call timeline" index={8}>
+            <Section title="Replay timeline" index={8}>
               {result.timeline.map((entry, index) => (
                 <View key={`${entry.actionId}-${index}`} style={styles.timelineRow}>
-                  <Text style={styles.time}>
-                    {formatMs(entry.atMs)} · {entry.severity === 'good' ? '+' : ''}
-                    {entry.scoreDelta}
-                  </Text>
+                  <Text style={styles.time}>{formatClock(entry.atMs)}</Text>
                   <Text style={styles.timelineLabel}>{entry.label}</Text>
                   <Text style={styles.timelineMsg}>{entry.message}</Text>
+                  {index < result.timeline.length - 1 ? (
+                    <Text style={styles.timelineArrow}>↓</Text>
+                  ) : null}
                 </View>
               ))}
             </Section>
@@ -224,6 +260,15 @@ function Section({
   );
 }
 
+function skillToStars(score: number): number {
+  if (score >= 80) return 5;
+  if (score >= 60) return 4;
+  if (score >= 40) return 3;
+  if (score >= 20) return 2;
+  if (score > 0) return 1;
+  return 0;
+}
+
 function Bullet({ icon, color, text }: { icon: string; color: string; text: string }) {
   return (
     <View style={styles.bulletRow}>
@@ -264,24 +309,20 @@ function SkillRow({
   );
 }
 
-function formatMs(ms: number): string {
+/** Clock-style stamp for replay timeline (GDD: 08:00 style). */
+function formatClock(ms: number): string {
   const totalSec = Math.max(0, Math.floor(ms / 1000));
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
+  const base = 8 * 60; // start clock at 08:00
+  const clock = base + totalSec;
+  const h = Math.floor(clock / 60)
+    .toString()
+    .padStart(2, '0');
+  const m = (clock % 60).toString().padStart(2, '0');
+  return `${h}:${m}`;
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.background },
-  glowTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 160,
-    backgroundColor: theme.colors.cadGlow,
-    opacity: 0.35,
-  },
   centered: { flex: 1, justifyContent: 'center', padding: theme.spacing.lg },
   header: {
     color: theme.colors.text,
@@ -319,7 +360,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1.4,
   },
-  sheetResult: { fontSize: fs(32), fontWeight: '900', marginTop: 4 },
+  sheetResult: { fontSize: fs(28), fontWeight: '900', marginTop: 4 },
+  percentScore: {
+    fontFamily: 'BebasNeue',
+    fontSize: fs(56),
+    letterSpacing: 1,
+    marginTop: 4,
+  },
   passText: { color: theme.colors.success },
   failText: { color: theme.colors.critical },
   sheetHint: {
@@ -328,6 +375,30 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
     lineHeight: fs(17),
+  },
+  checkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border,
+  },
+  checkMark: { fontSize: fs(16), fontWeight: '800', width: 22 },
+  checkDone: { color: theme.colors.success },
+  checkMiss: { color: theme.colors.textMuted },
+  checkLabel: { color: theme.colors.text, fontSize: fs(14), flex: 1 },
+  checklistVerdict: {
+    fontFamily: 'BebasNeue',
+    fontSize: fs(32),
+    marginTop: 12,
+    letterSpacing: 1,
+  },
+  timelineArrow: {
+    color: theme.colors.textMuted,
+    marginTop: 4,
+    marginBottom: 2,
+    fontSize: fs(14),
   },
   summary: {
     backgroundColor: theme.colors.surface,
@@ -395,6 +466,19 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom: 8,
+  },
+  skillSheetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    gap: 12,
+  },
+  skillSheetLabel: {
+    color: theme.colors.text,
+    fontSize: fs(14),
+    flex: 1,
+    fontWeight: '600',
   },
   bulletRow: { flexDirection: 'row', marginBottom: 6 },
   bulletIcon: { width: fs(18), fontWeight: '800', fontSize: fs(14) },

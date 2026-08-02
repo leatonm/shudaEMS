@@ -11,18 +11,17 @@ export const DIFFICULTY_OPTIONS: Array<{
   {
     id: 'coach',
     label: 'Coach',
-    description: 'Light hints and immediate feedback — good for first runs.',
+    description: 'Unlimited hints and explanations after mistakes.',
   },
   {
     id: 'standard',
     label: 'Standard',
-    description: 'Findings only. No action tips. Feedback is short.',
+    description: 'Realistic experience — findings without answer keys.',
   },
   {
     id: 'exam',
-    label: 'Exam',
-    description:
-      'NREMT pressure. Minimal coaching. One critical fail = skills sheet FAIL.',
+    label: 'Exam Mode',
+    description: 'Timer pressure feel, no hints, NREMT-style critical fails.',
   },
 ];
 

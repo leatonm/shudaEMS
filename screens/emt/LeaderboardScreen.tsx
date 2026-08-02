@@ -8,7 +8,8 @@ import {
   LEADERBOARD_SEASON,
 } from '@/data/emt/leaderboard';
 import { ScreenScroll } from '@/components/ui/ScreenScroll';
-import { PulseOrb, enterUp } from '@/components/ui/motion';
+import { AppBackdrop } from '@/components/ui/AppBackdrop';
+import { enterUp } from '@/components/ui/motion';
 import { fs } from '@/constants/layout';
 import { theme } from '@/constants/theme';
 import { selectRankTitle, useProgressStore } from '@/store/progressStore';
@@ -21,7 +22,7 @@ export default function LeaderboardScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <PulseOrb color={theme.colors.amberGlow} size={260} top={-80} left={-70} />
+      <AppBackdrop tone="amber" />
       <ScreenScroll>
         <Animated.Text entering={enterUp(0)} style={styles.kicker}>
           {LEADERBOARD_SEASON}

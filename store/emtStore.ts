@@ -14,6 +14,11 @@ import {
   buildDecisionFlow,
   findDecisionStepIndex,
 } from '@/data/emt/decisionFlow';
+import { resolveMenuAction } from '@/data/emt/menuActions';
+import {
+  buildLaurenExchange,
+  dispatchLaurenLines,
+} from '@/data/emt/laurenFindings';
 import type {
   AbcdeStep,
   CallCategory,
@@ -22,6 +27,9 @@ import type {
   EmtPhase,
   EmtRunResult,
   EmtVitals,
+  FollowUpChoice,
+  InstructorMessage,
+  RevealedVitals,
   SkillCategory,
   SkillScores,
   TimelineEntry,
@@ -30,6 +38,16 @@ import type {
 } from '@/data/emt/types';
 import type { ResourceCrew, ResponseCode } from '@/lib/characterDialogue';
 import { useProgressStore } from '@/store/progressStore';
+
+interface PendingPhysio {
+  id: string;
+  fireAtMs: number;
+  vitalsPatch?: Partial<EmtVitals>;
+  laurenLines: string[];
+  timelineLabel: string;
+  scoreDelta?: number;
+  skill?: SkillCategory;
+}
 
 /** Restorable call state for step-level Back (not used after the final destination). */
 interface CallSnapshot {
@@ -76,13 +94,41 @@ interface EmtStore {
   snapshots: CallSnapshot[];
   /** How hot ALS / Fire / PD was requested (Code 1–3). */
   resourceResponseCodes: Partial<Record<ResourceCrew, ResponseCode>>;
+  /** Freeform action menu — every tap is logged. */
+  completedActions: string[];
+  handoffText: string;
+  pendingCategory: CallCategory | null;
+  /** Last resource flash to show (UI consumes & clears). */
+  pendingResourceFlash: ResourceCrew | null;
+  /** Oral-exam conversation with Lauren. */
+  instructorLog: InstructorMessage[];
+  /** Only vitals the student has asked for. */
+  revealedVitals: RevealedVitals;
+  /** Silent risk accumulator (never shown mid-call). */
+  riskScore: number;
+  pendingFollowUps: FollowUpChoice[];
+  /** Wall-clock when student acknowledged arrival (for elapsed timer). */
+  arrivedAt: number | null;
+  /** Delayed physio / Lauren beats (nitro drop, untreated deterioration). */
+  pendingPhysio: PendingPhysio[];
 
   setDifficulty: (difficulty: EmtDifficulty) => void;
+  setPendingCategory: (category: CallCategory | null) => void;
   startCall: (options?: {
     category?: CallCategory;
     archetypeId?: string;
     difficulty?: EmtDifficulty;
   }) => string | null;
+  acknowledgeDispatch: () => void;
+  continueFromResponding: () => void;
+  acknowledgeArrival: () => void;
+  performMenuAction: (actionId: string) => void;
+  clearPendingResourceFlash: () => void;
+  clearFollowUps: () => void;
+  /** Advance delayed patient physiology / Lauren beats. */
+  tickPhysio: () => void;
+  setHandoffText: (text: string) => void;
+  submitHandoff: () => void;
   chooseNext: (choiceId: string) => void;
   undoChoice: (choiceId: string) => void;
   goBack: () => void;
@@ -219,6 +265,16 @@ const emptyState = {
   stepIndex: 0,
   snapshots: [] as CallSnapshot[],
   resourceResponseCodes: {} as Partial<Record<ResourceCrew, ResponseCode>>,
+  completedActions: [] as string[],
+  handoffText: '',
+  pendingCategory: null as CallCategory | null,
+  pendingResourceFlash: null as ResourceCrew | null,
+  instructorLog: [] as InstructorMessage[],
+  revealedVitals: {} as RevealedVitals,
+  riskScore: 0,
+  pendingFollowUps: [] as FollowUpChoice[],
+  arrivedAt: null as number | null,
+  pendingPhysio: [] as PendingPhysio[],
 };
 
 export const useEmtStore = create<EmtStore>((set, get) => ({
@@ -227,10 +283,13 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
 
   setDifficulty: (difficulty) => set({ difficulty }),
 
+  setPendingCategory: (category) => set({ pendingCategory: category }),
+
   startCall: (options) => {
     const difficulty = options?.difficulty ?? get().difficulty;
+    const category = options?.category ?? get().pendingCategory ?? undefined;
     const call = generateEmtCall({
-      category: options?.category,
+      category,
       archetypeId: options?.archetypeId,
     });
     const steps = buildDecisionFlow(call);
@@ -238,14 +297,383 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       ...emptyState,
       call,
       difficulty,
-      phase: steps[0]?.phase ?? 'dispatch',
+      phase: 'dispatch',
       vitals: { ...call.vitals },
       startedAt: Date.now(),
       steps,
       stepIndex: 0,
       skillScores: createInitialSkills(),
+      pendingCategory: category ?? null,
     });
     return call.id;
+  },
+
+  acknowledgeDispatch: () => {
+    const state = get();
+    if (!state.call || state.phase !== 'dispatch') return;
+    const at = Date.now() - state.startedAt;
+    const lines = dispatchLaurenLines(state.call);
+    const instructorLog: InstructorMessage[] = lines.map((text, i) => ({
+      id: `dispatch-${i}`,
+      role: 'lauren',
+      text,
+      atMs: at + i,
+    }));
+    const timeline = pushTimeline(state.timeline, {
+      phase: 'responding',
+      actionId: 'respond',
+      label: 'Responding',
+      message: 'Unit responding.',
+      scoreDelta: 0,
+      severity: 'neutral',
+      skill: 'scene_safety',
+      startedAt: state.startedAt,
+    });
+    set({
+      phase: 'responding',
+      timeline,
+      instructorLog,
+      completedActions: [...state.completedActions, 'respond'],
+    });
+  },
+
+  continueFromResponding: () => {
+    const state = get();
+    if (!state.call || state.phase !== 'responding') return;
+    const at = Date.now() - state.startedAt;
+    set({
+      phase: 'arrival',
+      instructorLog: [
+        ...state.instructorLog,
+        {
+          id: `arrive-${at}`,
+          role: 'lauren',
+          text: 'You arrive on scene.',
+          atMs: at,
+        },
+        {
+          id: `arrive-seat-${at}`,
+          role: 'lauren',
+          text: 'The patient is where dispatch described.',
+          atMs: at + 1,
+        },
+      ],
+    });
+  },
+
+  acknowledgeArrival: () => {
+    const state = get();
+    if (state.phase !== 'arrival') return;
+    const at = Date.now() - state.startedAt;
+    set({
+      phase: 'on_scene',
+      arrivedAt: Date.now(),
+      instructorLog: [
+        ...state.instructorLog,
+        {
+          id: `ask-${at}`,
+          role: 'lauren',
+          text: 'What would you like to do?',
+          atMs: at,
+        },
+      ],
+    });
+  },
+
+  clearFollowUps: () => set({ pendingFollowUps: [] }),
+
+  tickPhysio: () => {
+    const state = get();
+    if (!state.call || !state.vitals || state.result) return;
+    if (state.phase !== 'on_scene' && state.phase !== 'arrival') return;
+    const now = Date.now() - state.startedAt;
+    const due = state.pendingPhysio.filter((p) => p.fireAtMs <= now);
+    if (!due.length) return;
+    const remaining = state.pendingPhysio.filter((p) => p.fireAtMs > now);
+
+    let vitals = state.vitals;
+    let instructorLog = [...state.instructorLog];
+    let timeline = state.timeline;
+    let skillScores = state.skillScores;
+    let totalScore = state.totalScore;
+
+    for (const effect of due) {
+      if (effect.vitalsPatch) {
+        vitals = applyVitals(vitals, effect.vitalsPatch);
+      }
+      for (const [i, text] of effect.laurenLines.entries()) {
+        instructorLog.push({
+          id: `physio-${effect.id}-${i}`,
+          role: 'lauren',
+          text,
+          atMs: now + i,
+        });
+      }
+      const delta = effect.scoreDelta ?? 0;
+      timeline = pushTimeline(timeline, {
+        phase: 'on_scene',
+        actionId: effect.id,
+        label: effect.timelineLabel,
+        message: effect.laurenLines[0] ?? effect.timelineLabel,
+        scoreDelta: delta,
+        severity: delta < 0 ? 'warn' : 'neutral',
+        skill: effect.skill ?? 'treatment',
+        startedAt: state.startedAt,
+      });
+      if (effect.skill && delta) {
+        skillScores = applySkill(skillScores, effect.skill, delta);
+        totalScore += delta;
+      }
+    }
+
+    set({
+      vitals,
+      instructorLog,
+      timeline,
+      skillScores,
+      totalScore,
+      pendingPhysio: remaining,
+    });
+  },
+
+  performMenuAction: (actionId) => {
+    const state = get();
+    if (!state.call || !state.vitals) return;
+    if (state.result) return;
+    if (state.phase === 'handoff' || state.phase === 'debrief' || state.phase === 'dispatch') {
+      return;
+    }
+
+    if (actionId === 'continue_response') {
+      get().continueFromResponding();
+      return;
+    }
+
+    // Prep actions allowed while responding; full oral exam on scene / arrival.
+    if (state.phase === 'responding') {
+      const allowed = new Set([
+        'read_cad',
+        'read_dispatch_notes',
+        'consider_equipment',
+        'review_protocols',
+        'request_als',
+        'request_fire',
+        'request_pd',
+        'request_air',
+        'request_ambo',
+      ]);
+      if (!allowed.has(actionId)) return;
+    }
+
+    if (state.phase === 'arrival') {
+      // Only transition via acknowledgeArrival unless they somehow act
+    }
+
+    const exchange = buildLaurenExchange(actionId, state.call, state.vitals);
+    const at = Date.now() - state.startedAt;
+    const newLog: InstructorMessage[] = [
+      ...state.instructorLog,
+      {
+        id: `you-${actionId}-${at}`,
+        role: 'you',
+        text: exchange.studentLine,
+        atMs: at,
+      },
+      ...exchange.laurenLines.map((text, i) => ({
+        id: `lauren-${actionId}-${at}-${i}`,
+        role: 'lauren' as const,
+        text,
+        atMs: at + i + 1,
+      })),
+    ];
+
+    const revealedVitals: RevealedVitals = { ...state.revealedVitals };
+    for (const key of exchange.reveal ?? []) {
+      revealedVitals[key] = true;
+    }
+
+    let riskScore = state.riskScore;
+    if (actionId === 'enter_scene') {
+      const cleared =
+        state.sceneSecuredAfterDelay || hazardsAreCleared(state.call, state.safetyActions);
+      if (!cleared && state.call.hazards.length > 0) {
+        riskScore += 30;
+      }
+    }
+
+    // Engine scoring still runs silently
+    const fx = resolveMenuAction(actionId, {
+      call: state.call,
+      vitals: state.vitals,
+      safetyActions: state.safetyActions,
+      sceneEntered: state.sceneEntered,
+      enteredUnsafe: state.enteredUnsafe,
+      sceneSecuredAfterDelay: state.sceneSecuredAfterDelay,
+      abcdeCompleted: state.abcdeCompleted,
+      historyCompleted: state.historyCompleted,
+      treatments: state.treatments,
+      allergiesChecked: state.allergiesChecked,
+      transportPriority: state.transportPriority,
+      destination: state.destination,
+      completedActions: state.completedActions,
+    });
+
+    const timeline = pushTimeline(state.timeline, {
+      phase: state.phase === 'responding' ? 'responding' : 'on_scene',
+      actionId,
+      label: fx.label,
+      message: fx.message,
+      scoreDelta: fx.scoreDelta,
+      severity: fx.severity,
+      skill: fx.skill,
+      flowMiss: fx.flowMiss,
+      startedAt: state.startedAt,
+    });
+
+    const skillScores = applySkill(state.skillScores, fx.skill, fx.scoreDelta);
+    const vitals = fx.vitalsPatch
+      ? applyVitals(state.vitals, fx.vitalsPatch)
+      : state.vitals;
+
+    // Prompt again after Lauren answers (unless follow-ups or handoff)
+    if (!exchange.followUps?.length && !fx.beginHandoff) {
+      newLog.push({
+        id: `ask-again-${at}`,
+        role: 'lauren',
+        text: 'What would you like to do?',
+        atMs: at + 20,
+      });
+    }
+
+    const pendingPhysio = [...state.pendingPhysio];
+    if (actionId === 'nitroglycerin' && vitals.bp) {
+      pendingPhysio.push({
+        id: `nitro-bp-${at}`,
+        fireAtMs: at + 10_000,
+        laurenLines: state.revealedVitals.bp
+          ? [
+              `Blood pressure is now ${vitals.bp}.`,
+              'The patient looks a bit more pale.',
+            ]
+          : ['The patient looks a bit more pale after the nitroglycerin.'],
+        timelineLabel: 'Blood pressure decreased',
+        scoreDelta: 0,
+        skill: 'treatment',
+      });
+    }
+    // Untreated respiratory decline if no oxygen after ~20s on scene
+    if (
+      actionId === 'general_impression' &&
+      !state.treatments.includes('oxygen') &&
+      !pendingPhysio.some((p) => p.id.startsWith('delay-o2'))
+    ) {
+      pendingPhysio.push({
+        id: `delay-o2-${at}`,
+        fireAtMs: at + 20_000,
+        vitalsPatch: delayedCareVitals(state.call, vitals),
+        laurenLines: ['The patient appears more fatigued than a moment ago.'],
+        timelineLabel: 'Condition trending down',
+        scoreDelta: -4,
+        skill: 'treatment',
+      });
+    }
+    // Cancel delay-o2 once oxygen applied
+    const nextPending =
+      actionId === 'oxygen'
+        ? pendingPhysio.filter((p) => !p.id.startsWith('delay-o2'))
+        : pendingPhysio;
+
+    set({
+      vitals,
+      safetyActions: fx.safetyActions ?? state.safetyActions,
+      abcdeCompleted: fx.abcdeCompleted ?? state.abcdeCompleted,
+      historyCompleted: fx.historyCompleted ?? state.historyCompleted,
+      treatments: fx.treatments ?? state.treatments,
+      allergiesChecked: fx.allergiesChecked ?? state.allergiesChecked,
+      sceneEntered: fx.sceneEntered ?? state.sceneEntered,
+      enteredUnsafe: fx.enteredUnsafe ?? state.enteredUnsafe,
+      transportPriority: fx.transportPriority ?? state.transportPriority,
+      destination: fx.destination ?? state.destination,
+      timeline,
+      skillScores,
+      totalScore: state.totalScore + fx.scoreDelta,
+      completedActions: state.completedActions.includes(actionId)
+        ? state.completedActions
+        : [...state.completedActions, actionId],
+      pendingResourceFlash: fx.resourceFlash ?? null,
+      phase: fx.beginHandoff ? 'handoff' : state.phase === 'arrival' ? 'on_scene' : state.phase,
+      instructorLog: newLog,
+      revealedVitals,
+      riskScore,
+      pendingFollowUps: exchange.followUps ?? [],
+      pendingPhysio: nextPending,
+      arrivedAt: state.arrivedAt ?? (state.phase === 'arrival' ? Date.now() : state.arrivedAt),
+    });
+  },
+
+  clearPendingResourceFlash: () => set({ pendingResourceFlash: null }),
+
+  setHandoffText: (text) => set({ handoffText: text }),
+
+  submitHandoff: () => {
+    const state = get();
+    if (!state.call || !state.vitals || state.phase !== 'handoff') return;
+
+    const handoffScore =
+      state.handoffText.trim().length >= 40
+        ? 12
+        : state.handoffText.trim().length >= 12
+          ? 4
+          : -6;
+
+    const timeline = pushTimeline(state.timeline, {
+      phase: 'handoff',
+      actionId: 'verbal_handoff',
+      label: 'ED handoff',
+      message:
+        handoffScore >= 12
+          ? 'Concise handoff delivered.'
+          : handoffScore > 0
+            ? 'Handoff given — some critical elements may be missing.'
+            : 'Handoff incomplete.',
+      scoreDelta: handoffScore,
+      severity: handoffScore >= 12 ? 'good' : handoffScore > 0 ? 'warn' : 'bad',
+      skill: 'communication',
+      startedAt: state.startedAt,
+    });
+
+    const skillScores = applySkill(state.skillScores, 'communication', handoffScore);
+    const totalScore = state.totalScore + handoffScore;
+
+    const result = resolveEmtRun({
+      call: state.call,
+      difficulty: state.difficulty,
+      timeline,
+      skillScores,
+      totalScore,
+      finalVitals: state.vitals,
+      safetyActions: state.safetyActions,
+      abcdeCompleted: state.abcdeCompleted,
+      treatments: state.treatments,
+      transportPriority: state.transportPriority,
+      destination: state.destination,
+      enteredUnsafe: state.enteredUnsafe,
+      completedActions: [...state.completedActions, 'verbal_handoff'],
+    });
+
+    useProgressStore.getState().recordCompletedRun({
+      result,
+      category: state.call.category,
+      difficulty: state.difficulty,
+    });
+
+    set({
+      timeline,
+      skillScores: result.skillScores,
+      totalScore: result.totalScore,
+      result,
+      phase: 'debrief',
+    });
   },
 
   chooseNext: (choiceId) => {
@@ -526,6 +954,7 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
         destination: finalDestination,
         enteredUnsafe,
         difficulty: state.difficulty,
+        completedActions: state.completedActions,
       });
 
       // Final destination locks the run — no Back from debrief.

@@ -44,6 +44,10 @@ yarn-error.*
 # icon pack extraction previews
 assets/_preview/
 
+# full-resolution character sources (app uses processed md.png / medic.png)
+assets/characters/*-source.png
+assets/characters/*-original.png
+
 # generated native folders
 /ios
 /android

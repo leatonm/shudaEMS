@@ -1,12 +1,19 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
 
+import { ResourceFlash } from '@/components/characters/AlsFlash';
 import { ChoiceButton } from '@/components/ui/ChoiceButton';
 import { ScreenScroll } from '@/components/ui/ScreenScroll';
 import { ShiftButton } from '@/components/ui/ShiftUI';
+import {
+  type AlsFlashMode,
+  type ResourceCrew,
+  type ResponseCode,
+  resourceCrewFromChoice,
+} from '@/lib/characterDialogue';
 import {
   LiveDot,
   PressScale,
@@ -57,6 +64,12 @@ export default function EmtCallScreen() {
   const canGoBack = useEmtStore(
     (s) => s.snapshots.length > 0 && !s.result && s.phase !== 'debrief'
   );
+  const [resourceFlash, setResourceFlash] = useState(false);
+  const [resourceFlashMode, setResourceFlashMode] = useState<AlsFlashMode>('enroute');
+  const [resourceCrew, setResourceCrew] = useState<ResourceCrew>('als');
+  const [pendingResourceChoiceId, setPendingResourceChoiceId] = useState<string | null>(null);
+  const setResourceResponseCode = useEmtStore((s) => s.setResourceResponseCode);
+  const clearResourceResponseCode = useEmtStore((s) => s.clearResourceResponseCode);
 
   const tips = showActionTips(difficulty);
   const coach = showPhaseCoaching(difficulty);
@@ -242,11 +255,28 @@ export default function EmtCallScreen() {
                           ? choice.tip
                           : undefined
                     }
-                    onPress={() =>
-                      completed && canUndo
-                        ? undoChoice(choice.id)
-                        : chooseNext(choice.id)
-                    }
+                    onPress={() => {
+                      const crew = resourceCrewFromChoice(choice);
+                      if (completed && canUndo) {
+                        if (crew) {
+                          setResourceCrew(crew);
+                          setResourceFlashMode('cancel');
+                          setPendingResourceChoiceId(null);
+                          clearResourceResponseCode(crew);
+                          setResourceFlash(true);
+                        }
+                        undoChoice(choice.id);
+                        return;
+                      }
+                      if (crew) {
+                        setResourceCrew(crew);
+                        setResourceFlashMode('enroute');
+                        setPendingResourceChoiceId(choice.id);
+                        setResourceFlash(true);
+                        return;
+                      }
+                      chooseNext(choice.id);
+                    }}
                     index={index}
                     accentColor={accent}
                     variant={group.forward && !completed ? 'primary' : 'task'}
@@ -259,6 +289,20 @@ export default function EmtCallScreen() {
           ))}
         </Animated.View>
       </ScreenScroll>
+
+      <ResourceFlash
+        visible={resourceFlash}
+        crew={resourceCrew}
+        mode={resourceFlashMode}
+        onConfirm={(code?: ResponseCode) => {
+          if (resourceFlashMode === 'enroute' && pendingResourceChoiceId && code) {
+            setResourceResponseCode(resourceCrew, code);
+            chooseNext(pendingResourceChoiceId);
+          }
+          setPendingResourceChoiceId(null);
+          setResourceFlash(false);
+        }}
+      />
     </SafeAreaView>
   );
 }

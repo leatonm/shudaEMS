@@ -11,8 +11,14 @@ import { ScreenScroll } from '@/components/ui/ScreenScroll';
 import { PulseOrb, enterUp } from '@/components/ui/motion';
 import { fs } from '@/constants/layout';
 import { theme } from '@/constants/theme';
+import { selectRankTitle, useProgressStore } from '@/store/progressStore';
 
 export default function LeaderboardScreen() {
+  const totalXp = useProgressStore((s) => s.totalXp);
+  const calls = useProgressStore((s) => s.recentRuns.length);
+  const streak = useProgressStore((s) => s.currentStreak);
+  const rankTitle = selectRankTitle(totalXp);
+
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <PulseOrb color={theme.colors.amberGlow} size={260} top={-80} left={-70} />
@@ -26,6 +32,15 @@ export default function LeaderboardScreen() {
         <Animated.Text entering={enterUp(2)} style={styles.subtitle}>
           {LEADERBOARD_NOTE}
         </Animated.Text>
+
+        <Animated.View entering={enterUp(2)} style={styles.youCard}>
+          <Text style={styles.youKicker}>YOUR LOCAL PROGRESS</Text>
+          <Text style={styles.youHandle}>You · {rankTitle}</Text>
+          <Text style={styles.youMeta}>
+            {totalXp.toLocaleString()} XP · {calls} calls
+            {streak > 0 ? ` · ${streak}d streak` : ''}
+          </Text>
+        </Animated.View>
 
         <View style={styles.headerRow}>
           <Text style={[styles.colRank, styles.headerText]}>#</Text>
@@ -53,8 +68,8 @@ export default function LeaderboardScreen() {
         ))}
 
         <Text style={styles.footer}>
-          Standings are sample data for the soft launch. Your runs will join the board in a later
-          update.
+          Season board above is sample soft-launch data. Your XP and streak below are saved on this
+          device.
         </Text>
       </ScreenScroll>
     </SafeAreaView>
@@ -86,7 +101,33 @@ const styles = StyleSheet.create({
     fontSize: fs(13),
     lineHeight: fs(19),
     marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  youCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.emsBlue,
+    backgroundColor: theme.colors.cadGlow,
+    padding: 14,
     marginBottom: theme.spacing.lg,
+  },
+  youKicker: {
+    color: theme.colors.emsBlue,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(10),
+    letterSpacing: 1.2,
+    marginBottom: 4,
+  },
+  youHandle: {
+    color: theme.colors.text,
+    fontFamily: 'BebasNeue',
+    fontSize: fs(26),
+    letterSpacing: 1,
+  },
+  youMeta: {
+    color: theme.colors.textMuted,
+    fontSize: fs(12),
+    marginTop: 4,
   },
   headerRow: {
     flexDirection: 'row',

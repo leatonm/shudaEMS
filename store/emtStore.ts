@@ -28,6 +28,8 @@ import type {
   WalkthroughChoice,
   WalkthroughStep,
 } from '@/data/emt/types';
+import type { ResourceCrew, ResponseCode } from '@/lib/characterDialogue';
+import { useProgressStore } from '@/store/progressStore';
 
 /** Restorable call state for step-level Back (not used after the final destination). */
 interface CallSnapshot {
@@ -72,6 +74,8 @@ interface EmtStore {
   steps: WalkthroughStep[];
   stepIndex: number;
   snapshots: CallSnapshot[];
+  /** How hot ALS / Fire / PD was requested (Code 1–3). */
+  resourceResponseCodes: Partial<Record<ResourceCrew, ResponseCode>>;
 
   setDifficulty: (difficulty: EmtDifficulty) => void;
   startCall: (options?: {
@@ -82,6 +86,8 @@ interface EmtStore {
   chooseNext: (choiceId: string) => void;
   undoChoice: (choiceId: string) => void;
   goBack: () => void;
+  setResourceResponseCode: (crew: ResourceCrew, code: ResponseCode) => void;
+  clearResourceResponseCode: (crew: ResourceCrew) => void;
   reset: () => void;
 }
 
@@ -212,6 +218,7 @@ const emptyState = {
   steps: [] as WalkthroughStep[],
   stepIndex: 0,
   snapshots: [] as CallSnapshot[],
+  resourceResponseCodes: {} as Partial<Record<ResourceCrew, ResponseCode>>,
 };
 
 export const useEmtStore = create<EmtStore>((set, get) => ({
@@ -541,6 +548,14 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
         phase: 'debrief',
         snapshots: [],
       });
+
+      if (state.call) {
+        useProgressStore.getState().recordCompletedRun({
+          result,
+          category: state.call.category,
+          difficulty: state.difficulty,
+        });
+      }
       return;
     }
 
@@ -665,6 +680,21 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       snapshots: state.snapshots.slice(0, -1),
       result: null,
     });
+  },
+
+  setResourceResponseCode: (crew, code) => {
+    set({
+      resourceResponseCodes: {
+        ...get().resourceResponseCodes,
+        [crew]: code,
+      },
+    });
+  },
+
+  clearResourceResponseCode: (crew) => {
+    const next = { ...get().resourceResponseCodes };
+    delete next[crew];
+    set({ resourceResponseCodes: next });
   },
 
   reset: () => {

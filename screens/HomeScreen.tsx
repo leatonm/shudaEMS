@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  Alert,
   Image,
   type ImageSourcePropType,
   LayoutChangeEvent,
@@ -13,6 +12,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
 
+import { LaurenWelcome } from '@/components/characters/LaurenWelcome';
+import {
+  BadgesSheet,
+  DailyChallengeSheet,
+  StreaksSheet,
+  useXpCardModel,
+} from '@/components/ui/ProgressSheets';
 import { ScreenScroll } from '@/components/ui/ScreenScroll';
 import { PressScale, PulseOrb, enterUp } from '@/components/ui/motion';
 import {
@@ -29,27 +35,42 @@ import { CALL_CATEGORIES } from '@/data/emt/categories';
 import { DIFFICULTY_OPTIONS } from '@/data/emt/difficulty';
 import type { CallCategory, EmtDifficulty } from '@/data/emt/types';
 import { useEmtStore } from '@/store/emtStore';
+import { useProgressStore } from '@/store/progressStore';
 
 export default function HomeScreen() {
   const router = useRouter();
   const startEmtCall = useEmtStore((s) => s.startCall);
   const difficulty = useEmtStore((s) => s.difficulty);
   const setDifficulty = useEmtStore((s) => s.setDifficulty);
+  const beginDailyRun = useProgressStore((s) => s.beginDailyRun);
+  const clearDailyRunFlag = useProgressStore((s) => s.clearDailyRunFlag);
+  const ensureDaily = useProgressStore((s) => s.ensureDaily);
   const [wide, setWide] = useState(false);
+  const [sheet, setSheet] = useState<'streaks' | 'badges' | 'daily' | null>(null);
+
+  useEffect(() => {
+    ensureDaily();
+  }, [ensureDaily]);
 
   const onLayout = (e: LayoutChangeEvent) => {
     setWide(e.nativeEvent.layout.width >= HOME_SIDEBAR_BREAKPOINT);
   };
 
   const handleStartCategory = (category?: CallCategory) => {
+    clearDailyRunFlag();
     const callId = startEmtCall(category ? { category, difficulty } : { difficulty });
     if (callId) {
       router.push(`/emt/call/${callId}`);
     }
   };
 
-  const comingSoon = (label: string) => {
-    Alert.alert(label, 'Progression is warming up — leaderboard is live now.');
+  const handleStartDaily = () => {
+    const category = beginDailyRun();
+    setSheet(null);
+    const callId = startEmtCall({ category, difficulty });
+    if (callId) {
+      router.push(`/emt/call/${callId}`);
+    }
   };
 
   return (
@@ -153,7 +174,7 @@ export default function HomeScreen() {
                 <FunTile
                   icon={Icons.streak}
                   label="Streaks"
-                  onPress={() => comingSoon('Streaks')}
+                  onPress={() => setSheet('streaks')}
                 />
                 <FunTile
                   icon={Icons.trophy}
@@ -163,12 +184,12 @@ export default function HomeScreen() {
                 <FunTile
                   icon={Icons.badge}
                   label="Badges"
-                  onPress={() => comingSoon('Badges')}
+                  onPress={() => setSheet('badges')}
                 />
                 <FunTile
                   icon={Icons.challenge}
                   label="Daily Challenge"
-                  onPress={() => comingSoon('Daily Challenge')}
+                  onPress={() => setSheet('daily')}
                 />
               </View>
             </Animated.View>
@@ -196,6 +217,15 @@ export default function HomeScreen() {
           ) : null}
         </View>
       </ScreenScroll>
+
+      <StreaksSheet visible={sheet === 'streaks'} onClose={() => setSheet(null)} />
+      <BadgesSheet visible={sheet === 'badges'} onClose={() => setSheet(null)} />
+      <DailyChallengeSheet
+        visible={sheet === 'daily'}
+        onClose={() => setSheet(null)}
+        onStart={handleStartDaily}
+      />
+      <LaurenWelcome />
     </SafeAreaView>
   );
 }
@@ -224,19 +254,27 @@ function HeroBanner() {
 }
 
 function XpCard() {
+  const { totalXp, level, rank } = useXpCardModel();
+  const streak = useProgressStore((s) => s.currentStreak);
+
   return (
     <View style={styles.xpCard}>
       <View style={styles.xpTop}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.xpLevel}>XP LEVEL 12</Text>
+          <Text style={styles.xpLevel}>XP LEVEL {level.level}</Text>
           <View style={styles.xpTrack}>
-            <View style={[styles.xpFill, { width: '50%' }]} />
+            <View style={[styles.xpFill, { width: `${Math.round(level.ratio * 100)}%` }]} />
           </View>
-          <Text style={styles.xpMeta}>1,250 / 2,500 XP</Text>
+          <Text style={styles.xpMeta}>
+            {level.intoLevel.toLocaleString()} / {level.need.toLocaleString()} XP
+            {' · '}
+            {totalXp.toLocaleString()} total
+            {streak > 0 ? ` · ${streak}d streak` : ''}
+          </Text>
         </View>
         <View style={styles.avatarWrap}>
           <Image source={Icons.medicMascot} style={styles.avatar} />
-          <Text style={styles.avatarLabel}>EMT Rookie</Text>
+          <Text style={styles.avatarLabel}>{rank}</Text>
         </View>
       </View>
     </View>
@@ -385,7 +423,7 @@ const styles = StyleSheet.create({
     gap: 12,
     zIndex: 2,
   },
-  heroLogo: { width: 64, height: 64 },
+  heroLogo: { width: 96, height: 96 },
   heroTitle: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',

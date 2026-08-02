@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  logo: { width: 64, height: 64 },
+  logo: { width: 96, height: 96 },
   wordmark: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',

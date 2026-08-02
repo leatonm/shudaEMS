@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
 
+import { LaurenDebriefChat } from '@/components/characters/LaurenDebriefChat';
 import { ScreenScroll } from '@/components/ui/ScreenScroll';
 import { ShiftButton } from '@/components/ui/ShiftUI';
 import { StarRating } from '@/components/ui/StarRating';
@@ -11,6 +13,7 @@ import { PopIn, PulseOrb, enterUp } from '@/components/ui/motion';
 import { fs } from '@/constants/layout';
 import { categoryColor, theme } from '@/constants/theme';
 import { useEmtStore } from '@/store/emtStore';
+import { useProgressStore } from '@/store/progressStore';
 
 export default function EmtDebriefScreen() {
   const router = useRouter();
@@ -19,16 +22,24 @@ export default function EmtDebriefScreen() {
   const difficulty = useEmtStore((s) => s.difficulty);
   const startCall = useEmtStore((s) => s.startCall);
   const reset = useEmtStore((s) => s.reset);
+  const lastAward = useProgressStore((s) => s.lastAward);
+  const clearDailyRunFlag = useProgressStore((s) => s.clearDailyRunFlag);
+  const [showFullReport, setShowFullReport] = useState(false);
 
   const handleNext = (category?: import('@/data/emt/types').CallCategory) => {
+    clearDailyRunFlag();
     const id = startCall(category ? { category } : undefined);
     if (id) router.replace(`/emt/call/${id}`);
   };
 
   const handleHome = () => {
+    clearDailyRunFlag();
     reset();
     router.replace('/');
   };
+
+  const awardForThisRun =
+    result && lastAward && lastAward.callId === result.callId ? lastAward : null;
 
   if (!result || !call) {
     return (
@@ -61,6 +72,12 @@ export default function EmtDebriefScreen() {
           {result.debrief.title} · {call.category.toUpperCase()} · {difficulty.toUpperCase()}
         </Animated.Text>
 
+        <LaurenDebriefChat
+          result={result}
+          difficulty={difficulty}
+          onFullReport={() => setShowFullReport(true)}
+        />
+
         <PopIn
           delay={140}
           style={[styles.sheetBanner, passed ? styles.sheetPass : styles.sheetFail]}
@@ -86,81 +103,97 @@ export default function EmtDebriefScreen() {
           <Text style={styles.outcome}>
             Patient: {result.patientOutcome.toUpperCase()} · Score {result.totalScore}
           </Text>
+          {awardForThisRun ? (
+            <Text style={styles.xpEarned}>
+              +{awardForThisRun.xpEarned} XP
+              {awardForThisRun.daily ? ' · Daily bonus' : ''}
+            </Text>
+          ) : null}
           <Text style={styles.summaryText}>{result.debrief.summary}</Text>
         </Animated.View>
 
-        {result.criticalFails.length > 0 ? (
-          <Section title="Critical criteria" index={4}>
-            {result.criticalFails.map((fail) => (
-              <View key={fail.id} style={styles.critCard}>
-                <Text style={styles.critLabel}>{fail.label}</Text>
-                <Text style={styles.critDetail}>{fail.detail}</Text>
-              </View>
-            ))}
-          </Section>
-        ) : null}
+        {!showFullReport ? (
+          <ShiftButton
+            label="FULL REPORT"
+            onPress={() => setShowFullReport(true)}
+            accentColor={accent}
+          />
+        ) : (
+          <>
+            {result.criticalFails.length > 0 ? (
+              <Section title="Critical criteria" index={4}>
+                {result.criticalFails.map((fail) => (
+                  <View key={fail.id} style={styles.critCard}>
+                    <Text style={styles.critLabel}>{fail.label}</Text>
+                    <Text style={styles.critDetail}>{fail.detail}</Text>
+                  </View>
+                ))}
+              </Section>
+            ) : null}
 
-        {result.debrief.flowMisses && result.debrief.flowMisses.length > 0 ? (
-          <Section title="Flow misses" index={5}>
-            {result.debrief.flowMisses.map((item) => (
-              <Bullet key={item} icon="!" color={theme.colors.critical} text={item} />
-            ))}
-          </Section>
-        ) : null}
+            {result.debrief.flowMisses && result.debrief.flowMisses.length > 0 ? (
+              <Section title="Flow misses" index={5}>
+                {result.debrief.flowMisses.map((item) => (
+                  <Bullet key={item} icon="!" color={theme.colors.critical} text={item} />
+                ))}
+              </Section>
+            ) : null}
 
-        <SkillRow scores={result.skillScores} />
+            <SkillRow scores={result.skillScores} />
 
-        <Section title="What went well" index={6}>
-          {result.debrief.whatWentWell.map((item) => (
-            <Bullet key={item} icon="✓" color={theme.colors.success} text={item} />
-          ))}
-        </Section>
+            <Section title="What went well" index={6}>
+              {result.debrief.whatWentWell.map((item) => (
+                <Bullet key={item} icon="✓" color={theme.colors.success} text={item} />
+              ))}
+            </Section>
 
-        <Section title="Improve next time" index={7}>
-          {result.debrief.improveNext.map((item) => (
-            <Bullet key={item} icon="→" color={theme.colors.warning} text={item} />
-          ))}
-        </Section>
+            <Section title="Improve next time" index={7}>
+              {result.debrief.improveNext.map((item) => (
+                <Bullet key={item} icon="→" color={theme.colors.warning} text={item} />
+              ))}
+            </Section>
 
-        <Section title="Universal principles" index={8}>
-          {result.debrief.universalPrinciples.map((item) => (
-            <Bullet key={item} icon="•" color={theme.colors.accentLight} text={item} />
-          ))}
-        </Section>
+            <Section title="Universal principles" index={8}>
+              {result.debrief.universalPrinciples.map((item) => (
+                <Bullet key={item} icon="•" color={theme.colors.accentLight} text={item} />
+              ))}
+            </Section>
 
-        {result.debrief.protocolNotes && result.debrief.protocolNotes.length > 0 && (
-          <Section title="Protocol-dependent (region matters)" index={8}>
-            {result.debrief.protocolNotes.map((item) => (
-              <Bullet key={item} icon="!" color={theme.colors.emsBlue} text={item} />
-            ))}
-          </Section>
-        )}
+            {result.debrief.protocolNotes && result.debrief.protocolNotes.length > 0 && (
+              <Section title="Protocol-dependent (region matters)" index={8}>
+                {result.debrief.protocolNotes.map((item) => (
+                  <Bullet key={item} icon="!" color={theme.colors.emsBlue} text={item} />
+                ))}
+              </Section>
+            )}
 
-        <View style={styles.pearl}>
-          <Text style={styles.pearlLabel}>Clinical pearl</Text>
-          <Text style={styles.pearlText}>{result.debrief.pearl}</Text>
-        </View>
-
-        <Section title="Call timeline" index={8}>
-          {result.timeline.map((entry, index) => (
-            <View key={`${entry.actionId}-${index}`} style={styles.timelineRow}>
-              <Text style={styles.time}>
-                {formatMs(entry.atMs)} · {entry.severity === 'good' ? '+' : ''}
-                {entry.scoreDelta}
-              </Text>
-              <Text style={styles.timelineLabel}>{entry.label}</Text>
-              <Text style={styles.timelineMsg}>{entry.message}</Text>
+            <View style={styles.pearl}>
+              <Text style={styles.pearlLabel}>Clinical pearl</Text>
+              <Text style={styles.pearlText}>{result.debrief.pearl}</Text>
             </View>
-          ))}
-        </Section>
 
-        <View style={styles.disclaimer}>
-          <Text style={styles.disclaimerTitle}>Training aid only</Text>
-          <Text style={styles.disclaimerText}>
-            This simulator is for educational practice. It is not a substitute for formal EMT
-            education, certification, medical direction, or your local protocols.
-          </Text>
-        </View>
+            <Section title="Call timeline" index={8}>
+              {result.timeline.map((entry, index) => (
+                <View key={`${entry.actionId}-${index}`} style={styles.timelineRow}>
+                  <Text style={styles.time}>
+                    {formatMs(entry.atMs)} · {entry.severity === 'good' ? '+' : ''}
+                    {entry.scoreDelta}
+                  </Text>
+                  <Text style={styles.timelineLabel}>{entry.label}</Text>
+                  <Text style={styles.timelineMsg}>{entry.message}</Text>
+                </View>
+              ))}
+            </Section>
+
+            <View style={styles.disclaimer}>
+              <Text style={styles.disclaimerTitle}>Training aid only</Text>
+              <Text style={styles.disclaimerText}>
+                This simulator is for educational practice. It is not a substitute for formal EMT
+                education, certification, medical direction, or your local protocols.
+              </Text>
+            </View>
+          </>
+        )}
 
         <ShiftButton
           label={`ANOTHER ${call.category.toUpperCase()} CALL`}
@@ -307,6 +340,14 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   outcome: { color: theme.colors.accentLight, fontWeight: '700', fontSize: fs(14) },
+  xpEarned: {
+    color: theme.colors.success,
+    fontFamily: 'BebasNeue',
+    fontSize: fs(28),
+    letterSpacing: 1,
+    marginTop: 8,
+    marginBottom: 4,
+  },
   summaryText: {
     color: theme.colors.text,
     textAlign: 'center',

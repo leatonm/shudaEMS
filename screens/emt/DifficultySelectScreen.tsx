@@ -55,11 +55,11 @@ export default function DifficultySelectScreen() {
       difficulty: id,
       category: pendingCategory ?? undefined,
     });
-    if (callId) router.replace(`/emt/dispatch/${callId}` as Href);
+    if (callId) router.push(`/emt/dispatch/${callId}` as Href);
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
       <ScreenScroll>
         <Animated.Text entering={enterUp(0)} style={styles.kicker}>
           SELECT DIFFICULTY
@@ -98,15 +98,16 @@ const styles = StyleSheet.create({
     fontSize: fs(11),
     letterSpacing: 1.6,
     marginBottom: 6,
+    marginTop: 12,
   },
   lead: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',
     fontSize: fs(34),
     letterSpacing: 1,
-    marginBottom: 18,
+    marginBottom: 22,
   },
-  list: { gap: 12 },
+  list: { gap: 12, paddingBottom: 24 },
   card: {
     borderRadius: 16,
     borderWidth: 1,

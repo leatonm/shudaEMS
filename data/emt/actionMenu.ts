@@ -26,7 +26,7 @@ export const ACTION_MENU_ROOTS: Array<{
   { id: 'scene', label: 'Scene', skill: 'scene_safety', blurb: 'Size-up, BSI, hazards' },
   { id: 'assessment', label: 'Assessment', skill: 'assessment', blurb: 'Primary, history, vitals' },
   { id: 'interventions', label: 'Treatment', skill: 'treatment', blurb: 'Oxygen, meds, procedures' },
-  { id: 'resources', label: 'Resources', skill: 'communication', blurb: 'Fire, law, ALS, air' },
+  { id: 'resources', label: 'Resources', skill: 'communication', blurb: 'Fire, law, medic, air' },
   { id: 'transport', label: 'Transport', skill: 'transport', blurb: 'Priority, destination, report' },
 ];
 
@@ -143,7 +143,7 @@ export const ACTION_MENUS: Record<ActionMenuRoot, ActionMenuNode[]> = {
     { id: 'res_medcontrol', label: 'Medical Control', actionId: 'notify_hospital' },
     { id: 'res_hazmat', label: 'Hazmat', actionId: 'request_hazmat' },
     { id: 'res_rescue', label: 'Technical Rescue', actionId: 'request_rescue' },
-    { id: 'res_als', label: 'ALS / Paramedic', actionId: 'request_als' },
+    { id: 'res_als', label: 'Medic / Paramedic', actionId: 'request_als' },
   ],
   transport: [
     { id: 'tp_stay', label: 'Stay and Play', actionId: 'stay_and_play' },

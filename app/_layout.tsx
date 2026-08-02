@@ -66,7 +66,7 @@ export default function RootLayout() {
         <Stack.Screen
           name="emt/dispatch/[id]"
           options={{
-            headerBackVisible: false,
+            headerBackTitle: 'Difficulty',
             headerTitle: () => (
               <CadHeaderTitle title="DISPATCH" channel="CAD" />
             ),
@@ -75,7 +75,7 @@ export default function RootLayout() {
         <Stack.Screen
           name="emt/call/[id]"
           options={{
-            headerBackTitle: 'Home',
+            headerBackTitle: 'Difficulty',
             headerTitle: () => (
               <CadHeaderTitle title="ACTIVE CALL" channel="IN PROGRESS" />
             ),

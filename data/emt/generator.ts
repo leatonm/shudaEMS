@@ -19,7 +19,8 @@ import {
   type Rng,
 } from '@/data/generators/rng';
 
-const UNITS = ['Medic 4', 'Engine 2', 'Unit 12', 'Rescue 7', 'Ambulance 3'];
+/** Player BLS ambulance — medic units are paramedic intercept only. */
+const PLAYER_UNIT = 'EMS 81';
 
 function buildVitals(archetype: ScenarioArchetype, rng: Rng) {
   const sbp = pickRandom(archetype.vitalsPools.sbp, rng);
@@ -110,7 +111,7 @@ export function generateEmtCall(options: GenerateEmtCallOptions = {}): EmtCall {
     archetypeId: archetype.id,
     archetypeName: archetype.name,
     category: archetype.category,
-    unit: pickRandom(UNITS, rng),
+    unit: PLAYER_UNIT,
     priority: pickRandom([1, 1, 2] as const, rng),
     dispatch: complaint,
     cadNotes,

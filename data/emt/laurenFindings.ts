@@ -326,8 +326,8 @@ export function buildLaurenExchange(
       };
     case 'request_als':
       return {
-        studentLine: "I'd like to request ALS.",
-        laurenLines: ['ALS has been requested.'],
+        studentLine: "I'd like to request a medic / paramedic.",
+        laurenLines: ['Medic has been requested.'],
       };
     case 'request_pd':
       return {

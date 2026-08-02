@@ -1,16 +1,16 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeInLeft } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
-import { ScreenScroll } from '@/components/ui/ScreenScroll';
+import { AppBackdrop } from '@/components/ui/AppBackdrop';
 import { ShiftButton } from '@/components/ui/ShiftUI';
-import { Characters } from '@/constants/characters';
+import { enterUp } from '@/components/ui/motion';
 import { fs } from '@/constants/layout';
-import { theme } from '@/constants/theme';
-import { dispatchLaurenLines } from '@/data/emt/laurenFindings';
+import { categoryColor, priorityColors, theme } from '@/constants/theme';
 import { useEmtStore } from '@/store/emtStore';
 
+/** CAD-style dispatch briefing — no evaluator character. */
 export default function DispatchScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -28,69 +28,195 @@ export default function DispatchScreen() {
     );
   }
 
-  const lines = dispatchLaurenLines(call);
+  const priorityColor = priorityColors[call.priority] ?? theme.colors.emsBlue;
+  const catColor = categoryColor(call.category);
 
   const respond = () => {
     acknowledgeDispatch();
+    // Replace dispatch so Back from the call returns to Difficulty.
     router.replace(`/emt/call/${call.id}` as Href);
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScreenScroll>
-        <Animated.View entering={FadeInLeft.springify().damping(16)} style={styles.laurenRow}>
-          <Image
-            source={Characters.lauren.image}
-            resizeMode="contain"
-            style={styles.lauren}
-          />
-          <View style={styles.bubbleCol}>
-            <Text style={styles.callsign}>LAUREN · EVALUATOR</Text>
-            {lines.map((line) => (
-              <View key={line} style={styles.bubble}>
-                <Text style={styles.intro}>{line}</Text>
-              </View>
-            ))}
+    <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
+      <AppBackdrop />
+      <View style={styles.shell}>
+        <Animated.View entering={enterUp(0)} style={styles.cadHeader}>
+          <View style={styles.cadHeaderTop}>
+            <Text style={styles.cadKicker}>DISPATCH · CAD</Text>
+            <View style={[styles.livePill, { borderColor: priorityColor }]}>
+              <View style={[styles.liveDot, { backgroundColor: priorityColor }]} />
+              <Text style={[styles.liveText, { color: priorityColor }]}>LIVE</Text>
+            </View>
+          </View>
+          <View style={styles.unitRow}>
+            <Text style={styles.unit}>{call.unit}</Text>
+            <Text style={[styles.priorityBadge, { color: priorityColor, borderColor: priorityColor }]}>
+              PRIORITY {call.priority}
+            </Text>
           </View>
         </Animated.View>
 
-        <ShiftButton label="RESPOND" onPress={respond} accentColor={theme.colors.emsBlue} />
-      </ScreenScroll>
+        <Animated.View
+          entering={enterUp(1)}
+          style={[styles.card, { borderColor: catColor }]}
+        >
+          <Text style={styles.complaint}>{call.dispatch}</Text>
+          <Text style={styles.patientLine}>
+            {call.age}-year-old {call.sex.toLowerCase()}
+          </Text>
+
+          <View style={styles.divider} />
+
+          <CadRow label="CAD NOTES" value={call.cadNotes} />
+          <CadRow label="CATEGORY" value={call.category.toUpperCase()} accent={catColor} />
+          <CadRow
+            label="ETA FROM STATION"
+            value={`Approx. ${call.distanceMiles} min`}
+          />
+          <CadRow label="TIME OF DAY" value={call.timeOfDay} />
+          <CadRow label="WEATHER" value={call.weather} />
+        </Animated.View>
+
+        <View style={styles.footer}>
+          <Text style={styles.hint}>Acknowledge and begin response.</Text>
+          <ShiftButton
+            label="RESPOND"
+            onPress={respond}
+            accentColor={theme.colors.emsBlue}
+          />
+        </View>
+      </View>
     </SafeAreaView>
+  );
+}
+
+function CadRow({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: string;
+}) {
+  return (
+    <View style={styles.cadRow}>
+      <Text style={styles.cadLabel}>{label}</Text>
+      <Text style={[styles.cadValue, accent ? { color: accent } : null]}>{value}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.background },
+  shell: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 28,
+    paddingBottom: 20,
+  },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
   muted: { color: theme.colors.textMuted },
-  laurenRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 8,
-    marginBottom: 24,
-    marginTop: 8,
+  cadHeader: {
+    marginBottom: 18,
   },
-  lauren: { width: 130, height: 220 },
-  bubbleCol: { flex: 1, gap: 8, paddingBottom: 28 },
-  callsign: {
+  cadHeaderTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  cadKicker: {
     color: theme.colors.emsBlue,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(10),
-    letterSpacing: 1.3,
-    marginBottom: 2,
+    fontSize: fs(11),
+    letterSpacing: 1.6,
   },
-  bubble: {
-    backgroundColor: 'rgba(2, 10, 18, 0.88)',
+  livePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     borderWidth: 1,
-    borderColor: 'rgba(0, 229, 255, 0.35)',
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
-  intro: {
+  liveDot: { width: 7, height: 7, borderRadius: 4 },
+  liveText: {
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(10),
+    letterSpacing: 1.2,
+  },
+  unitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  unit: {
+    color: theme.colors.text,
+    fontFamily: 'BebasNeue',
+    fontSize: fs(40),
+    letterSpacing: 1,
+  },
+  priorityBadge: {
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(11),
+    letterSpacing: 1.2,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  card: {
+    backgroundColor: 'rgba(8,18,28,0.88)',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    padding: 16,
+    gap: 10,
+  },
+  complaint: {
+    color: theme.colors.text,
+    fontFamily: 'BebasNeue',
+    fontSize: fs(30),
+    letterSpacing: 0.6,
+    lineHeight: fs(34),
+  },
+  patientLine: {
+    color: theme.colors.accentLight,
+    fontSize: fs(16),
+    fontWeight: '700',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: theme.colors.border,
+    marginVertical: 4,
+  },
+  cadRow: {
+    gap: 2,
+  },
+  cadLabel: {
+    color: theme.colors.textMuted,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(9),
+    letterSpacing: 1.3,
+  },
+  cadValue: {
     color: theme.colors.text,
     fontSize: fs(15),
-    lineHeight: fs(22),
+    lineHeight: fs(21),
     fontWeight: '600',
+  },
+  footer: {
+    marginTop: 'auto',
+    gap: 10,
+    paddingTop: 24,
+    paddingBottom: 8,
+  },
+  hint: {
+    color: theme.colors.textMuted,
+    fontSize: fs(13),
+    textAlign: 'center',
   },
 });

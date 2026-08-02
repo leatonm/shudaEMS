@@ -74,7 +74,6 @@ export default function HomeScreen() {
       <View style={styles.shell}>
         <View style={styles.headerBlock}>
           <View style={styles.topBar}>
-            <View style={styles.topSide} />
             <View style={styles.brandCopy}>
               <Image source={Icons.appLogo} style={styles.logo} />
               <View>
@@ -82,11 +81,9 @@ export default function HomeScreen() {
                 <Text style={styles.brandSub}>SIMULATOR</Text>
               </View>
             </View>
-            <View style={[styles.topSide, styles.topSideRight]}>
-              <PressScale onPress={() => setSheet('streaks')} style={styles.xpChip}>
-                <XpChip />
-              </PressScale>
-            </View>
+            <PressScale onPress={() => setSheet('streaks')} style={styles.xpChip}>
+              <XpChip />
+            </PressScale>
           </View>
 
           {showDailyBanner ? (
@@ -301,14 +298,14 @@ const styles = StyleSheet.create({
   shell: {
     flex: 1,
     paddingHorizontal: 12,
-    paddingTop: 36,
+    paddingTop: 8,
     paddingBottom: 10,
     width: '100%',
     alignSelf: 'center',
   },
   headerBlock: {
-    marginTop: 28,
-    marginBottom: 16,
+    marginTop: 4,
+    marginBottom: 12,
   },
   categoryBlock: {
     flex: 1,
@@ -321,22 +318,15 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
     marginBottom: 10,
-  },
-  topSide: {
-    width: 88,
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-  },
-  topSideRight: {
-    alignItems: 'flex-end',
   },
   logo: { width: 96, height: 96 },
   brandCopy: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 10,
   },
   brandTitle: {

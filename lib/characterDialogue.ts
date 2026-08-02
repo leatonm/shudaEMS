@@ -176,16 +176,16 @@ export function laurenDebriefChat(
 
 const ALS_ENROUTE = [
   ['Copy.', 'Rolling out.'],
-  ['ALS copy.', 'En route.'],
-  ['Got it.', "We're rolling."],
-  ['Copy that.', 'Intercept coming.'],
+  ['Medic copy.', 'En route.'],
+  ['Got it.', "Medic's rolling."],
+  ['Copy that.', 'Paramedic intercept coming.'],
   ['Lee copy.', 'On the way.'],
 ];
 
 const ALS_CANCEL = [
   ['Copy.', 'Standing down.'],
   ['Got it.', 'Canceling.'],
-  ['ALS copy.', "We're clear."],
+  ['Medic copy.', "We're clear."],
   ['Understood.', 'Holding back.'],
   ['Copy that.', 'Return to service.'],
 ];
@@ -207,7 +207,7 @@ export const responseCodeOptions: {
 export function resourceCallsign(crew: ResourceCrew): string {
   switch (crew) {
     case 'als':
-      return 'LEE · PARAMEDIC';
+      return 'LEE · MEDIC';
     case 'fire':
       return 'FIRE / RESCUE';
     case 'pd':

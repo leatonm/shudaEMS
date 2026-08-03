@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { fs } from '@/constants/layout';
 import { theme } from '@/constants/theme';
@@ -36,6 +37,8 @@ interface ShiftButtonProps {
   accentColor?: string;
   index?: number;
   style?: object;
+  /** Soft outer glow — matches home / dispatch energy. */
+  glow?: boolean;
 }
 
 export function ShiftButton({
@@ -46,13 +49,42 @@ export function ShiftButton({
   accentColor,
   index = 0,
   style,
+  glow = false,
 }: ShiftButtonProps) {
-  const tint =
-    variant === 'primary'
-      ? { backgroundColor: accentColor ?? theme.colors.emsBlue }
-      : accentColor
-        ? { borderColor: accentColor }
-        : null;
+  const accent = accentColor ?? theme.colors.emsBlue;
+
+  if (variant === 'primary') {
+    return (
+      <PressScale
+        onPress={onPress}
+        disabled={disabled}
+        entering={enterUp(index)}
+        style={[
+          styles.buttonOuter,
+          glow
+            ? {
+                shadowColor: accent,
+                shadowOpacity: 0.55,
+                shadowRadius: 14,
+                shadowOffset: { width: 0, height: 0 },
+                elevation: 8,
+              }
+            : null,
+          disabled && styles.disabled,
+          style,
+        ]}
+      >
+        <LinearGradient
+          colors={[accent, `${accent}CC`, theme.colors.primaryDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.button}
+        >
+          <Text style={styles.buttonText}>{label}</Text>
+        </LinearGradient>
+      </PressScale>
+    );
+  }
 
   return (
     <PressScale
@@ -61,17 +93,16 @@ export function ShiftButton({
       entering={enterUp(index)}
       style={[
         styles.button,
-        variant === 'primary' ? styles.primary : styles.secondary,
-        tint,
+        styles.secondary,
+        accentColor ? { borderColor: accentColor } : null,
         disabled && styles.disabled,
         style,
       ]}
     >
       <Text
         style={[
-          styles.buttonText,
-          variant === 'secondary' && styles.secondaryText,
-          variant === 'secondary' && accentColor ? { color: accentColor } : null,
+          styles.secondaryText,
+          accentColor ? { color: accentColor } : null,
         ]}
       >
         {label}
@@ -115,32 +146,37 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: theme.colors.success,
   },
+  buttonOuter: {
+    borderRadius: theme.radius.md,
+    marginBottom: theme.spacing.sm,
+    overflow: 'hidden',
+  },
   button: {
     borderRadius: theme.radius.md,
-    paddingVertical: 12,
+    paddingVertical: 13,
     paddingHorizontal: theme.spacing.lg,
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
-  },
-  primary: {
-    backgroundColor: theme.colors.emsBlue,
+    justifyContent: 'center',
   },
   secondary: {
     backgroundColor: theme.colors.surfaceLight,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    marginBottom: theme.spacing.sm,
   },
   disabled: {
     opacity: 0.4,
   },
   buttonText: {
     color: '#041218',
-    fontSize: fs(16),
-    fontWeight: '800',
-    letterSpacing: 1,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(15),
+    letterSpacing: 1.4,
   },
   secondaryText: {
     color: theme.colors.text,
-    letterSpacing: 0.5,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(14),
+    letterSpacing: 1,
   },
 });

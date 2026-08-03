@@ -1,19 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Image,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ResourceFlash } from '@/components/characters/AlsFlash';
 import { LaurenFlash } from '@/components/characters/LaurenFlash';
 import { RawrEasterEgg } from '@/components/characters/RawrEasterEgg';
-import { PressScale } from '@/components/ui/motion';
+import { AppBackdrop } from '@/components/ui/AppBackdrop';
+import { PressScale, LiveDot } from '@/components/ui/motion';
 import { ShiftButton } from '@/components/ui/ShiftUI';
+import { Icons } from '@/constants/icons';
 import { fs } from '@/constants/layout';
 import { categoryColor, priorityColors, theme } from '@/constants/theme';
 import {
@@ -26,6 +30,28 @@ import { getNremtStage } from '@/data/emt/nremtFlow';
 import type { EmtCall } from '@/data/emt/types';
 import { useEmtStore } from '@/store/emtStore';
 
+const ROOT_ICONS: Record<ActionMenuRoot | 'ask', (typeof Icons)[keyof typeof Icons]> = {
+  scene: Icons.home,
+  assessment: Icons.scenario,
+  interventions: Icons.medical,
+  resources: Icons.ambulance,
+  transport: Icons.progress,
+  ask: Icons.message,
+};
+
+const ROOT_ACCENTS: Record<ActionMenuRoot | 'ask', string> = {
+  scene: theme.colors.accent,
+  assessment: theme.colors.emsBlue,
+  interventions: theme.colors.success,
+  resources: theme.colors.violet,
+  transport: theme.colors.critical,
+  ask: theme.colors.accentLight,
+};
+
+function tintGradient(accent: string): [string, string] {
+  return [`${accent}33`, 'rgba(8,18,28,0.96)'];
+}
+
 /**
  * Free oral-exam call: CAD + vitals on top, choose any next action,
  * Lauren findings via slide-in modal. Bottom CTA advances NREMT board stages.
@@ -36,7 +62,6 @@ export default function EmtCallScreen() {
   const call = useEmtStore((s) => s.call);
   const phase = useEmtStore((s) => s.phase);
   const vitals = useEmtStore((s) => s.vitals);
-  const difficulty = useEmtStore((s) => s.difficulty);
   const revealedVitals = useEmtStore((s) => s.revealedVitals);
   const pendingFollowUps = useEmtStore((s) => s.pendingFollowUps);
   const completedActions = useEmtStore((s) => s.completedActions);
@@ -122,6 +147,7 @@ export default function EmtCallScreen() {
   if (!call || call.id !== id || !vitals) {
     return (
       <SafeAreaView style={styles.safe}>
+        <AppBackdrop tone="danger" />
         <View style={styles.centered}>
           <Text style={styles.muted}>No active call.</Text>
         </View>
@@ -132,7 +158,6 @@ export default function EmtCallScreen() {
   const act = (actionId: string) => {
     clearFollowUps();
     performMenuAction(actionId);
-    // Keep the current menu open so size-up (and other tabs) stay put.
     setAskOpen(false);
     setAskText('');
   };
@@ -154,7 +179,6 @@ export default function EmtCallScreen() {
     const q = askText.trim().toLowerCase();
     if (!q) return;
 
-    // Easter egg — "rawr" or "the world rawr"
     if (/\brawr\b/.test(q)) {
       setAskOpen(false);
       setAskText('');
@@ -201,44 +225,70 @@ export default function EmtCallScreen() {
     phase === 'primary_survey' ||
     phase === 'history';
   const stageInfo = getNremtStage(nremtStage, call.category);
-
+  const catColor = categoryColor(call.category);
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
+      <AppBackdrop />
       <View style={styles.shell}>
         <DispatchStrip
           call={call}
           priorityColor={priorityColor}
+          catColor={catColor}
           expanded={cadExpanded}
           onToggle={() => setCadExpanded((v) => !v)}
           elapsed={elapsed}
         />
 
-        <View style={styles.status}>
-          <Text style={styles.statusTitle}>
-            NREMT · {stageInfo.title.toUpperCase()} · {elapsed}
-          </Text>
+        <LinearGradient
+          colors={['rgba(0,229,255,0.12)', 'rgba(8,18,28,0.92)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.status}
+        >
+          <View style={styles.statusHeader}>
+            <Text style={styles.statusTitle}>
+              NREMT · {stageInfo.title.toUpperCase()}
+            </Text>
+            <View style={styles.timerChip}>
+              <LiveDot color={theme.colors.emsBlue} size={6} />
+              <Text style={styles.timerText}>{elapsed}</Text>
+            </View>
+          </View>
           <View style={styles.statusRow}>
             <StatusChip label="Age" value={String(call.age)} />
             <StatusChip label="Sex" value={call.sex} />
             <StatusChip
               label="HR"
-              value={revealedVitals.hr ? String(vitals.hr) : 'Unknown'}
+              value={revealedVitals.hr ? String(vitals.hr) : '—'}
+              tone={
+                revealedVitals.hr && (vitals.hr >= 100 || vitals.hr < 60)
+                  ? 'critical'
+                  : 'normal'
+              }
             />
             <StatusChip
               label="BP"
-              value={revealedVitals.bp ? vitals.bp : 'Unknown'}
+              value={revealedVitals.bp ? vitals.bp : '—'}
             />
             <StatusChip
               label="RR"
-              value={revealedVitals.rr ? String(vitals.rr) : 'Unknown'}
+              value={revealedVitals.rr ? String(vitals.rr) : '—'}
+              tone={
+                revealedVitals.rr && (vitals.rr >= 24 || vitals.rr < 10)
+                  ? 'warn'
+                  : 'normal'
+              }
             />
             <StatusChip
               label="SpO₂"
-              value={revealedVitals.spo2 ? `${vitals.spo2}%` : 'Unknown'}
+              value={revealedVitals.spo2 ? `${vitals.spo2}%` : '—'}
+              tone={
+                revealedVitals.spo2 && vitals.spo2 < 94 ? 'critical' : 'normal'
+              }
             />
           </View>
-        </View>
+        </LinearGradient>
 
         <ScrollView
           style={styles.phaseScroll}
@@ -254,9 +304,16 @@ export default function EmtCallScreen() {
                     <PressScale
                       key={fu.id}
                       onPress={() => act(fu.actionId)}
-                      style={styles.actionBtn}
+                      style={styles.actionOuter}
                     >
-                      <Text style={styles.actionLabel}>{fu.label}</Text>
+                      <LinearGradient
+                        colors={tintGradient(theme.colors.emsBlue)}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={[styles.actionBtn, { borderColor: theme.colors.emsBlue }]}
+                      >
+                        <Text style={styles.actionLabel}>{fu.label}</Text>
+                      </LinearGradient>
                     </PressScale>
                   ))}
                 </View>
@@ -266,25 +323,56 @@ export default function EmtCallScreen() {
                 <>
                   <Text style={styles.prompt}>What would you like to do next?</Text>
                   <View style={styles.rootGrid}>
-                    {ACTION_MENU_ROOTS.map((item) => (
-                      <PressScale
-                        key={item.id}
-                        onPress={() => {
-                          setRoot(item.id);
-                          setPath([]);
-                        }}
-                        style={styles.rootChip}
-                      >
-                        <Text style={styles.rootChipText}>{item.label}</Text>
-                        <Text style={styles.rootBlurb}>{item.blurb}</Text>
-                      </PressScale>
-                    ))}
+                    {ACTION_MENU_ROOTS.map((item) => {
+                      const accent = ROOT_ACCENTS[item.id];
+                      return (
+                        <PressScale
+                          key={item.id}
+                          onPress={() => {
+                            setRoot(item.id);
+                            setPath([]);
+                          }}
+                          style={styles.rootOuter}
+                        >
+                          <LinearGradient
+                            colors={tintGradient(accent)}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={[styles.rootChip, { borderColor: accent }]}
+                          >
+                            <Image
+                              source={ROOT_ICONS[item.id]}
+                              style={styles.rootIcon}
+                              resizeMode="contain"
+                            />
+                            <Text style={[styles.rootChipText, { color: accent }]}>
+                              {item.label}
+                            </Text>
+                            <Text style={styles.rootBlurb}>{item.blurb}</Text>
+                          </LinearGradient>
+                        </PressScale>
+                      );
+                    })}
                     <PressScale
                       onPress={() => setAskOpen((v) => !v)}
-                      style={[styles.rootChip, styles.askChip]}
+                      style={styles.rootOuter}
                     >
-                      <Text style={styles.rootChipText}>Ask</Text>
-                      <Text style={styles.rootBlurb}>Say it in your own words</Text>
+                      <LinearGradient
+                        colors={tintGradient(ROOT_ACCENTS.ask)}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={[styles.rootChip, { borderColor: ROOT_ACCENTS.ask }]}
+                      >
+                        <Image
+                          source={ROOT_ICONS.ask}
+                          style={styles.rootIcon}
+                          resizeMode="contain"
+                        />
+                        <Text style={[styles.rootChipText, { color: ROOT_ACCENTS.ask }]}>
+                          Ask
+                        </Text>
+                        <Text style={styles.rootBlurb}>Say it in your own words</Text>
+                      </LinearGradient>
                     </PressScale>
                   </View>
                   {askOpen ? (
@@ -301,6 +389,7 @@ export default function EmtCallScreen() {
                         label="ASK"
                         onPress={interpretAsk}
                         accentColor={theme.colors.emsBlue}
+                        glow
                       />
                     </View>
                   ) : null}
@@ -308,26 +397,42 @@ export default function EmtCallScreen() {
               ) : (
                 <View style={styles.subMenu}>
                   <Text style={styles.prompt}>{breadcrumb}</Text>
-                  {nodes.map((node) => (
-                    <PressScale
-                      key={node.id}
-                      onPress={() => openNode(node)}
-                      style={[
-                        styles.actionBtn,
-                        node.actionId && completedActions.includes(node.actionId)
-                          ? styles.actionDone
-                          : null,
-                      ]}
-                    >
-                      <Text style={styles.actionLabel}>{node.label}</Text>
-                      {node.children?.length ? (
-                        <Text style={styles.more}>›</Text>
-                      ) : node.actionId &&
-                        completedActions.includes(node.actionId) ? (
-                        <Text style={styles.doneMark}>✓</Text>
-                      ) : null}
-                    </PressScale>
-                  ))}
+                  {nodes.map((node) => {
+                    const done =
+                      !!node.actionId && completedActions.includes(node.actionId);
+                    const accent = done
+                      ? theme.colors.success
+                      : ROOT_ACCENTS[root] ?? theme.colors.emsBlue;
+                    return (
+                      <PressScale
+                        key={node.id}
+                        onPress={() => openNode(node)}
+                        style={styles.actionOuter}
+                      >
+                        <LinearGradient
+                          colors={tintGradient(accent)}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={[styles.actionBtn, { borderColor: accent }]}
+                        >
+                          <Text style={styles.actionLabel}>{node.label}</Text>
+                          {node.children?.length ? (
+                            <Image
+                              source={Icons.arrowRight}
+                              style={styles.moreIcon}
+                              resizeMode="contain"
+                            />
+                          ) : done ? (
+                            <Image
+                              source={Icons.check}
+                              style={styles.doneIcon}
+                              resizeMode="contain"
+                            />
+                          ) : null}
+                        </LinearGradient>
+                      </PressScale>
+                    );
+                  })}
                 </View>
               )}
             </View>
@@ -346,20 +451,26 @@ export default function EmtCallScreen() {
                 }}
                 style={[styles.menuBackBtn, !root && styles.menuBackBtnInactive]}
               >
+                <Image
+                  source={Icons.back}
+                  style={[styles.backIcon, !root && styles.backIconInactive]}
+                  resizeMode="contain"
+                />
                 <Text
                   style={[
                     styles.menuBackText,
                     !root && styles.menuBackTextInactive,
                   ]}
                 >
-                  ‹ BACK
+                  BACK
                 </Text>
               </PressScale>
               <View style={styles.advanceWrap}>
                 <ShiftButton
-                  label={stageInfo.advanceLabel}
+                  label={`${stageInfo.advanceLabel}  >>`}
                   onPress={advanceNremtStage}
                   accentColor={theme.colors.emsBlue}
+                  glow
                 />
               </View>
             </View>
@@ -388,54 +499,86 @@ export default function EmtCallScreen() {
 function DispatchStrip({
   call,
   priorityColor,
+  catColor,
   expanded,
   onToggle,
   elapsed,
 }: {
   call: EmtCall;
   priorityColor: string;
+  catColor: string;
   expanded: boolean;
   onToggle: () => void;
   elapsed: string;
 }) {
-  const catColor = categoryColor(call.category);
   return (
-    <PressScale onPress={onToggle} style={[styles.cadStrip, { borderColor: catColor }]}>
-      <View style={styles.cadTop}>
-        <Text style={styles.cadUnit}>{call.unit}</Text>
-        <Text style={[styles.cadPriority, { color: priorityColor }]}>
-          P{call.priority}
-        </Text>
-        <Text style={styles.cadElapsed}>{elapsed}</Text>
-        <Text style={styles.cadToggle}>{expanded ? '▴' : '▾'}</Text>
-      </View>
-      <Text style={styles.cadComplaint} numberOfLines={expanded ? 3 : 1}>
-        {call.dispatch}
-      </Text>
-      {expanded ? (
-        <View style={styles.cadMeta}>
-          <Text style={styles.cadMetaText}>
-            {call.age}yo {call.sex} · {call.cadNotes}
-          </Text>
-          <Text style={styles.cadMetaMuted}>
-            {call.timeOfDay} · {call.weather}
+    <PressScale onPress={onToggle} style={styles.cadOuter}>
+      <LinearGradient
+        colors={tintGradient(catColor)}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.cadStrip, { borderColor: catColor }]}
+      >
+        <View style={styles.cadTop}>
+          <Text style={styles.cadKicker}>ACTIVE CALL</Text>
+          <View style={styles.cadTopRight}>
+            <View style={[styles.priorityPill, { borderColor: priorityColor }]}>
+              <Text style={[styles.cadPriority, { color: priorityColor }]}>
+                P{call.priority}
+              </Text>
+            </View>
+            <View style={styles.timerChip}>
+              <LiveDot color={theme.colors.emsBlue} size={6} />
+              <Text style={styles.timerText}>{elapsed}</Text>
+            </View>
+            <Text style={styles.cadToggle}>{expanded ? '▴' : '▾'}</Text>
+          </View>
+        </View>
+        <View style={styles.cadUnitRow}>
+          <Text style={styles.cadUnit}>{call.unit}</Text>
+          <Text style={styles.cadComplaint} numberOfLines={expanded ? 3 : 1}>
+            {call.dispatch}
           </Text>
         </View>
-      ) : (
-        <Text style={styles.cadMetaMuted}>
-          {call.age}yo {call.sex} · tap to expand
-        </Text>
-      )}
+        {expanded ? (
+          <View style={styles.cadMeta}>
+            <Text style={styles.cadMetaText}>
+              {call.age}yo {call.sex} · {call.cadNotes}
+            </Text>
+            <Text style={styles.cadMetaMuted}>
+              {call.timeOfDay} · {call.weather}
+            </Text>
+          </View>
+        ) : (
+          <Text style={styles.cadMetaMuted}>
+            {call.age}yo {call.sex} · tap CAD to expand
+          </Text>
+        )}
+      </LinearGradient>
     </PressScale>
   );
 }
 
-function StatusChip({ label, value }: { label: string; value: string }) {
-  const unknown = value === 'Unknown';
+function StatusChip({
+  label,
+  value,
+  tone = 'normal',
+}: {
+  label: string;
+  value: string;
+  tone?: 'normal' | 'warn' | 'critical';
+}) {
+  const unknown = value === '—';
+  const valueColor =
+    tone === 'critical'
+      ? theme.colors.critical
+      : tone === 'warn'
+        ? theme.colors.warning
+        : theme.colors.text;
   return (
     <View style={[styles.chip, unknown && styles.chipUnknown]}>
       <Text style={styles.chipLabel}>{label}</Text>
-      <Text style={[styles.chipValue, unknown && styles.chipValueUnknown]}>
+      <Text style={[styles.chipValue, { color: valueColor }, unknown && styles.chipValueUnknown]}>
         {value}
       </Text>
     </View>
@@ -447,36 +590,52 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   muted: { color: theme.colors.textMuted },
   shell: { flex: 1, paddingHorizontal: 10, paddingTop: 4, paddingBottom: 6 },
+  cadOuter: { borderRadius: 12, marginBottom: 6 },
   cadStrip: {
-    backgroundColor: 'rgba(8,18,28,0.92)',
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1.5,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    marginBottom: 6,
+    overflow: 'hidden',
   },
   cadTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  cadKicker: {
+    color: theme.colors.emsBlue,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(9),
+    letterSpacing: 1.3,
+  },
+  cadTopRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  priorityPill: {
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  cadUnitRow: {
+    gap: 2,
     marginBottom: 2,
   },
   cadUnit: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',
-    fontSize: fs(18),
+    fontSize: fs(22),
     letterSpacing: 0.8,
-    flex: 1,
+    lineHeight: fs(24),
   },
   cadPriority: {
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(11),
-    letterSpacing: 1,
-  },
-  cadElapsed: {
-    color: theme.colors.textMuted,
-    fontFamily: 'IBMPlexMonoBold',
     fontSize: fs(10),
+    letterSpacing: 1,
   },
   cadToggle: { color: theme.colors.textMuted, fontSize: fs(12) },
   cadComplaint: {
@@ -500,10 +659,16 @@ const styles = StyleSheet.create({
   status: {
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 8,
-    paddingVertical: 6,
-    backgroundColor: theme.colors.surface,
+    paddingVertical: 7,
+    marginBottom: 6,
+    overflow: 'hidden',
+  },
+  statusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 6,
   },
   statusTitle: {
@@ -511,26 +676,41 @@ const styles = StyleSheet.create({
     fontFamily: 'IBMPlexMonoBold',
     fontSize: fs(8),
     letterSpacing: 1.1,
-    marginBottom: 5,
+  },
+  timerChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderColor: theme.colors.emsBlue,
+    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    backgroundColor: 'rgba(0,229,255,0.08)',
+  },
+  timerText: {
+    color: theme.colors.emsBlue,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(10),
+    letterSpacing: 0.8,
   },
   statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
   chip: {
-    backgroundColor: theme.colors.backgroundAlt,
-    borderRadius: 6,
+    backgroundColor: 'rgba(5,12,20,0.7)',
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: theme.colors.border,
     paddingHorizontal: 7,
     paddingVertical: 4,
     minWidth: 52,
   },
-  chipUnknown: { opacity: 0.75 },
+  chipUnknown: { opacity: 0.7 },
   chipLabel: {
     color: theme.colors.textMuted,
     fontFamily: 'IBMPlexMonoBold',
     fontSize: fs(8),
   },
   chipValue: {
-    color: theme.colors.text,
     fontFamily: 'IBMPlexMonoBold',
     fontSize: fs(12),
     marginTop: 1,
@@ -538,7 +718,7 @@ const styles = StyleSheet.create({
   chipValueUnknown: { color: theme.colors.textMuted, fontSize: fs(11) },
   phaseScroll: { flex: 1 },
   phaseContent: { paddingBottom: 8 },
-  phaseBlock: { gap: 6 },
+  phaseBlock: { gap: 8 },
   prompt: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',
@@ -546,43 +726,42 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 2,
   },
-  rootGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  rootChip: {
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
+  rootGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  rootOuter: {
     minWidth: '46%',
     flexGrow: 1,
-    gap: 2,
+    borderRadius: 12,
   },
-  askChip: { borderColor: theme.colors.emsBlue },
+  rootChip: {
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    gap: 3,
+    overflow: 'hidden',
+    minHeight: 88,
+  },
+  rootIcon: { width: 22, height: 22, marginBottom: 2 },
   rootChipText: {
-    color: theme.colors.text,
     fontFamily: 'BebasNeue',
-    fontSize: fs(17),
+    fontSize: fs(18),
+    letterSpacing: 0.4,
   },
   rootBlurb: {
     color: theme.colors.textMuted,
     fontSize: fs(10),
     lineHeight: fs(13),
   },
+  actionOuter: { borderRadius: 10 },
   actionBtn: {
-    backgroundColor: theme.colors.surface,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    paddingVertical: 10,
+    borderWidth: 1.5,
+    paddingVertical: 11,
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  actionDone: {
-    borderColor: theme.colors.success,
-    backgroundColor: theme.colors.successGlow,
+    overflow: 'hidden',
   },
   actionLabel: {
     color: theme.colors.text,
@@ -590,20 +769,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     flex: 1,
   },
-  doneMark: {
-    color: theme.colors.success,
-    fontSize: fs(15),
-    fontWeight: '800',
-  },
-  more: { color: theme.colors.emsBlue, fontSize: fs(16) },
-  subMenu: { gap: 5 },
-  followUps: { gap: 5 },
+  moreIcon: { width: 12, height: 12, opacity: 0.8 },
+  doneIcon: { width: 16, height: 16 },
+  subMenu: { gap: 6 },
+  followUps: { gap: 6 },
   askBox: { gap: 8, marginTop: 4 },
   askInput: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderWidth: 1.5,
+    borderColor: theme.colors.emsBlue,
     borderRadius: 10,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: 'rgba(8,18,28,0.9)',
     color: theme.colors.text,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -622,23 +797,27 @@ const styles = StyleSheet.create({
   menuBackBtn: {
     minWidth: 88,
     borderRadius: theme.radius.md,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: theme.colors.emsBlue,
-    backgroundColor: theme.colors.surfaceLight,
+    backgroundColor: 'rgba(0,229,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
+    flexDirection: 'row',
+    gap: 4,
+    paddingHorizontal: 10,
     marginBottom: theme.spacing.sm,
   },
   menuBackBtnInactive: {
     borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: 'rgba(8,18,28,0.7)',
     opacity: 0.45,
   },
+  backIcon: { width: 12, height: 12 },
+  backIconInactive: { opacity: 0.5 },
   menuBackText: {
     color: theme.colors.emsBlue,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(13),
+    fontSize: fs(12),
     letterSpacing: 1,
   },
   menuBackTextInactive: {
@@ -646,11 +825,5 @@ const styles = StyleSheet.create({
   },
   advanceWrap: {
     flex: 1,
-  },
-  bottomHint: {
-    color: theme.colors.textMuted,
-    fontSize: fs(11),
-    lineHeight: fs(15),
-    textAlign: 'center',
   },
 });

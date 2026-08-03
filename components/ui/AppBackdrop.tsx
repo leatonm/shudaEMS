@@ -1,4 +1,4 @@
-import { Image, StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View, type ImageSourcePropType } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 type BackdropTone = 'default' | 'success' | 'danger' | 'amber';
@@ -8,7 +8,14 @@ const BACKGROUND = require('../../assets/images/background.png');
 /**
  * Full-screen background art — covers whatever size the device/window is.
  */
-export function AppBackdrop({ tone = 'default' }: { tone?: BackdropTone }) {
+export function AppBackdrop({
+  tone = 'default',
+  source,
+}: {
+  tone?: BackdropTone;
+  /** Optional art override (e.g. difficulty `bg2.png`). */
+  source?: ImageSourcePropType;
+}) {
   const wash =
     tone === 'success'
       ? 'rgba(34, 245, 168, 0.12)'
@@ -20,7 +27,7 @@ export function AppBackdrop({ tone = 'default' }: { tone?: BackdropTone }) {
 
   return (
     <View pointerEvents="none" style={styles.root}>
-      <Image source={BACKGROUND} style={styles.image} resizeMode="cover" />
+      <Image source={source ?? BACKGROUND} style={styles.image} resizeMode="cover" />
       <LinearGradient
         colors={['rgba(5,10,18,0.55)', 'rgba(5,10,18,0.35)', 'rgba(5,10,18,0.72)']}
         locations={[0, 0.4, 1]}

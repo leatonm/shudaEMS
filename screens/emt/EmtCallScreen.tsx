@@ -48,6 +48,10 @@ const ROOT_ACCENTS: Record<ActionMenuRoot | 'ask', string> = {
   ask: theme.colors.accentLight,
 };
 
+/** Full cards for the main four; Transport + Ask use compact rows below. */
+const PRIMARY_ROOTS = ACTION_MENU_ROOTS.filter((r) => r.id !== 'transport');
+const TRANSPORT_ROOT = ACTION_MENU_ROOTS.find((r) => r.id === 'transport')!;
+
 function tintGradient(accent: string): [string, string] {
   return [`${accent}33`, 'rgba(8,18,28,0.96)'];
 }
@@ -323,7 +327,7 @@ export default function EmtCallScreen() {
                 <>
                   <Text style={styles.prompt}>What would you like to do next?</Text>
                   <View style={styles.rootGrid}>
-                    {ACTION_MENU_ROOTS.map((item) => {
+                    {PRIMARY_ROOTS.map((item) => {
                       const accent = ROOT_ACCENTS[item.id];
                       return (
                         <PressScale
@@ -331,6 +335,7 @@ export default function EmtCallScreen() {
                           onPress={() => {
                             setRoot(item.id);
                             setPath([]);
+                            setAskOpen(false);
                           }}
                           style={styles.rootOuter}
                         >
@@ -353,46 +358,64 @@ export default function EmtCallScreen() {
                         </PressScale>
                       );
                     })}
+                  </View>
+
+                  <View style={styles.compactRow}>
+                    <PressScale
+                      onPress={() => {
+                        setRoot(TRANSPORT_ROOT.id);
+                        setPath([]);
+                        setAskOpen(false);
+                      }}
+                      style={styles.compactOuter}
+                    >
+                      <LinearGradient
+                        colors={tintGradient(ROOT_ACCENTS.transport)}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={[
+                          styles.compactChip,
+                          { borderColor: ROOT_ACCENTS.transport },
+                        ]}
+                      >
+                        <Image
+                          source={ROOT_ICONS.transport}
+                          style={styles.compactIcon}
+                          resizeMode="contain"
+                        />
+                        <Text
+                          style={[styles.compactText, { color: ROOT_ACCENTS.transport }]}
+                        >
+                          {TRANSPORT_ROOT.label}
+                        </Text>
+                      </LinearGradient>
+                    </PressScale>
+
                     <PressScale
                       onPress={() => setAskOpen((v) => !v)}
-                      style={styles.rootOuter}
+                      style={styles.compactOuter}
                     >
                       <LinearGradient
                         colors={tintGradient(ROOT_ACCENTS.ask)}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
-                        style={[styles.rootChip, { borderColor: ROOT_ACCENTS.ask }]}
+                        style={[
+                          styles.compactChip,
+                          { borderColor: ROOT_ACCENTS.ask },
+                          askOpen ? styles.compactChipActive : null,
+                        ]}
                       >
                         <Image
                           source={ROOT_ICONS.ask}
-                          style={styles.rootIcon}
+                          style={styles.compactIcon}
                           resizeMode="contain"
                         />
-                        <Text style={[styles.rootChipText, { color: ROOT_ACCENTS.ask }]}>
+                        <Text style={[styles.compactText, { color: ROOT_ACCENTS.ask }]}>
                           Ask
                         </Text>
-                        <Text style={styles.rootBlurb}>Say it in your own words</Text>
                       </LinearGradient>
                     </PressScale>
                   </View>
-                  {askOpen ? (
-                    <View style={styles.askBox}>
-                      <TextInput
-                        style={styles.askInput}
-                        placeholder={'e.g. "I\'d like a blood pressure."'}
-                        placeholderTextColor={theme.colors.textMuted}
-                        value={askText}
-                        onChangeText={setAskText}
-                        onSubmitEditing={interpretAsk}
-                      />
-                      <ShiftButton
-                        label="ASK"
-                        onPress={interpretAsk}
-                        accentColor={theme.colors.emsBlue}
-                        glow
-                      />
-                    </View>
-                  ) : null}
                 </>
               ) : (
                 <View style={styles.subMenu}>
@@ -438,6 +461,26 @@ export default function EmtCallScreen() {
             </View>
           ) : null}
         </ScrollView>
+
+        {onCall && askOpen && !root ? (
+          <View style={styles.askDock}>
+            <TextInput
+              style={styles.askInput}
+              placeholder={'e.g. "I\'d like a blood pressure."'}
+              placeholderTextColor={theme.colors.textMuted}
+              value={askText}
+              onChangeText={setAskText}
+              onSubmitEditing={interpretAsk}
+              autoFocus
+            />
+            <ShiftButton
+              label="ASK"
+              onPress={interpretAsk}
+              accentColor={theme.colors.emsBlue}
+              glow
+            />
+          </View>
+        ) : null}
 
         {onCall ? (
           <View style={styles.bottomBar}>
@@ -726,31 +769,61 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 2,
   },
-  rootGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  rootGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   rootOuter: {
-    minWidth: '46%',
+    width: '48%',
     flexGrow: 1,
+    maxWidth: '49%',
     borderRadius: 12,
   },
   rootChip: {
     borderWidth: 1.5,
     borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    gap: 3,
+    paddingVertical: 8,
+    paddingHorizontal: 9,
+    gap: 2,
     overflow: 'hidden',
-    minHeight: 88,
+    minHeight: 72,
   },
-  rootIcon: { width: 22, height: 22, marginBottom: 2 },
+  rootIcon: { width: 20, height: 20, marginBottom: 1 },
   rootChipText: {
     fontFamily: 'BebasNeue',
-    fontSize: fs(18),
+    fontSize: fs(16),
     letterSpacing: 0.4,
   },
   rootBlurb: {
     color: theme.colors.textMuted,
-    fontSize: fs(10),
-    lineHeight: fs(13),
+    fontSize: fs(9),
+    lineHeight: fs(12),
+  },
+  compactRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 2,
+  },
+  compactOuter: {
+    flex: 1,
+    borderRadius: 10,
+  },
+  compactChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    minHeight: 40,
+    overflow: 'hidden',
+  },
+  compactChipActive: {
+    backgroundColor: 'rgba(139,243,255,0.12)',
+  },
+  compactIcon: { width: 18, height: 18 },
+  compactText: {
+    fontFamily: 'BebasNeue',
+    fontSize: fs(16),
+    letterSpacing: 0.4,
   },
   actionOuter: { borderRadius: 10 },
   actionBtn: {
@@ -773,7 +846,12 @@ const styles = StyleSheet.create({
   doneIcon: { width: 16, height: 16 },
   subMenu: { gap: 6 },
   followUps: { gap: 6 },
-  askBox: { gap: 8, marginTop: 4 },
+  askDock: {
+    gap: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
   askInput: {
     borderWidth: 1.5,
     borderColor: theme.colors.emsBlue,

@@ -150,28 +150,21 @@ export default function HomeScreen() {
                 </PressScale>
               );
             })}
-
-            <PressScale onPress={() => pickCategory(null)} style={styles.rowOuter}>
-              <LinearGradient
-                colors={['rgba(20,28,36,0.98)', 'rgba(8,14,20,0.99)']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.row, styles.rowRandom]}
-              >
-                <Image source={Icons.random} style={styles.rowIcon} resizeMode="contain" />
-                <View style={styles.rowCopy}>
-                  <Text style={styles.rowTitle}>RANDOM</Text>
-                  <Text style={styles.rowExamples}>Surprise me!</Text>
-                </View>
-                <Image
-                  source={CATEGORY_MASCOTS.random}
-                  style={styles.rowMascot}
-                  resizeMode="contain"
-                />
-                <Image source={Icons.arrowRight} style={styles.rowChevron} />
-              </LinearGradient>
-            </PressScale>
           </ScrollView>
+
+          <PressScale onPress={() => pickCategory(null)} style={[styles.rowOuter, styles.randomOuter]}>
+            <LinearGradient
+              colors={['rgba(20,28,36,0.98)', 'rgba(8,14,20,0.99)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.rowRandom, styles.rowRandomCompact]}
+            >
+              <Image source={Icons.random} style={styles.randomIcon} resizeMode="contain" />
+              <Text style={styles.randomTitle}>RANDOM</Text>
+              <Text style={styles.randomSub}>Surprise me!</Text>
+              <Image source={Icons.arrowRight} style={styles.rowChevron} />
+            </LinearGradient>
+          </PressScale>
         </View>
 
         <View style={styles.bottomBlock}>
@@ -427,8 +420,40 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     minHeight: 72,
   },
+  randomOuter: {
+    marginTop: 6,
+  },
   rowRandom: {
     borderColor: theme.colors.border,
+  },
+  rowRandomCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    minHeight: 42,
+    overflow: 'hidden',
+  },
+  randomIcon: {
+    width: 22,
+    height: 22,
+  },
+  randomTitle: {
+    color: theme.colors.text,
+    fontFamily: 'BebasNeue',
+    fontSize: fs(18),
+    letterSpacing: 0.6,
+    lineHeight: fs(20),
+  },
+  randomSub: {
+    flex: 1,
+    color: theme.colors.textMuted,
+    fontSize: fs(11),
+    fontWeight: '500',
   },
   rowIcon: {
     width: 34,

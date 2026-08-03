@@ -52,13 +52,21 @@ export function LaurenFlash({ flash, onConfirm, onChoose }: LaurenFlashProps) {
 
   const gesture = shown?.gesture ?? 'full';
   const compact = gesture !== 'full';
-  const portraitH = Math.min(
-    compact ? 240 : 360,
-    Math.round(height * (compact ? 0.34 : 0.52))
-  );
-  const portraitW = Math.round(portraitH * (560 / 858));
-  const textPad = Math.round(portraitH * (compact ? 0.06 : 0.1));
   const panelW = Math.min(460, Math.round(width * 0.94));
+  // Keep enough room for Lauren's lines — portrait used to steal almost all phone width.
+  const minCopyW = Math.min(220, Math.round(width * 0.55));
+  let portraitH = Math.min(
+    compact ? 220 : 300,
+    Math.round(height * (compact ? 0.3 : 0.42))
+  );
+  let portraitW = Math.round(portraitH * (560 / 858));
+  const maxPortraitW = Math.max(110, panelW - minCopyW - 28);
+  if (portraitW > maxPortraitW) {
+    portraitW = maxPortraitW;
+    portraitH = Math.round(portraitW * (858 / 560));
+  }
+  const copyW = Math.min(280, Math.max(minCopyW, panelW - portraitW - 28));
+  const textPad = Math.round(portraitH * (compact ? 0.06 : 0.1));
   const accent = theme.colors.emsBlue;
   const choices = shown?.choices ?? [];
   const autoDismiss = Boolean(shown?.autoDismiss) && choices.length === 0;
@@ -148,7 +156,7 @@ export function LaurenFlash({ flash, onConfirm, onChoose }: LaurenFlashProps) {
               pointerEvents="none"
             />
             <View style={styles.row}>
-              <View style={[styles.copy, { paddingBottom: textPad }]}>
+              <View style={[styles.copy, { paddingBottom: textPad, width: copyW }]}>
                 <View style={[styles.callsignChip, { borderColor: accent }]}>
                   <Text style={[styles.callsign, { color: accent }]}>
                     {Characters.lauren.name.toUpperCase()} · {Characters.lauren.shortRole}
@@ -235,8 +243,7 @@ const styles = StyleSheet.create({
   },
   copy: {
     flexShrink: 1,
-    alignItems: 'flex-end',
-    maxWidth: 260,
+    alignItems: 'stretch',
     gap: 6,
   },
   callsignChip: {
@@ -245,6 +252,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 6,
     backgroundColor: 'rgba(0,229,255,0.12)',
+    alignSelf: 'flex-end',
   },
   callsign: {
     fontFamily: 'IBMPlexMonoBold',
@@ -280,15 +288,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(234, 246, 251, 0.22)',
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 8,
     borderRadius: 8,
+    alignSelf: 'stretch',
   },
   line: {
     color: '#F4FBFF',
-    fontSize: fs(16),
+    fontSize: fs(15),
     lineHeight: fs(21),
     fontWeight: '700',
-    textAlign: 'right',
+    textAlign: 'left',
   },
   ackBtn: {
     marginTop: 4,

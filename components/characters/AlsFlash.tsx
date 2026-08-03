@@ -18,18 +18,16 @@ import { theme } from '@/constants/theme';
 import {
   type AlsFlashMode,
   type ResourceCrew,
-  type ResponseCode,
   leeAlsLines,
   resourceCallsign,
-  responseCodeOptions,
 } from '@/lib/characterDialogue';
 
 interface ResourceFlashProps {
   visible: boolean;
   crew: ResourceCrew;
   mode?: AlsFlashMode;
-  /** Enroute: player picked how hot the response should be. Cancel: acknowledge. */
-  onConfirm: (code?: ResponseCode) => void;
+  /** Acknowledge the short radio flash. */
+  onConfirm: () => void;
 }
 
 const CREW_ACCENT: Record<ResourceCrew, string> = {
@@ -70,8 +68,8 @@ export function ResourceFlash({
     } else {
       setLines(
         crew === 'fire'
-          ? ['Engine copy.', 'How do you need us?']
-          : ['PD copy.', 'How do you need us?']
+          ? ['Engine copy.', 'En route.']
+          : ['PD copy.', 'En route.']
       );
     }
     setFlashKey((k) => k + 1);
@@ -111,27 +109,11 @@ export function ResourceFlash({
                 </Animated.View>
               ))}
 
-              {cancel ? (
-                <Animated.View entering={FadeIn.delay(420)}>
-                  <Pressable style={[styles.ackBtn, { borderColor: accent }]} onPress={() => onConfirm()}>
-                    <Text style={[styles.ackText, { color: accent }]}>COPY</Text>
-                  </Pressable>
-                </Animated.View>
-              ) : (
-                <Animated.View entering={FadeIn.delay(420)} style={styles.codes}>
-                  <Text style={styles.codesLabel}>RESPONSE PRIORITY</Text>
-                  {responseCodeOptions.map((opt) => (
-                    <Pressable
-                      key={opt.id}
-                      style={[styles.codeBtn, opt.id === 'code3' && styles.codeBtnHot]}
-                      onPress={() => onConfirm(opt.id)}
-                    >
-                      <Text style={styles.codeTitle}>{opt.label}</Text>
-                      <Text style={styles.codeDetail}>{opt.detail}</Text>
-                    </Pressable>
-                  ))}
-                </Animated.View>
-              )}
+              <Animated.View entering={FadeIn.delay(420)}>
+                <Pressable style={[styles.ackBtn, { borderColor: accent }]} onPress={onConfirm}>
+                  <Text style={[styles.ackText, { color: accent }]}>COPY</Text>
+                </Pressable>
+              </Animated.View>
             </View>
             {image ? (
               <Image
@@ -152,14 +134,14 @@ export function AlsFlash(props: {
   visible: boolean;
   mode?: AlsFlashMode;
   onDone: () => void;
-  onConfirm?: (code?: ResponseCode) => void;
+  onConfirm?: () => void;
 }) {
   return (
     <ResourceFlash
       visible={props.visible}
       crew="als"
       mode={props.mode}
-      onConfirm={props.onConfirm ?? (() => props.onDone())}
+      onConfirm={props.onConfirm ?? props.onDone}
     />
   );
 }
@@ -217,46 +199,6 @@ const styles = StyleSheet.create({
     lineHeight: fs(21),
     fontWeight: '700',
     textAlign: 'right',
-  },
-  codes: {
-    width: '100%',
-    gap: 6,
-    marginTop: 4,
-    alignItems: 'stretch',
-  },
-  codesLabel: {
-    color: theme.colors.textMuted,
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(9),
-    letterSpacing: 1.3,
-    textAlign: 'right',
-    marginBottom: 2,
-  },
-  codeBtn: {
-    backgroundColor: 'rgba(14, 30, 44, 0.95)',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  codeBtnHot: {
-    borderColor: 'rgba(255, 77, 109, 0.55)',
-    backgroundColor: 'rgba(255, 45, 85, 0.12)',
-  },
-  codeTitle: {
-    color: '#F4FBFF',
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(13),
-    letterSpacing: 1.1,
-    textAlign: 'right',
-  },
-  codeDetail: {
-    color: theme.colors.textMuted,
-    fontSize: fs(12),
-    lineHeight: fs(16),
-    textAlign: 'right',
-    marginTop: 2,
   },
   ackBtn: {
     marginTop: 4,

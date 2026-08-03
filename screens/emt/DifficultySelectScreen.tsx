@@ -21,21 +21,21 @@ const OPTIONS: Array<{
     label: 'Coach',
     bullets: [
       'Unlimited hints',
-      'Lauren teaches throughout the scenario',
+      'Lauren tips and suggestions mid-call',
       'Pause anytime',
     ],
   },
   {
     id: 'standard',
     label: 'Standard',
-    bullets: ['Realistic experience', 'Limited guidance'],
+    bullets: ['Realistic experience', 'Brief findings only — no tips'],
   },
   {
     id: 'exam',
     label: 'Exam',
     bullets: [
       'NREMT style',
-      'No hints',
+      'Minimal cues',
       'Timer',
       'Critical failures enabled',
       'Pass / Fail',

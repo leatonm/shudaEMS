@@ -5,7 +5,7 @@ import { useRouter, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
 
-import { LaurenDebriefChat } from '@/components/characters/LaurenDebriefChat';
+import { LaurenDebriefChat, laurenDebriefRankLabel } from '@/components/characters/LaurenDebriefChat';
 import { AppBackdrop } from '@/components/ui/AppBackdrop';
 import { ScreenScroll } from '@/components/ui/ScreenScroll';
 import { ShiftButton } from '@/components/ui/ShiftUI';
@@ -26,6 +26,7 @@ export default function EmtDebriefScreen() {
   const lastAward = useProgressStore((s) => s.lastAward);
   const clearDailyRunFlag = useProgressStore((s) => s.clearDailyRunFlag);
   const [showFullReport, setShowFullReport] = useState(false);
+  const [laurenReplayNonce, setLaurenReplayNonce] = useState(0);
 
   const handleNext = (category?: import('@/data/emt/types').CallCategory) => {
     clearDailyRunFlag();
@@ -55,6 +56,7 @@ export default function EmtDebriefScreen() {
 
   const passed = result.skillsSheetPass;
   const accent = categoryColor(call.category);
+  const laurenRank = laurenDebriefRankLabel(result, difficulty);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -70,6 +72,7 @@ export default function EmtDebriefScreen() {
         <LaurenDebriefChat
           result={result}
           difficulty={difficulty}
+          replayNonce={laurenReplayNonce}
           onFullReport={() => setShowFullReport(true)}
         />
 
@@ -232,9 +235,14 @@ export default function EmtDebriefScreen() {
         )}
 
         <ShiftButton
+          label={`REPLAY LAUREN · ${laurenRank.toUpperCase()}`}
+          onPress={() => setLaurenReplayNonce((n) => n + 1)}
+          accentColor={accent}
+        />
+        <ShiftButton
           label={`ANOTHER ${call.category.toUpperCase()} CALL`}
           onPress={() => handleNext(call.category)}
-          accentColor={accent}
+          variant="secondary"
         />
         <ShiftButton label="RANDOM CALL" onPress={() => handleNext()} variant="secondary" />
         <ShiftButton label="END SESSION" onPress={handleHome} variant="secondary" />

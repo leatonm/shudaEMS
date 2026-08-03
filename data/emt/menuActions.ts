@@ -25,6 +25,18 @@ const SAFETY = new Set([
   'assess_moi',
   'count_patients',
   'consider_resources',
+  'declare_moi',
+  'declare_noi',
+  'resource_pick_als',
+  'resource_pick_pd',
+  'resource_pick_fire',
+  'resource_pick_none',
+  'resource_als_enroute',
+  'resource_als_standby',
+  'resource_pd_enroute',
+  'resource_pd_standby',
+  'resource_fire_enroute',
+  'resource_fire_standby',
 ]);
 
 const HISTORY = new Set([
@@ -40,6 +52,7 @@ const HISTORY = new Set([
 const ASSESS = new Set([
   'general_impression',
   'assess_loc',
+  'chief_complaint',
   'lung_sounds',
   'work_of_breathing',
   'check_spo2',
@@ -122,6 +135,7 @@ export interface MenuActionContext {
   transportPriority: string | null;
   destination: string | null;
   completedActions: string[];
+  resourceStaging?: Partial<Record<'als' | 'fire' | 'pd', 'enroute' | 'standby'>>;
 }
 
 function catalogName(id: string): string {
@@ -185,6 +199,7 @@ export function resolveMenuAction(
 
   if (actionId === 'request_als' || actionId === 'request_fire' || actionId === 'request_pd') {
     const crew = actionId === 'request_als' ? 'als' : actionId === 'request_fire' ? 'fire' : 'pd';
+    const staged = ctx.resourceStaging?.[crew];
     const needed =
       ctx.call.recommendedTreatment.includes(actionId) ||
       ctx.call.requiredSafety.includes(actionId) ||
@@ -196,15 +211,50 @@ export function resolveMenuAction(
       actionId === 'request_als' && !ctx.treatments.includes('request_als')
         ? [...ctx.treatments, 'request_als']
         : ctx.treatments;
+    const faster =
+      staged === 'enroute'
+        ? ' Already rolling — shortened ETA.'
+        : staged === 'standby'
+          ? ' They were standing by — upgrading to your scene.'
+          : '';
     return {
       label,
-      message: needed ? `${label} requested.` : `${label} requested (may be redundant).`,
-      scoreDelta: needed ? 10 : 3,
-      severity: needed ? 'good' : 'neutral',
+      message: (needed ? `${label} requested.` : `${label} requested (may be redundant).`) + faster,
+      scoreDelta: needed ? 10 : staged ? 6 : 3,
+      severity: needed || staged ? 'good' : 'neutral',
       skill: actionId === 'request_als' ? 'communication' : 'scene_safety',
       safetyActions,
       treatments,
-      resourceFlash: crew,
+      // Skip radio flash if already staged during size-up — Lauren covers it.
+      resourceFlash: staged ? undefined : crew,
+    };
+  }
+
+  const stageMatch = /^resource_(als|fire|pd)_(enroute|standby)$/.exec(actionId);
+  if (stageMatch) {
+    const crew = stageMatch[1] as 'als' | 'fire' | 'pd';
+    const mode = stageMatch[2] as 'enroute' | 'standby';
+    const requestId =
+      crew === 'als' ? 'request_als' : crew === 'fire' ? 'request_fire' : 'request_pd';
+    const safetyActions =
+      mode === 'enroute' && !ctx.safetyActions.includes(requestId)
+        ? [...ctx.safetyActions, requestId]
+        : ctx.safetyActions;
+    const treatments =
+      crew === 'als' && mode === 'enroute' && !ctx.treatments.includes('request_als')
+        ? [...ctx.treatments, 'request_als']
+        : ctx.treatments;
+    return {
+      label: `${crew.toUpperCase()} ${mode}`,
+      message:
+        mode === 'enroute'
+          ? `${crew.toUpperCase()} staged enroute — will arrive sooner if needed later.`
+          : `${crew.toUpperCase()} standing by.`,
+      scoreDelta: already ? 0 : 8,
+      severity: 'good',
+      skill: crew === 'als' ? 'communication' : 'scene_safety',
+      safetyActions,
+      treatments,
     };
   }
 

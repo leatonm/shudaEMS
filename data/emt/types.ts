@@ -68,7 +68,10 @@ export interface EmtVitals {
 export interface SceneHazard {
   id: string;
   label: string;
+  /** What the player sees — factual only, no coaching. */
   description: string;
+  /** Coach-mode tip Lauren may add after describing the hazard. */
+  coachTip?: string;
   /** Required action before safe patient contact */
   clearWith: string[];
   severity: 'low' | 'moderate' | 'high';

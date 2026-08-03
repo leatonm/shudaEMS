@@ -192,17 +192,6 @@ const ALS_CANCEL = [
 
 export type AlsFlashMode = 'enroute' | 'cancel';
 export type ResourceCrew = 'als' | 'fire' | 'pd';
-export type ResponseCode = 'code1' | 'code2' | 'code3';
-
-export const responseCodeOptions: {
-  id: ResponseCode;
-  label: string;
-  detail: string;
-}[] = [
-  { id: 'code1', label: 'CODE 1', detail: 'Routine — no lights / sirens' },
-  { id: 'code2', label: 'CODE 2', detail: 'Urgent — lights, limited siren' },
-  { id: 'code3', label: 'CODE 3', detail: 'Emergent — lights & sirens' },
-];
 
 export function resourceCallsign(crew: ResourceCrew): string {
   switch (crew) {

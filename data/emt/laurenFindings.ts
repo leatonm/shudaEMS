@@ -1,4 +1,4 @@
-import type { EmtCall, EmtVitals, SceneHazard } from '@/data/emt/types';
+import type { EmtCall, EmtVitals } from '@/data/emt/types';
 
 export type RevealedVitalKey =
   | 'bp'
@@ -26,11 +26,14 @@ function finding(call: EmtCall, step: string): string | undefined {
   return call.abcde.find((f) => f.step === step)?.clue;
 }
 
-function hazardLine(hazards: SceneHazard[]): string {
-  if (hazards.length === 0) {
-    return 'The scene appears secure from where you are staging.';
+function sceneSafetyLines(call: EmtCall): string[] {
+  if (call.hazards.length === 0) {
+    return ['The scene appears safe.'];
   }
-  return hazards.map((h) => h.description || h.label).join(' ');
+  return [
+    'Here is what you see on the scene:',
+    ...call.hazards.map((h) => `${h.label}: ${h.description}`),
+  ];
 }
 
 /** Build the oral-exam exchange for a student action. */
@@ -48,26 +51,8 @@ export function buildLaurenExchange(
     case 'verbalize_scene_safe':
       return {
         studentLine: 'Is the scene safe?',
-        laurenLines: [
-          call.hazards.length === 0
-            ? 'Yes. The scene appears safe.'
-            : hazardLine(call.hazards),
-        ],
-        followUps:
-          call.hazards.length > 0
-            ? [
-                { id: 'fu_continue', label: 'Continue', actionId: 'enter_scene' },
-                { id: 'fu_pd', label: 'Request Law Enforcement', actionId: 'request_pd' },
-                { id: 'fu_retreat', label: 'Retreat', actionId: 'stage_away' },
-                {
-                  id: 'fu_deescalate',
-                  label: 'Attempt Verbal De-escalation',
-                  actionId: 'deescalate',
-                },
-                { id: 'fu_wait', label: 'Wait for Law', actionId: 'stage_away' },
-                { id: 'fu_ignore', label: 'Ignore Hazard', actionId: 'enter_scene' },
-              ]
-            : undefined,
+        laurenLines: sceneSafetyLines(call),
+        // Coach-only tips are attached in presentLaurenExchange / store.
       };
     case 'count_patients':
       return {
@@ -80,11 +65,25 @@ export function buildLaurenExchange(
       };
     case 'assess_moi':
       return {
-        studentLine: "I'd like to evaluate MOI / NOI.",
+        studentLine: "I'd like to determine MOI or NOI.",
+        laurenLines: ['Is this a mechanism of injury, or a nature of illness?'],
+        followUps: [
+          { id: 'fu_moi', label: 'MOI — Mechanism of Injury', actionId: 'declare_moi' },
+          { id: 'fu_noi', label: 'NOI — Nature of Illness', actionId: 'declare_noi' },
+        ],
+      };
+    case 'declare_moi':
+      return {
+        studentLine: 'This is a mechanism of injury.',
         laurenLines: [
-          call.category === 'trauma'
-            ? `Mechanism appears consistent with the dispatch: ${call.dispatch}`
-            : `Nature of illness appears medical: ${call.dispatch}`,
+          `Noted — MOI. Dispatch context: ${call.dispatch}`,
+        ],
+      };
+    case 'declare_noi':
+      return {
+        studentLine: 'This is a nature of illness.',
+        laurenLines: [
+          `Noted — NOI. Dispatch context: ${call.dispatch}`,
         ],
       };
     case 'scan_hazards':
@@ -103,10 +102,95 @@ export function buildLaurenExchange(
       };
     case 'consider_resources':
       return {
-        studentLine: 'Do I need additional resources?',
+        studentLine: 'Do we need additional resources?',
         laurenLines: [
-          'That is your call. Request what you need through Resources when ready.',
+          call.resourcesOnScene.length
+            ? `Already on scene: ${call.resourcesOnScene
+                .map((r) => r.toUpperCase())
+                .join(', ')}.`
+            : 'No additional units are on scene yet.',
+          'Who do you want — Medic (ALS), Law, or Fire?',
         ],
+        followUps: [
+          { id: 'fu_res_als', label: 'Medic / ALS', actionId: 'resource_pick_als' },
+          { id: 'fu_res_pd', label: 'Law Enforcement', actionId: 'resource_pick_pd' },
+          { id: 'fu_res_fire', label: 'Fire', actionId: 'resource_pick_fire' },
+          { id: 'fu_res_none', label: 'None right now', actionId: 'resource_pick_none' },
+        ],
+      };
+    case 'resource_pick_als':
+      return {
+        studentLine: 'I need Medic / ALS.',
+        laurenLines: ['Medic — do you want them enroute to the scene, or standing by?'],
+        followUps: [
+          { id: 'fu_als_enroute', label: 'Enroute to scene', actionId: 'resource_als_enroute' },
+          { id: 'fu_als_standby', label: 'Stand by', actionId: 'resource_als_standby' },
+        ],
+      };
+    case 'resource_pick_pd':
+      return {
+        studentLine: 'I need Law Enforcement.',
+        laurenLines: ['Law — enroute to the scene, or standing by?'],
+        followUps: [
+          { id: 'fu_pd_enroute', label: 'Enroute to scene', actionId: 'resource_pd_enroute' },
+          { id: 'fu_pd_standby', label: 'Stand by', actionId: 'resource_pd_standby' },
+        ],
+      };
+    case 'resource_pick_fire':
+      return {
+        studentLine: 'I need Fire.',
+        laurenLines: ['Fire — enroute to the scene, or standing by?'],
+        followUps: [
+          { id: 'fu_fire_enroute', label: 'Enroute to scene', actionId: 'resource_fire_enroute' },
+          { id: 'fu_fire_standby', label: 'Stand by', actionId: 'resource_fire_standby' },
+        ],
+      };
+    case 'resource_pick_none':
+      return {
+        studentLine: 'No additional resources right now.',
+        laurenLines: ['Copy — no additional resources at this time.'],
+      };
+    case 'resource_als_enroute':
+      return {
+        studentLine: 'Medic enroute to the scene.',
+        laurenLines: [
+          'Medic is rolling to your location.',
+          'If you need them later, they will arrive sooner.',
+        ],
+      };
+    case 'resource_als_standby':
+      return {
+        studentLine: 'Medic standing by.',
+        laurenLines: [
+          'Medic is standing by.',
+          'They can be brought in faster if you upgrade them later.',
+        ],
+      };
+    case 'resource_pd_enroute':
+      return {
+        studentLine: 'Law enroute to the scene.',
+        laurenLines: [
+          'Law is enroute.',
+          'They will be closer if you need them again later.',
+        ],
+      };
+    case 'resource_pd_standby':
+      return {
+        studentLine: 'Law standing by.',
+        laurenLines: ['Law is standing by.'],
+      };
+    case 'resource_fire_enroute':
+      return {
+        studentLine: 'Fire enroute to the scene.',
+        laurenLines: [
+          'Fire is enroute.',
+          'They will arrive sooner if requested again later.',
+        ],
+      };
+    case 'resource_fire_standby':
+      return {
+        studentLine: 'Fire standing by.',
+        laurenLines: ['Fire is standing by.'],
       };
     case 'traffic_control':
       return {
@@ -144,8 +228,18 @@ export function buildLaurenExchange(
       };
     case 'assess_loc':
       return {
-        studentLine: "I'd like to assess level of consciousness.",
+        studentLine: "I'd like to assess level of consciousness — AVPU.",
         laurenLines: [`Mental status: ${vitals.mentalStatus}.`],
+      };
+    case 'chief_complaint':
+      return {
+        studentLine: "I'd like the chief complaint and any apparent life threats.",
+        laurenLines: [
+          `Chief complaint / presentation: ${call.dispatch}`,
+          finding(call, 'circulation') ??
+            finding(call, 'breathing') ??
+            'No immediate external life threat is obvious from here — continue your primary.',
+        ],
       };
     case 'airway':
       return {
@@ -395,10 +489,61 @@ export function buildLaurenExchange(
 
 export function dispatchLaurenLines(call: EmtCall): string[] {
   return [
-    `${call.unit}, you're responding priority ${call.priority}.`,
-    `${call.age}-year-old ${call.sex.toLowerCase()}.`,
-    call.dispatch,
-    call.cadNotes,
-    `Time from station is approximately ${call.distanceMiles} minutes.`,
+    "You've arrived.",
+    'Walk me through your size-up.',
+    'Verbalize PPE, scene safety, number of patients, additional resources, and NOI or MOI.',
+    `Dispatch was: ${call.dispatch}`,
   ];
+}
+
+/** Coach-only tips and suggested next moves (Standard/Exam never call this). */
+export function withCoachTips(
+  actionId: string,
+  call: EmtCall,
+  exchange: LaurenExchange
+): LaurenExchange {
+  if (actionId === 'verbalize_scene_safe' && call.hazards.length > 0) {
+    const hazardTips = call.hazards
+      .map((h) => h.coachTip)
+      .filter((tip): tip is string => Boolean(tip));
+    return {
+      ...exchange,
+      laurenLines: [
+        ...exchange.laurenLines,
+        ...hazardTips,
+        'If you need help, open Resources and put a unit enroute or on standby.',
+      ],
+      followUps: [
+        { id: 'fu_tip_pd', label: 'Tip: Request Law', actionId: 'request_pd' },
+        { id: 'fu_tip_fire', label: 'Tip: Request Fire', actionId: 'request_fire' },
+        { id: 'fu_tip_stage', label: 'Tip: Stage Away', actionId: 'stage_away' },
+      ],
+    };
+  }
+
+  if (actionId === 'count_patients' && call.category === 'mci') {
+    return {
+      ...exchange,
+      laurenLines: [
+        ...exchange.laurenLines,
+        'Tip: Consider additional ambulances from Resources.',
+      ],
+    };
+  }
+
+  if (actionId === 'general_impression') {
+    return {
+      ...exchange,
+      laurenLines: [
+        ...exchange.laurenLines,
+        'Tip: Move into AVPU, chief complaint, and ABCs next.',
+      ],
+    };
+  }
+
+  if (actionId === 'review_protocols') {
+    return exchange;
+  }
+
+  return exchange;
 }

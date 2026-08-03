@@ -23,10 +23,13 @@ export function LaurenDebriefChat({
   result,
   difficulty,
   onFullReport,
+  replayNonce = 0,
 }: {
   result: EmtRunResult;
   difficulty: EmtDifficulty;
   onFullReport: () => void;
+  /** Bump to reopen Lauren from the start (debrief Replay button). */
+  replayNonce?: number;
 }) {
   const { rank, messages } = useMemo(
     () => laurenDebriefChat(result, difficulty),
@@ -46,9 +49,20 @@ export function LaurenDebriefChat({
     setStep(0);
   }, [result.callId]);
 
+  useEffect(() => {
+    if (replayNonce <= 0) return;
+    setStep(0);
+    setVisible(true);
+  }, [replayNonce]);
+
   const openFullReport = () => {
     setVisible(false);
     onFullReport();
+  };
+
+  const replay = () => {
+    setStep(0);
+    setVisible(true);
   };
 
   const advance = () => {
@@ -114,18 +128,22 @@ export function LaurenDebriefChat({
       {!visible ? (
         <Pressable
           style={[styles.reopen, { borderColor: accent }]}
-          onPress={() => {
-            setStep(0);
-            setVisible(true);
-          }}
+          onPress={replay}
         >
           <Text style={[styles.reopenText, { color: accent }]}>
-            Replay Lauren · {rank}
+            REPLAY LAUREN · {rank.toUpperCase()}
           </Text>
         </Pressable>
       ) : null}
     </>
   );
+}
+
+export function laurenDebriefRankLabel(
+  result: EmtRunResult,
+  difficulty: EmtDifficulty
+): string {
+  return laurenDebriefChat(result, difficulty).rank;
 }
 
 const styles = StyleSheet.create({

@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,11 +10,12 @@ import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ResourceFlash } from '@/components/characters/AlsFlash';
+import { LaurenFlash } from '@/components/characters/LaurenFlash';
+import { RawrEasterEgg } from '@/components/characters/RawrEasterEgg';
 import { PressScale } from '@/components/ui/motion';
 import { ShiftButton } from '@/components/ui/ShiftUI';
-import { Characters } from '@/constants/characters';
 import { fs } from '@/constants/layout';
-import { theme } from '@/constants/theme';
+import { categoryColor, priorityColors, theme } from '@/constants/theme';
 import {
   ACTION_MENU_ROOTS,
   ACTION_MENUS,
@@ -23,26 +23,13 @@ import {
   type ActionMenuRoot,
 } from '@/data/emt/actionMenu';
 import { showActionTips } from '@/data/emt/difficulty';
-import type { ResponseCode } from '@/lib/characterDialogue';
+import { getNremtStage } from '@/data/emt/nremtFlow';
+import type { EmtCall } from '@/data/emt/types';
 import { useEmtStore } from '@/store/emtStore';
 
-const RESPONDING_ACTIONS: ActionMenuNode[] = [
-  { id: 'read_cad', label: 'Review CAD Information', actionId: 'read_cad' },
-  { id: 'read_dispatch', label: 'Review Dispatch Notes', actionId: 'read_dispatch_notes' },
-  { id: 'req_als', label: 'Request Additional Units', actionId: 'request_als' },
-  { id: 'req_fire', label: 'Request Fire', actionId: 'request_fire' },
-  { id: 'req_pd', label: 'Request Law Enforcement', actionId: 'request_pd' },
-  { id: 'equip', label: 'Select Equipment', actionId: 'consider_equipment' },
-  {
-    id: 'protocols',
-    label: 'Review Protocol (Coach Mode)',
-    actionId: 'review_protocols',
-  },
-];
-
 /**
- * Oral practical layout:
- * Lauren (evaluator) · Patient status (known vitals only) · What would you like to do?
+ * Free oral-exam call: CAD + vitals on top, choose any next action,
+ * Lauren findings via slide-in modal. Bottom CTA advances NREMT board stages.
  */
 export default function EmtCallScreen() {
   const router = useRouter();
@@ -51,40 +38,46 @@ export default function EmtCallScreen() {
   const phase = useEmtStore((s) => s.phase);
   const vitals = useEmtStore((s) => s.vitals);
   const difficulty = useEmtStore((s) => s.difficulty);
-  const instructorLog = useEmtStore((s) => s.instructorLog);
   const revealedVitals = useEmtStore((s) => s.revealedVitals);
   const pendingFollowUps = useEmtStore((s) => s.pendingFollowUps);
   const completedActions = useEmtStore((s) => s.completedActions);
   const performMenuAction = useEmtStore((s) => s.performMenuAction);
-  const continueFromResponding = useEmtStore((s) => s.continueFromResponding);
-  const acknowledgeArrival = useEmtStore((s) => s.acknowledgeArrival);
+  const advanceNremtStage = useEmtStore((s) => s.advanceNremtStage);
   const clearFollowUps = useEmtStore((s) => s.clearFollowUps);
   const tickPhysio = useEmtStore((s) => s.tickPhysio);
   const arrivedAt = useEmtStore((s) => s.arrivedAt);
   const pendingResourceFlash = useEmtStore((s) => s.pendingResourceFlash);
   const clearPendingResourceFlash = useEmtStore((s) => s.clearPendingResourceFlash);
-  const setResourceResponseCode = useEmtStore((s) => s.setResourceResponseCode);
+  const laurenFlashQueue = useEmtStore((s) => s.laurenFlashQueue);
+  const dismissLaurenFlash = useEmtStore((s) => s.dismissLaurenFlash);
+  const nremtStage = useEmtStore((s) => s.nremtStage);
 
   const [root, setRoot] = useState<ActionMenuRoot | null>(null);
   const [path, setPath] = useState<string[]>([]);
   const [askOpen, setAskOpen] = useState(false);
   const [askText, setAskText] = useState('');
+  const [rawrVisible, setRawrVisible] = useState(false);
   const [elapsed, setElapsed] = useState('00:00');
-  const logRef = useRef<ScrollView>(null);
+  const [cadExpanded, setCadExpanded] = useState(true);
   const tips = showActionTips(difficulty);
+
+  const activeLauren = laurenFlashQueue[0] ?? null;
 
   useEffect(() => {
     if (phase === 'handoff') router.replace('/emt/handoff' as Href);
   }, [phase, router]);
 
   useEffect(() => {
-    logRef.current?.scrollToEnd({ animated: true });
-  }, [instructorLog.length]);
-
-  useEffect(() => {
-    if (phase !== 'on_scene' && phase !== 'arrival') return;
-    const id = setInterval(() => tickPhysio(), 2000);
-    return () => clearInterval(id);
+    if (
+      phase !== 'on_scene' &&
+      phase !== 'primary_survey' &&
+      phase !== 'scene_safety' &&
+      phase !== 'history'
+    ) {
+      return;
+    }
+    const timer = setInterval(() => tickPhysio(), 2000);
+    return () => clearInterval(timer);
   }, [phase, tickPhysio]);
 
   useEffect(() => {
@@ -99,8 +92,8 @@ export default function EmtCallScreen() {
       setElapsed(`${m}:${s}`);
     };
     tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
   }, [arrivedAt]);
 
   const nodes = useMemo(() => {
@@ -111,6 +104,21 @@ export default function EmtCallScreen() {
       list = next?.children ?? [];
     }
     return list.filter((n) => !n.alsOnly);
+  }, [root, path]);
+
+  const breadcrumb = useMemo(() => {
+    if (!root) return null;
+    const labels: string[] = [
+      ACTION_MENU_ROOTS.find((r) => r.id === root)?.label ?? root,
+    ];
+    let list = ACTION_MENUS[root];
+    for (const seg of path) {
+      const next = list.find((n) => n.id === seg);
+      if (!next) break;
+      labels.push(next.label);
+      list = next.children ?? [];
+    }
+    return labels.join(' › ');
   }, [root, path]);
 
   if (!call || call.id !== id || !vitals) {
@@ -126,10 +134,14 @@ export default function EmtCallScreen() {
   const act = (actionId: string) => {
     clearFollowUps();
     performMenuAction(actionId);
-    setRoot(null);
-    setPath([]);
+    // Keep the current menu open so size-up (and other tabs) stay put.
     setAskOpen(false);
     setAskText('');
+  };
+
+  const chooseLauren = (actionId: string) => {
+    clearFollowUps();
+    performMenuAction(actionId);
   };
 
   const openNode = (node: ActionMenuNode) => {
@@ -143,6 +155,13 @@ export default function EmtCallScreen() {
   const interpretAsk = () => {
     const q = askText.trim().toLowerCase();
     if (!q) return;
+    // Easter egg — case ignored via toLowerCase above
+    if (q === 'the world rawr') {
+      setAskOpen(false);
+      setAskText('');
+      setRawrVisible(true);
+      return;
+    }
     const map: Array<[RegExp, string]> = [
       [/blood pressure|bp\b/, 'vital_bp'],
       [/pulse(?! ox)|heart rate|\bhr\b/, 'vital_pulse'],
@@ -158,76 +177,61 @@ export default function EmtCallScreen() {
       [/oxygen|\bo2\b/, 'oxygen'],
       [/aspirin|asa/, 'aspirin'],
       [/nitro/, 'nitroglycerin'],
+      [/cpr/, 'cpr'],
       [/scene safe|is the scene/, 'verbalize_scene_safe'],
       [/bsi|ppe|gloves/, 'don_ppe'],
-      [/reassess/, 'reassessment'],
+      [/patients|how many/, 'count_patients'],
+      [/moi|noi|mechanism|nature of/, 'assess_moi'],
+      [/resources|als|medic|fire|pd|police/, 'consider_resources'],
+      [/reassess|update/, 'patient_update'],
     ];
     const hit = map.find(([re]) => re.test(q));
     if (hit) {
       act(hit[1]);
       return;
     }
-    if (difficulty === 'coach') {
-      act('consider_resources');
-    }
+    if (tips) act('consider_resources');
   };
 
-  const portrait =
-    call && revealedVitals.bp === undefined
-      ? Characters.lauren.image
-      : Characters.lauren.image;
+  const priorityColor = priorityColors[call.priority] ?? theme.colors.emsBlue;
+  const onCall =
+    phase === 'on_scene' ||
+    phase === 'scene_safety' ||
+    phase === 'primary_survey' ||
+    phase === 'history';
+  const stageInfo = getNremtStage(nremtStage, call.category);
+
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
       <View style={styles.shell}>
-        {/* Lauren evaluator panel */}
-        <View style={styles.laurenPanel}>
-          <Image source={portrait} resizeMode="contain" style={styles.lauren} />
-          <View style={styles.logWrap}>
-            <Text style={styles.callsign}>LAUREN · EVALUATOR</Text>
-            <ScrollView
-              ref={logRef}
-              style={styles.log}
-              contentContainerStyle={styles.logContent}
-              showsVerticalScrollIndicator={false}
-            >
-              {instructorLog.slice(-12).map((msg) => (
-                <View
-                  key={msg.id}
-                  style={[styles.bubble, msg.role === 'you' ? styles.youBubble : styles.laurenBubble]}
-                >
-                  {msg.role === 'you' ? (
-                    <Text style={styles.youLabel}>YOU</Text>
-                  ) : null}
-                  <Text style={styles.bubbleText}>{msg.text}</Text>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
+        <DispatchStrip
+          call={call}
+          priorityColor={priorityColor}
+          expanded={cadExpanded}
+          onToggle={() => setCadExpanded((v) => !v)}
+          elapsed={elapsed}
+        />
 
-        {/* Patient demographics + known vitals only */}
         <View style={styles.status}>
-          <Text style={styles.statusTitle}>PATIENT STATUS</Text>
-          <View style={styles.demoRow}>
+          <Text style={styles.statusTitle}>
+            NREMT · {stageInfo.title.toUpperCase()} · {elapsed}
+          </Text>
+          <View style={styles.statusRow}>
             <StatusChip label="Age" value={String(call.age)} />
             <StatusChip label="Sex" value={call.sex} />
             <StatusChip
-              label="Status"
-              value={
-                phase === 'responding'
-                  ? 'En route'
-                  : phase === 'arrival'
-                    ? 'On scene'
-                    : 'Waiting'
-              }
+              label="HR"
+              value={revealedVitals.hr ? String(vitals.hr) : 'Unknown'}
             />
-            <StatusChip label="Time Since Arrival" value={elapsed} />
-          </View>
-          <View style={styles.statusRow}>
-            <StatusChip label="HR" value={revealedVitals.hr ? String(vitals.hr) : 'Unknown'} />
-            <StatusChip label="BP" value={revealedVitals.bp ? vitals.bp : 'Unknown'} />
-            <StatusChip label="RR" value={revealedVitals.rr ? String(vitals.rr) : 'Unknown'} />
+            <StatusChip
+              label="BP"
+              value={revealedVitals.bp ? vitals.bp : 'Unknown'}
+            />
+            <StatusChip
+              label="RR"
+              value={revealedVitals.rr ? String(vitals.rr) : 'Unknown'}
+            />
             <StatusChip
               label="SpO₂"
               value={revealedVitals.spo2 ? `${vitals.spo2}%` : 'Unknown'}
@@ -235,48 +239,13 @@ export default function EmtCallScreen() {
           </View>
         </View>
 
-        {/* Phase-specific controls */}
-        <View style={styles.actions}>
-          {phase === 'responding' ? (
-            <>
-              <Text style={styles.prompt}>Response phase — prepare if you want.</Text>
-              {RESPONDING_ACTIONS.filter(
-                (a) => a.actionId !== 'review_protocols' || tips
-              ).map((node) => (
-                <PressScale
-                  key={node.id}
-                  onPress={() => node.actionId && act(node.actionId)}
-                  style={[
-                    styles.actionBtn,
-                    node.actionId && completedActions.includes(node.actionId)
-                      ? styles.actionDone
-                      : null,
-                  ]}
-                >
-                  <Text style={styles.actionLabel}>{node.label}</Text>
-                </PressScale>
-              ))}
-              <ShiftButton
-                label="CONTINUE TO SCENE"
-                onPress={continueFromResponding}
-                accentColor={theme.colors.emsBlue}
-              />
-            </>
-          ) : null}
-
-          {phase === 'arrival' ? (
-            <>
-              <Text style={styles.prompt}>You are on scene.</Text>
-              <ShiftButton
-                label="BEGIN ASSESSMENT"
-                onPress={acknowledgeArrival}
-                accentColor={theme.colors.emsBlue}
-              />
-            </>
-          ) : null}
-
-          {phase === 'on_scene' ? (
-            <>
+        <ScrollView
+          style={styles.phaseScroll}
+          contentContainerStyle={styles.phaseContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {onCall ? (
+            <View style={styles.phaseBlock}>
               {pendingFollowUps.length > 0 ? (
                 <View style={styles.followUps}>
                   <Text style={styles.prompt}>How do you want to handle this?</Text>
@@ -290,9 +259,11 @@ export default function EmtCallScreen() {
                     </PressScale>
                   ))}
                 </View>
-              ) : !root ? (
+              ) : null}
+
+              {!root ? (
                 <>
-                  <Text style={styles.prompt}>What would you like to do?</Text>
+                  <Text style={styles.prompt}>What would you like to do next?</Text>
                   <View style={styles.rootGrid}>
                     {ACTION_MENU_ROOTS.map((item) => (
                       <PressScale
@@ -304,26 +275,32 @@ export default function EmtCallScreen() {
                         style={styles.rootChip}
                       >
                         <Text style={styles.rootChipText}>{item.label}</Text>
+                        <Text style={styles.rootBlurb}>{item.blurb}</Text>
                       </PressScale>
                     ))}
                     <PressScale
                       onPress={() => setAskOpen((v) => !v)}
                       style={[styles.rootChip, styles.askChip]}
                     >
-                      <Text style={styles.rootChipText}>Ask Lauren</Text>
+                      <Text style={styles.rootChipText}>Ask</Text>
+                      <Text style={styles.rootBlurb}>Say it in your own words</Text>
                     </PressScale>
                   </View>
                   {askOpen ? (
                     <View style={styles.askBox}>
                       <TextInput
                         style={styles.askInput}
-                        placeholder={'e.g. "I\'d like to obtain a blood pressure."'}
+                        placeholder={'e.g. "I\'d like a blood pressure."'}
                         placeholderTextColor={theme.colors.textMuted}
                         value={askText}
                         onChangeText={setAskText}
                         onSubmitEditing={interpretAsk}
                       />
-                      <ShiftButton label="ASK" onPress={interpretAsk} accentColor={theme.colors.emsBlue} />
+                      <ShiftButton
+                        label="ASK"
+                        onPress={interpretAsk}
+                        accentColor={theme.colors.emsBlue}
+                      />
                     </View>
                   ) : null}
                 </>
@@ -337,9 +314,7 @@ export default function EmtCallScreen() {
                   >
                     <Text style={styles.back}>‹ BACK</Text>
                   </PressScale>
-                  <Text style={styles.prompt}>
-                    {ACTION_MENU_ROOTS.find((r) => r.id === root)?.label}
-                  </Text>
+                  <Text style={styles.prompt}>{breadcrumb}</Text>
                   {nodes.map((node) => (
                     <PressScale
                       key={node.id}
@@ -354,28 +329,89 @@ export default function EmtCallScreen() {
                       <Text style={styles.actionLabel}>{node.label}</Text>
                       {node.children?.length ? (
                         <Text style={styles.more}>›</Text>
+                      ) : node.actionId &&
+                        completedActions.includes(node.actionId) ? (
+                        <Text style={styles.doneMark}>✓</Text>
                       ) : null}
                     </PressScale>
                   ))}
                 </View>
               )}
-            </>
+            </View>
           ) : null}
-        </View>
+        </ScrollView>
+
+        {onCall ? (
+          <View style={styles.bottomBar}>
+            <ShiftButton
+              label={stageInfo.advanceLabel}
+              onPress={advanceNremtStage}
+              accentColor={theme.colors.emsBlue}
+            />
+          </View>
+        ) : null}
       </View>
 
+      <LaurenFlash
+        flash={rawrVisible ? null : activeLauren}
+        onConfirm={dismissLaurenFlash}
+        onChoose={chooseLauren}
+      />
+
       <ResourceFlash
-        visible={!!pendingResourceFlash}
+        visible={!!pendingResourceFlash && !activeLauren && !rawrVisible}
         crew={pendingResourceFlash ?? 'als'}
         mode="enroute"
-        onConfirm={(code?: ResponseCode) => {
-          if (pendingResourceFlash && code) {
-            setResourceResponseCode(pendingResourceFlash, code);
-          }
-          clearPendingResourceFlash();
-        }}
+        onConfirm={clearPendingResourceFlash}
       />
+
+      <RawrEasterEgg visible={rawrVisible} onDone={() => setRawrVisible(false)} />
     </SafeAreaView>
+  );
+}
+
+function DispatchStrip({
+  call,
+  priorityColor,
+  expanded,
+  onToggle,
+  elapsed,
+}: {
+  call: EmtCall;
+  priorityColor: string;
+  expanded: boolean;
+  onToggle: () => void;
+  elapsed: string;
+}) {
+  const catColor = categoryColor(call.category);
+  return (
+    <PressScale onPress={onToggle} style={[styles.cadStrip, { borderColor: catColor }]}>
+      <View style={styles.cadTop}>
+        <Text style={styles.cadUnit}>{call.unit}</Text>
+        <Text style={[styles.cadPriority, { color: priorityColor }]}>
+          P{call.priority}
+        </Text>
+        <Text style={styles.cadElapsed}>{elapsed}</Text>
+        <Text style={styles.cadToggle}>{expanded ? '▴' : '▾'}</Text>
+      </View>
+      <Text style={styles.cadComplaint} numberOfLines={expanded ? 3 : 1}>
+        {call.dispatch}
+      </Text>
+      {expanded ? (
+        <View style={styles.cadMeta}>
+          <Text style={styles.cadMetaText}>
+            {call.age}yo {call.sex} · {call.cadNotes}
+          </Text>
+          <Text style={styles.cadMetaMuted}>
+            {call.timeOfDay} · {call.weather}
+          </Text>
+        </View>
+      ) : (
+        <Text style={styles.cadMetaMuted}>
+          {call.age}yo {call.sex} · tap to expand
+        </Text>
+      )}
+    </PressScale>
   );
 }
 
@@ -384,7 +420,9 @@ function StatusChip({ label, value }: { label: string; value: string }) {
   return (
     <View style={[styles.chip, unknown && styles.chipUnknown]}>
       <Text style={styles.chipLabel}>{label}</Text>
-      <Text style={[styles.chipValue, unknown && styles.chipValueUnknown]}>{value}</Text>
+      <Text style={[styles.chipValue, unknown && styles.chipValueUnknown]}>
+        {value}
+      </Text>
     </View>
   );
 }
@@ -393,60 +431,63 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.background },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   muted: { color: theme.colors.textMuted },
-  shell: { flex: 1, paddingHorizontal: 12, paddingBottom: 8 },
-  laurenPanel: {
+  shell: { flex: 1, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 8 },
+  cadStrip: {
+    backgroundColor: 'rgba(8,18,28,0.92)',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    padding: 12,
+    marginBottom: 8,
+  },
+  cadTop: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
+    marginBottom: 4,
+  },
+  cadUnit: {
+    color: theme.colors.text,
+    fontFamily: 'BebasNeue',
+    fontSize: fs(24),
+    letterSpacing: 0.8,
     flex: 1,
-    minHeight: 220,
-    maxHeight: 320,
   },
-  lauren: { width: 100, height: 200, alignSelf: 'flex-end' },
-  logWrap: { flex: 1, paddingTop: 8 },
-  callsign: {
-    color: theme.colors.emsBlue,
+  cadPriority: {
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(10),
-    letterSpacing: 1.3,
-    marginBottom: 6,
+    fontSize: fs(12),
+    letterSpacing: 1,
   },
-  log: { flex: 1 },
-  logContent: { gap: 8, paddingBottom: 8 },
-  bubble: {
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderWidth: 1,
-  },
-  laurenBubble: {
-    backgroundColor: 'rgba(2, 10, 18, 0.88)',
-    borderColor: 'rgba(0, 229, 255, 0.28)',
-  },
-  youBubble: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    alignSelf: 'flex-end',
-    maxWidth: '92%',
-  },
-  youLabel: {
+  cadElapsed: {
     color: theme.colors.textMuted,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(9),
-    letterSpacing: 1,
-    marginBottom: 2,
+    fontSize: fs(11),
   },
-  bubbleText: {
+  cadToggle: { color: theme.colors.textMuted, fontSize: fs(14) },
+  cadComplaint: {
     color: theme.colors.text,
-    fontSize: fs(14),
+    fontSize: fs(15),
     lineHeight: fs(20),
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  cadMeta: { marginTop: 8, gap: 4 },
+  cadMetaText: {
+    color: theme.colors.textMuted,
+    fontSize: fs(12),
+    lineHeight: fs(16),
+  },
+  cadMetaMuted: {
+    color: theme.colors.textMuted,
+    fontSize: fs(11),
+    marginTop: 4,
+    opacity: 0.85,
   },
   status: {
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
+    borderWidth: 1,
     borderColor: theme.colors.border,
-    paddingVertical: 10,
-    marginVertical: 6,
+    borderRadius: 12,
+    padding: 10,
+    backgroundColor: theme.colors.surface,
+    marginBottom: 8,
   },
   statusTitle: {
     color: theme.colors.textMuted,
@@ -455,16 +496,15 @@ const styles = StyleSheet.create({
     letterSpacing: 1.3,
     marginBottom: 8,
   },
-  demoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 6 },
   statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.backgroundAlt,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: theme.colors.border,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    minWidth: 70,
+    minWidth: 64,
   },
   chipUnknown: { opacity: 0.75 },
   chipLabel: {
@@ -479,13 +519,15 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   chipValueUnknown: { color: theme.colors.textMuted, fontSize: fs(13) },
-  actions: { gap: 8, paddingTop: 4, maxHeight: '42%' },
+  phaseScroll: { flex: 1 },
+  phaseContent: { paddingBottom: 12 },
+  phaseBlock: { gap: 8 },
   prompt: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',
-    fontSize: fs(22),
+    fontSize: fs(24),
     letterSpacing: 0.6,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   rootGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   rootChip: {
@@ -494,16 +536,21 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     borderRadius: 12,
     paddingVertical: 12,
-    paddingHorizontal: 14,
-    minWidth: '30%',
+    paddingHorizontal: 12,
+    minWidth: '46%',
     flexGrow: 1,
+    gap: 4,
   },
   askChip: { borderColor: theme.colors.emsBlue },
   rootChipText: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',
-    fontSize: fs(18),
-    textAlign: 'center',
+    fontSize: fs(20),
+  },
+  rootBlurb: {
+    color: theme.colors.textMuted,
+    fontSize: fs(11),
+    lineHeight: fs(14),
   },
   actionBtn: {
     backgroundColor: theme.colors.surface,
@@ -526,6 +573,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     flex: 1,
   },
+  doneMark: {
+    color: theme.colors.success,
+    fontSize: fs(16),
+    fontWeight: '800',
+  },
   more: { color: theme.colors.emsBlue, fontSize: fs(18) },
   back: {
     color: theme.colors.emsBlue,
@@ -545,5 +597,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: fs(14),
+  },
+  bottomBar: {
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    gap: 6,
+  },
+  bottomHint: {
+    color: theme.colors.textMuted,
+    fontSize: fs(11),
+    lineHeight: fs(15),
+    textAlign: 'center',
   },
 });

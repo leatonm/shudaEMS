@@ -23,35 +23,35 @@ export const ACTION_MENU_ROOTS: Array<{
   skill: SkillCategory;
   blurb: string;
 }> = [
-  { id: 'scene', label: 'Scene', skill: 'scene_safety', blurb: 'Size-up, BSI, hazards' },
-  { id: 'assessment', label: 'Assessment', skill: 'assessment', blurb: 'Primary, history, vitals' },
-  { id: 'interventions', label: 'Treatment', skill: 'treatment', blurb: 'Oxygen, meds, procedures' },
+  { id: 'scene', label: 'Size-Up', skill: 'scene_safety', blurb: 'Safety, patients, MOI/NOI' },
+  { id: 'assessment', label: 'Assessment', skill: 'assessment', blurb: 'Impression, primary, vitals' },
+  { id: 'interventions', label: 'Treatment', skill: 'treatment', blurb: 'Airway, O₂, meds, trauma' },
   { id: 'resources', label: 'Resources', skill: 'communication', blurb: 'Fire, law, medic, air' },
   { id: 'transport', label: 'Transport', skill: 'transport', blurb: 'Priority, destination, report' },
 ];
 
 export const ACTION_MENUS: Record<ActionMenuRoot, ActionMenuNode[]> = {
   scene: [
-    { id: 'ppe', label: 'PPE / BSI', actionId: 'don_ppe' },
-    { id: 'scene_safe', label: 'Scene Safety', actionId: 'verbalize_scene_safe' },
+    { id: 'scene_safe', label: 'Is the scene safe?', actionId: 'verbalize_scene_safe' },
     { id: 'num_patients', label: 'Number of Patients', actionId: 'count_patients' },
-    { id: 'moi_noi', label: 'MOI / NOI', actionId: 'assess_moi' },
-    { id: 'hazards', label: 'Hazards', actionId: 'scan_hazards' },
-    { id: 'add_resources_hint', label: 'Additional Resources', actionId: 'consider_resources' },
-    { id: 'cspine', label: 'C-Spine', actionId: 'c_spine' },
-    { id: 'enter', label: 'Continue / Patient Contact', actionId: 'enter_scene' },
+    { id: 'moi_noi', label: 'MOI or NOI', actionId: 'assess_moi' },
+    { id: 'add_resources', label: 'Additional Resources', actionId: 'consider_resources' },
+    { id: 'cspine', label: 'C-Spine Precautions', actionId: 'c_spine' },
   ],
   assessment: [
     { id: 'impression', label: 'General Impression', actionId: 'general_impression' },
     {
       id: 'primary',
-      label: 'Primary Assessment',
+      label: 'Primary (xABC)',
       children: [
+        { id: 'avpu', label: 'AVPU / Responsiveness', actionId: 'assess_loc' },
+        { id: 'cc', label: 'Chief Complaint / Life Threats', actionId: 'chief_complaint' },
         { id: 'aw', label: 'Airway', actionId: 'airway' },
         { id: 'br', label: 'Breathing', actionId: 'breathing' },
         { id: 'circ', label: 'Circulation', actionId: 'circulation' },
         { id: 'dis', label: 'Disability', actionId: 'disability' },
         { id: 'exp', label: 'Exposure', actionId: 'exposure' },
+        { id: 'bleed', label: 'Major Bleeding', actionId: 'major_bleeding' },
       ],
     },
     {
@@ -114,7 +114,7 @@ export const ACTION_MENUS: Record<ActionMenuRoot, ActionMenuNode[]> = {
         { id: 'card_aed', label: 'AED', actionId: 'aed' },
       ],
     },
-    { id: 'int_trauma', label: 'Trauma', actionId: 'bleeding_control' },
+    { id: 'int_trauma', label: 'Trauma / Bleeding', actionId: 'bleeding_control' },
     {
       id: 'int_meds',
       label: 'Medication',

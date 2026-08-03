@@ -17,8 +17,20 @@ import {
 import { resolveMenuAction } from '@/data/emt/menuActions';
 import {
   buildLaurenExchange,
-  dispatchLaurenLines,
+  withCoachTips,
 } from '@/data/emt/laurenFindings';
+import {
+  getNremtStage,
+  nextNremtStage,
+  stageCoverage,
+  type NremtStage,
+} from '@/data/emt/nremtFlow';
+import {
+  presentLaurenExchange,
+  showLaurenSuggestions,
+  showPhaseCoaching,
+  laurenGestureLevel,
+} from '@/data/emt/difficulty';
 import type {
   AbcdeStep,
   CallCategory,
@@ -36,8 +48,21 @@ import type {
   WalkthroughChoice,
   WalkthroughStep,
 } from '@/data/emt/types';
-import type { ResourceCrew, ResponseCode } from '@/lib/characterDialogue';
+import type { ResourceCrew } from '@/lib/characterDialogue';
 import { useProgressStore } from '@/store/progressStore';
+
+export interface LaurenFlashItem {
+  id: string;
+  lines: string[];
+  studentLine?: string;
+  choices?: Array<{ id: string; label: string; actionId: string }>;
+  /** Coach = full; Standard = small gesture; Exam = minimal. */
+  gesture?: 'full' | 'gesture' | 'minimal';
+}
+
+type ResourceStage = 'enroute' | 'standby';
+type ResourceCrewKey = 'als' | 'fire' | 'pd';
+
 
 interface PendingPhysio {
   id: string;
@@ -92,15 +117,13 @@ interface EmtStore {
   steps: WalkthroughStep[];
   stepIndex: number;
   snapshots: CallSnapshot[];
-  /** How hot ALS / Fire / PD was requested (Code 1–3). */
-  resourceResponseCodes: Partial<Record<ResourceCrew, ResponseCode>>;
   /** Freeform action menu — every tap is logged. */
   completedActions: string[];
   handoffText: string;
   pendingCategory: CallCategory | null;
   /** Last resource flash to show (UI consumes & clears). */
   pendingResourceFlash: ResourceCrew | null;
-  /** Oral-exam conversation with Lauren. */
+  /** Oral-exam conversation log (kept for debrief; UI uses Lauren flash). */
   instructorLog: InstructorMessage[];
   /** Only vitals the student has asked for. */
   revealedVitals: RevealedVitals;
@@ -111,6 +134,14 @@ interface EmtStore {
   arrivedAt: number | null;
   /** Delayed physio / Lauren beats (nitro drop, untreated deterioration). */
   pendingPhysio: PendingPhysio[];
+  /** Lauren slide-in queue — findings & patient updates. */
+  laurenFlashQueue: LaurenFlashItem[];
+  /** Size-up resource staging — shortens later ETA if already rolling / standing by. */
+  resourceStaging: Partial<Record<ResourceCrewKey, ResourceStage>>;
+  /** Player-declared MOI vs NOI. */
+  moiNoiCall: 'moi' | 'noi' | null;
+  /** NREMT board stage — bottom CTA advances this. */
+  nremtStage: NremtStage;
 
   setDifficulty: (difficulty: EmtDifficulty) => void;
   setPendingCategory: (category: CallCategory | null) => void;
@@ -120,11 +151,12 @@ interface EmtStore {
     difficulty?: EmtDifficulty;
   }) => string | null;
   acknowledgeDispatch: () => void;
-  continueFromResponding: () => void;
-  acknowledgeArrival: () => void;
   performMenuAction: (actionId: string) => void;
+  /** Bottom CTA — advances NREMT assessment board stage. */
+  advanceNremtStage: () => void;
   clearPendingResourceFlash: () => void;
   clearFollowUps: () => void;
+  dismissLaurenFlash: () => void;
   /** Advance delayed patient physiology / Lauren beats. */
   tickPhysio: () => void;
   setHandoffText: (text: string) => void;
@@ -132,8 +164,6 @@ interface EmtStore {
   chooseNext: (choiceId: string) => void;
   undoChoice: (choiceId: string) => void;
   goBack: () => void;
-  setResourceResponseCode: (crew: ResourceCrew, code: ResponseCode) => void;
-  clearResourceResponseCode: (crew: ResourceCrew) => void;
   reset: () => void;
 }
 
@@ -264,7 +294,6 @@ const emptyState = {
   steps: [] as WalkthroughStep[],
   stepIndex: 0,
   snapshots: [] as CallSnapshot[],
-  resourceResponseCodes: {} as Partial<Record<ResourceCrew, ResponseCode>>,
   completedActions: [] as string[],
   handoffText: '',
   pendingCategory: null as CallCategory | null,
@@ -275,6 +304,10 @@ const emptyState = {
   pendingFollowUps: [] as FollowUpChoice[],
   arrivedAt: null as number | null,
   pendingPhysio: [] as PendingPhysio[],
+  laurenFlashQueue: [] as LaurenFlashItem[],
+  resourceStaging: {} as Partial<Record<ResourceCrewKey, ResourceStage>>,
+  moiNoiCall: null as 'moi' | 'noi' | null,
+  nremtStage: 'scene_sizeup' as NremtStage,
 };
 
 export const useEmtStore = create<EmtStore>((set, get) => ({
@@ -312,80 +345,75 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
     const state = get();
     if (!state.call || state.phase !== 'dispatch') return;
     const at = Date.now() - state.startedAt;
-    const lines = dispatchLaurenLines(state.call);
-    const instructorLog: InstructorMessage[] = lines.map((text, i) => ({
-      id: `dispatch-${i}`,
-      role: 'lauren',
-      text,
-      atMs: at + i,
-    }));
+    const stage = getNremtStage('scene_sizeup', state.call.category);
     const timeline = pushTimeline(state.timeline, {
-      phase: 'responding',
+      phase: stage.phase,
       actionId: 'respond',
-      label: 'Responding',
-      message: 'Unit responding.',
+      label: 'On scene',
+      message: 'Arrived — scene size-up begins.',
       scoreDelta: 0,
       severity: 'neutral',
       skill: 'scene_safety',
       startedAt: state.startedAt,
     });
-    set({
-      phase: 'responding',
-      timeline,
-      instructorLog,
-      completedActions: [...state.completedActions, 'respond'],
-    });
-  },
 
-  continueFromResponding: () => {
-    const state = get();
-    if (!state.call || state.phase !== 'responding') return;
-    const at = Date.now() - state.startedAt;
-    set({
-      phase: 'arrival',
-      instructorLog: [
-        ...state.instructorLog,
-        {
-          id: `arrive-${at}`,
-          role: 'lauren',
-          text: 'You arrive on scene.',
-          atMs: at,
-        },
-        {
-          id: `arrive-seat-${at}`,
-          role: 'lauren',
-          text: 'The patient is where dispatch described.',
-          atMs: at + 1,
-        },
-      ],
-    });
-  },
+    const pendingPhysio: PendingPhysio[] = [
+      {
+        id: `idle-warn-${at}`,
+        fireAtMs: at + 45_000,
+        laurenLines:
+          state.difficulty === 'coach'
+            ? [
+                'Time is moving. Work your size-up, then make patient contact when ready.',
+              ]
+            : ['Time is moving on this call.'],
+        timelineLabel: 'Delay on scene',
+        scoreDelta: -4,
+        skill: 'scene_safety',
+      },
+      {
+        id: `idle-worse-${at}`,
+        fireAtMs: at + 90_000,
+        vitalsPatch: delayedCareVitals(state.call, state.vitals!),
+        laurenLines: [
+          'The patient looks worse than when you arrived.',
+        ],
+        timelineLabel: 'Patient deteriorating',
+        scoreDelta: -10,
+        skill: 'treatment',
+      },
+    ];
 
-  acknowledgeArrival: () => {
-    const state = get();
-    if (state.phase !== 'arrival') return;
-    const at = Date.now() - state.startedAt;
     set({
-      phase: 'on_scene',
+      phase: stage.phase,
+      nremtStage: 'scene_sizeup',
       arrivedAt: Date.now(),
-      instructorLog: [
-        ...state.instructorLog,
-        {
-          id: `ask-${at}`,
-          role: 'lauren',
-          text: 'What would you like to do?',
-          atMs: at,
-        },
-      ],
+      timeline,
+      instructorLog: [],
+      completedActions: [...state.completedActions, 'respond'],
+      pendingPhysio,
+      // No MD coaching popup at start — difficulty owns guidance.
+      laurenFlashQueue: [],
     });
   },
 
   clearFollowUps: () => set({ pendingFollowUps: [] }),
 
+  dismissLaurenFlash: () => {
+    set({ laurenFlashQueue: get().laurenFlashQueue.slice(1) });
+  },
+
   tickPhysio: () => {
     const state = get();
     if (!state.call || !state.vitals || state.result) return;
-    if (state.phase !== 'on_scene' && state.phase !== 'arrival') return;
+    if (
+      state.phase !== 'on_scene' &&
+      state.phase !== 'primary_survey' &&
+      state.phase !== 'scene_safety' &&
+      state.phase !== 'history'
+    ) {
+      return;
+    }
     const now = Date.now() - state.startedAt;
     const due = state.pendingPhysio.filter((p) => p.fireAtMs <= now);
     if (!due.length) return;
@@ -396,6 +424,7 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
     let timeline = state.timeline;
     let skillScores = state.skillScores;
     let totalScore = state.totalScore;
+    const flashAdds: LaurenFlashItem[] = [];
 
     for (const effect of due) {
       if (effect.vitalsPatch) {
@@ -409,6 +438,12 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
           atMs: now + i,
         });
       }
+      if (effect.laurenLines.length) {
+        flashAdds.push({
+          id: `flash-physio-${effect.id}`,
+          lines: effect.laurenLines,
+        });
+      }
       const delta = effect.scoreDelta ?? 0;
       timeline = pushTimeline(timeline, {
         phase: 'on_scene',
@@ -417,7 +452,7 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
         message: effect.laurenLines[0] ?? effect.timelineLabel,
         scoreDelta: delta,
         severity: delta < 0 ? 'warn' : 'neutral',
-        skill: effect.skill ?? 'treatment',
+        skill: effect.skill,
         startedAt: state.startedAt,
       });
       if (effect.skill && delta) {
@@ -433,6 +468,160 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       skillScores,
       totalScore,
       pendingPhysio: remaining,
+      laurenFlashQueue: [...state.laurenFlashQueue, ...flashAdds],
+    });
+  },
+
+  advanceNremtStage: () => {
+    const state = get();
+    if (!state.call || !state.vitals || state.result) return;
+    if (state.phase === 'handoff' || state.phase === 'debrief' || state.phase === 'dispatch') {
+      return;
+    }
+
+    const category = state.call.category;
+    const current = getNremtStage(state.nremtStage, category);
+    const next = nextNremtStage(state.nremtStage, category);
+    const at = Date.now() - state.startedAt;
+    const coverage = stageCoverage(current, state.completedActions);
+
+    let riskScore = state.riskScore;
+    let totalScore = state.totalScore;
+    let skillScores = state.skillScores;
+    let timeline = state.timeline;
+    const earlyAdvance = coverage.done < Math.ceil(coverage.total * 0.5);
+
+    if (earlyAdvance) {
+      riskScore += 12;
+      totalScore -= 8;
+      skillScores = applySkill(skillScores, 'assessment', -8);
+      timeline = pushTimeline(timeline, {
+        phase: current.phase,
+        actionId: `advance_${current.id}`,
+        label: `Advanced past ${current.title}`,
+        message: `Moved on with ${coverage.done}/${coverage.total} expected elements.`,
+        scoreDelta: -8,
+        severity: 'warn',
+        skill: 'assessment',
+        flowMiss: true,
+        startedAt: state.startedAt,
+      });
+    } else {
+      timeline = pushTimeline(timeline, {
+        phase: current.phase,
+        actionId: `advance_${current.id}`,
+        label: current.advanceLabel,
+        message: `Progressing from ${current.title}.`,
+        scoreDelta: 4,
+        severity: 'good',
+        skill: 'assessment',
+        startedAt: state.startedAt,
+      });
+      totalScore += 4;
+      skillScores = applySkill(skillScores, 'assessment', 4);
+    }
+
+    const coach = showPhaseCoaching(state.difficulty);
+
+    if (!next || next.id === 'report') {
+      // Verbal report / transfer of care
+      const reportLines = coach
+        ? [
+            earlyAdvance
+              ? 'You are advancing with gaps on the skills sheet — that will show in debrief.'
+              : 'Primary board is complete enough to report.',
+            'Deliver your verbal report and transfer of care.',
+          ]
+        : ['Transfer of care.'];
+
+      set({
+        phase: 'handoff',
+        nremtStage: 'report',
+        riskScore,
+        totalScore,
+        skillScores,
+        timeline,
+        sceneEntered: true,
+        instructorLog: [
+          ...state.instructorLog,
+          {
+            id: `advance-report-${at}`,
+            role: 'lauren',
+            text: reportLines[0],
+            atMs: at,
+          },
+        ],
+        laurenFlashQueue: coach
+          ? [
+              ...state.laurenFlashQueue,
+              {
+                id: `flash-advance-${at}`,
+                lines: reportLines,
+              },
+            ]
+          : state.laurenFlashQueue,
+        completedActions: state.completedActions.includes('begin_handoff')
+          ? state.completedActions
+          : [...state.completedActions, 'begin_handoff'],
+      });
+      return;
+    }
+
+    let completedActions = [...state.completedActions];
+    let safetyActions = [...state.safetyActions];
+    let sceneEntered = state.sceneEntered;
+    if (next.id === 'primary_survey') {
+      sceneEntered = true;
+      if (!completedActions.includes('enter_scene')) completedActions.push('enter_scene');
+      if (!safetyActions.includes('enter_scene')) safetyActions.push('enter_scene');
+    }
+
+    const lines = coach
+      ? [
+          ...(earlyAdvance
+            ? [
+                `You are leaving ${current.title} with gaps (${coverage.done}/${coverage.total}).`,
+                'That can cost you on the skills sheet.',
+              ]
+            : [`Moving on from ${current.title}.`]),
+          ...next.enterLines,
+        ]
+      : [];
+
+    set({
+      nremtStage: next.id,
+      phase: next.phase,
+      riskScore,
+      totalScore,
+      skillScores,
+      timeline,
+      sceneEntered,
+      safetyActions,
+      completedActions,
+      instructorLog: [
+        ...state.instructorLog,
+        {
+          id: `you-advance-${at}`,
+          role: 'you',
+          text: current.advanceLabel,
+          atMs: at,
+        },
+        ...lines.map((text, i) => ({
+          id: `lauren-advance-${at}-${i}`,
+          role: 'lauren' as const,
+          text,
+          atMs: at + i + 1,
+        })),
+      ],
+      laurenFlashQueue: lines.length
+        ? [
+            ...state.laurenFlashQueue,
+            {
+              id: `flash-advance-${at}`,
+              lines,
+            },
+          ]
+        : state.laurenFlashQueue,
     });
   },
 
@@ -444,32 +633,51 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       return;
     }
 
-    if (actionId === 'continue_response') {
-      get().continueFromResponding();
+    if (
+      actionId === 'patient_update' ||
+      actionId === 'continue_care' ||
+      actionId === 'continue_response' ||
+      actionId === 'advance_nremt'
+    ) {
+      get().advanceNremtStage();
       return;
     }
 
-    // Prep actions allowed while responding; full oral exam on scene / arrival.
-    if (state.phase === 'responding') {
-      const allowed = new Set([
-        'read_cad',
-        'read_dispatch_notes',
-        'consider_equipment',
-        'review_protocols',
-        'request_als',
-        'request_fire',
-        'request_pd',
-        'request_air',
-        'request_ambo',
-      ]);
-      if (!allowed.has(actionId)) return;
+    let exchange = buildLaurenExchange(actionId, state.call, state.vitals);
+    if (showLaurenSuggestions(state.difficulty)) {
+      exchange = withCoachTips(actionId, state.call, exchange);
+    }
+    exchange = presentLaurenExchange(state.difficulty, exchange);
+
+    // If already staged during size-up, Lauren notes the shorter ETA.
+    if (
+      (actionId === 'request_als' ||
+        actionId === 'request_fire' ||
+        actionId === 'request_pd') &&
+      state.resourceStaging
+    ) {
+      const crew =
+        actionId === 'request_als' ? 'als' : actionId === 'request_fire' ? 'fire' : 'pd';
+      const staged = state.resourceStaging[crew];
+      if (staged === 'enroute') {
+        exchange = presentLaurenExchange(state.difficulty, {
+          ...exchange,
+          laurenLines: [
+            'They are already enroute from your size-up request.',
+            'Expect a shortened ETA.',
+          ],
+        });
+      } else if (staged === 'standby') {
+        exchange = presentLaurenExchange(state.difficulty, {
+          ...exchange,
+          laurenLines: [
+            'They were standing by from your size-up request.',
+            'Bringing them into the scene now — faster than a cold start.',
+          ],
+        });
+      }
     }
 
-    if (state.phase === 'arrival') {
-      // Only transition via acknowledgeArrival unless they somehow act
-    }
-
-    const exchange = buildLaurenExchange(actionId, state.call, state.vitals);
     const at = Date.now() - state.startedAt;
     const newLog: InstructorMessage[] = [
       ...state.instructorLog,
@@ -516,10 +724,11 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       transportPriority: state.transportPriority,
       destination: state.destination,
       completedActions: state.completedActions,
+      resourceStaging: state.resourceStaging,
     });
 
     const timeline = pushTimeline(state.timeline, {
-      phase: state.phase === 'responding' ? 'responding' : 'on_scene',
+      phase: 'on_scene',
       actionId,
       label: fx.label,
       message: fx.message,
@@ -535,17 +744,26 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       ? applyVitals(state.vitals, fx.vitalsPatch)
       : state.vitals;
 
-    // Prompt again after Lauren answers (unless follow-ups or handoff)
-    if (!exchange.followUps?.length && !fx.beginHandoff) {
-      newLog.push({
-        id: `ask-again-${at}`,
-        role: 'lauren',
-        text: 'What would you like to do?',
-        atMs: at + 20,
-      });
+    const nextCompleted = state.completedActions.includes(actionId)
+      ? state.completedActions
+      : [...state.completedActions, actionId];
+
+    const nextAbcde = fx.abcdeCompleted ?? state.abcdeCompleted;
+
+    // Cancel idle deterioration once they start assessing / treating.
+    let pendingPhysio = [...state.pendingPhysio];
+    if (
+      actionId === 'general_impression' ||
+      actionId === 'don_ppe' ||
+      actionId === 'verbalize_scene_safe' ||
+      actionId === 'oxygen' ||
+      actionId === 'airway' ||
+      actionId === 'breathing' ||
+      actionId === 'circulation'
+    ) {
+      pendingPhysio = pendingPhysio.filter((p) => !p.id.startsWith('idle-'));
     }
 
-    const pendingPhysio = [...state.pendingPhysio];
     if (actionId === 'nitroglycerin' && vitals.bp) {
       pendingPhysio.push({
         id: `nitro-bp-${at}`,
@@ -561,7 +779,6 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
         skill: 'treatment',
       });
     }
-    // Untreated respiratory decline if no oxygen after ~20s on scene
     if (
       actionId === 'general_impression' &&
       !state.treatments.includes('oxygen') &&
@@ -577,16 +794,42 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
         skill: 'treatment',
       });
     }
-    // Cancel delay-o2 once oxygen applied
     const nextPending =
       actionId === 'oxygen'
         ? pendingPhysio.filter((p) => !p.id.startsWith('delay-o2'))
         : pendingPhysio;
 
+    const baseQueue =
+      state.laurenFlashQueue[0]?.choices?.some((c) => c.actionId === actionId)
+        ? state.laurenFlashQueue.slice(1)
+        : [...state.laurenFlashQueue];
+
+    if (exchange.laurenLines.length) {
+      baseQueue.push({
+        id: `flash-${actionId}-${at}`,
+        // Button clicks already show the ask — Lauren popup is reply-only.
+        lines: exchange.laurenLines,
+        choices: exchange.followUps,
+        gesture: laurenGestureLevel(state.difficulty),
+      });
+    }
+
+    let resourceStaging = { ...state.resourceStaging };
+    let moiNoiCall = state.moiNoiCall;
+    if (actionId === 'declare_moi') moiNoiCall = 'moi';
+    if (actionId === 'declare_noi') moiNoiCall = 'noi';
+    const stageMatch = /^resource_(als|fire|pd)_(enroute|standby)$/.exec(actionId);
+    if (stageMatch) {
+      resourceStaging = {
+        ...resourceStaging,
+        [stageMatch[1]]: stageMatch[2] as ResourceStage,
+      };
+    }
+
     set({
       vitals,
       safetyActions: fx.safetyActions ?? state.safetyActions,
-      abcdeCompleted: fx.abcdeCompleted ?? state.abcdeCompleted,
+      abcdeCompleted: nextAbcde,
       historyCompleted: fx.historyCompleted ?? state.historyCompleted,
       treatments: fx.treatments ?? state.treatments,
       allergiesChecked: fx.allergiesChecked ?? state.allergiesChecked,
@@ -597,17 +840,21 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       timeline,
       skillScores,
       totalScore: state.totalScore + fx.scoreDelta,
-      completedActions: state.completedActions.includes(actionId)
-        ? state.completedActions
-        : [...state.completedActions, actionId],
+      completedActions: nextCompleted,
       pendingResourceFlash: fx.resourceFlash ?? null,
-      phase: fx.beginHandoff ? 'handoff' : state.phase === 'arrival' ? 'on_scene' : state.phase,
+      phase: fx.beginHandoff
+        ? 'handoff'
+        : getNremtStage(state.nremtStage, state.call.category).phase,
       instructorLog: newLog,
       revealedVitals,
       riskScore,
-      pendingFollowUps: exchange.followUps ?? [],
+      // Choices live on Lauren's flash — keep the action menu open.
+      pendingFollowUps: [],
       pendingPhysio: nextPending,
-      arrivedAt: state.arrivedAt ?? (state.phase === 'arrival' ? Date.now() : state.arrivedAt),
+      arrivedAt: state.arrivedAt ?? Date.now(),
+      laurenFlashQueue: baseQueue,
+      resourceStaging,
+      moiNoiCall,
     });
   },
 
@@ -1109,21 +1356,6 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       snapshots: state.snapshots.slice(0, -1),
       result: null,
     });
-  },
-
-  setResourceResponseCode: (crew, code) => {
-    set({
-      resourceResponseCodes: {
-        ...get().resourceResponseCodes,
-        [crew]: code,
-      },
-    });
-  },
-
-  clearResourceResponseCode: (crew) => {
-    const next = { ...get().resourceResponseCodes };
-    delete next[crew];
-    set({ resourceResponseCodes: next });
   },
 
   reset: () => {

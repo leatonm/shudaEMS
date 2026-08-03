@@ -150,14 +150,14 @@ const styles = StyleSheet.create({
   headerChannel: {
     color: theme.colors.emsBlue,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(9),
-    letterSpacing: 1.4,
+    fontSize: fs(8),
+    letterSpacing: 1.2,
   },
   headerTitle: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',
-    fontSize: fs(22),
-    letterSpacing: 1.5,
+    fontSize: fs(16),
+    letterSpacing: 1.2,
     marginTop: -1,
   },
 });

@@ -174,13 +174,7 @@ export function laurenDebriefChat(
   return { rank, messages };
 }
 
-const ALS_ENROUTE = [
-  ['Copy.', 'Rolling out.'],
-  ['Medic copy.', 'En route.'],
-  ['Got it.', "Medic's rolling."],
-  ['Copy that.', 'Paramedic intercept coming.'],
-  ['Lee copy.', 'On the way.'],
-];
+const ALS_ENROUTE = [['Copy.', 'En route.']];
 
 const ALS_CANCEL = [
   ['Copy.', 'Standing down.'],
@@ -204,10 +198,18 @@ export function resourceCallsign(crew: ResourceCrew): string {
   }
 }
 
-/** Short radio lines for Lee’s ALS slide-in. */
+/** Short radio lines for resource slide-ins. */
 export function leeAlsLines(mode: AlsFlashMode = 'enroute'): string[] {
-  const pool = mode === 'cancel' ? ALS_CANCEL : ALS_ENROUTE;
+  if (mode === 'enroute') return ['Copy.', 'En route.'];
+  const pool = ALS_CANCEL;
   return pool[Math.floor(Math.random() * pool.length)];
+}
+
+/** Simple enroute radio lines for any crew. */
+export function resourceEnrouteLines(crew: ResourceCrew): string[] {
+  if (crew === 'als') return ['Copy.', 'En route.'];
+  if (crew === 'fire') return ['Copy.', 'En route.'];
+  return ['Copy.', 'En route.'];
 }
 
 export function isAlsRequestChoice(choice: { payload?: string; id: string }): boolean {

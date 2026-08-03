@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { Image, Modal, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   FadeIn,
   FadeInLeft,
@@ -13,10 +12,15 @@ import { Characters } from '@/constants/characters';
 import { fs } from '@/constants/layout';
 import { theme } from '@/constants/theme';
 
-const HOLD_MS = 2000;
+const HOLD_MS = 2200;
+const EXIT_MS = 200;
+
+/** Matching waist-up art so Lauren and Lee read the same size in Rawr. */
+const LAUREN_RAWR = require('../../assets/characters/lauren.png');
 
 /**
- * Ask easter egg: "the world rawr" → Lauren (left) + Lee (right) yell RAWR, then leave.
+ * Ask easter egg: type "rawr" → Lee (left) + Lauren (right) yell RAWR!
+ * Bubbles sit above each portrait so the two sides never collide.
  */
 export function RawrEasterEgg({
   visible,
@@ -25,86 +29,94 @@ export function RawrEasterEgg({
   visible: boolean;
   onDone: () => void;
 }) {
-  const [flashKey, setFlashKey] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [panelIn, setPanelIn] = useState(false);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
-  const { width, height } = useWindowDimensions();
-  const portraitH = Math.min(240, Math.round(height * 0.36));
-  const laurenW = Math.round(portraitH * (560 / 858));
-  const leeW = Math.round(portraitH * (560 / 705));
-  const halfW = Math.min(280, Math.round(width * 0.48));
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { height } = useWindowDimensions();
+  // Same frame for both characters.
+  const portraitH = Math.min(260, Math.round(height * 0.36));
+  const portraitW = Math.round(portraitH * 0.72);
 
   useEffect(() => {
-    if (!visible) return;
-    setFlashKey((k) => k + 1);
-    const t = setTimeout(() => onDoneRef.current(), HOLD_MS);
-    return () => clearTimeout(t);
+    const clearTimers = () => {
+      if (holdTimer.current) clearTimeout(holdTimer.current);
+      if (exitTimer.current) clearTimeout(exitTimer.current);
+      holdTimer.current = null;
+      exitTimer.current = null;
+    };
+
+    if (!visible) {
+      clearTimers();
+      setPanelIn(false);
+      exitTimer.current = setTimeout(() => setOpen(false), EXIT_MS);
+      return () => clearTimers();
+    }
+
+    clearTimers();
+    setOpen(true);
+    setPanelIn(true);
+    holdTimer.current = setTimeout(() => {
+      setPanelIn(false);
+      exitTimer.current = setTimeout(() => {
+        setOpen(false);
+        onDoneRef.current();
+      }, EXIT_MS);
+    }, HOLD_MS);
+
+    return () => clearTimers();
   }, [visible]);
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onDone}>
+    <Modal visible={open} transparent animationType="none" onRequestClose={onDone}>
       <View style={styles.backdrop} pointerEvents="box-none">
-        <Animated.View
-          key={`lauren-${flashKey}`}
-          entering={FadeInLeft.springify().damping(16).stiffness(160)}
-          exiting={FadeOutLeft.duration(180)}
-          style={[styles.leftPanel, { width: halfW }]}
-        >
-          <LinearGradient
-            colors={['rgba(2, 8, 16, 0.92)', 'rgba(2, 8, 16, 0.55)', 'transparent']}
-            locations={[0, 0.4, 1]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-          />
-          <View style={styles.leftRow}>
-            <Image
-              source={Characters.lauren.image}
-              resizeMode="contain"
-              style={{ width: laurenW, height: portraitH }}
-            />
-            <View style={styles.copy}>
-              <Text style={[styles.name, { color: theme.colors.emsBlue }]}>
-                {Characters.lauren.name.toUpperCase()}
-              </Text>
-              <Animated.View entering={FadeIn.delay(120)} style={styles.yellChip}>
-                <Text style={styles.yell}>RAWR</Text>
+        {panelIn ? (
+          <>
+            <Animated.View
+              key="lee-rawr"
+              entering={FadeInLeft.springify().damping(16).stiffness(160)}
+              exiting={FadeOutLeft.duration(EXIT_MS)}
+              style={[styles.leftPanel, { width: portraitW + 16 }]}
+            >
+              <Animated.View entering={FadeIn.delay(100)} style={styles.bubbleLeft}>
+                <Text style={[styles.name, { color: theme.colors.success }]}>
+                  {Characters.lee.name.toUpperCase()}
+                </Text>
+                <View style={[styles.yellChip, { borderColor: theme.colors.success }]}>
+                  <Text style={styles.yell}>RAWR!</Text>
+                </View>
               </Animated.View>
-            </View>
-          </View>
-        </Animated.View>
+              <Image
+                source={Characters.lee.image}
+                resizeMode="contain"
+                style={{ width: portraitW, height: portraitH }}
+              />
+            </Animated.View>
 
-        <Animated.View
-          key={`lee-${flashKey}`}
-          entering={FadeInRight.springify().damping(16).stiffness(160)}
-          exiting={FadeOutRight.duration(180)}
-          style={[styles.rightPanel, { width: halfW }]}
-        >
-          <LinearGradient
-            colors={['transparent', 'rgba(2, 8, 16, 0.55)', 'rgba(2, 8, 16, 0.92)']}
-            locations={[0, 0.4, 1]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-          />
-          <View style={styles.rightRow}>
-            <View style={styles.copyRight}>
-              <Text style={[styles.name, { color: theme.colors.success }]}>
-                {Characters.lee.name.toUpperCase()}
-              </Text>
-              <Animated.View entering={FadeIn.delay(120)} style={styles.yellChip}>
-                <Text style={styles.yell}>RAWR</Text>
+            <Animated.View
+              key="lauren-rawr"
+              entering={FadeInRight.springify().damping(16).stiffness(160)}
+              exiting={FadeOutRight.duration(EXIT_MS)}
+              style={[styles.rightPanel, { width: portraitW + 16 }]}
+            >
+              <Animated.View entering={FadeIn.delay(100)} style={styles.bubbleRight}>
+                <Text style={[styles.name, { color: theme.colors.emsBlue }]}>
+                  {Characters.lauren.name.toUpperCase()}
+                </Text>
+                <View style={[styles.yellChip, { borderColor: theme.colors.emsBlue }]}>
+                  <Text style={styles.yell}>RAWR!</Text>
+                </View>
               </Animated.View>
-            </View>
-            <Image
-              source={Characters.lee.image}
-              resizeMode="contain"
-              style={{ width: leeW, height: portraitH }}
-            />
-          </View>
-        </Animated.View>
+              <Image
+                source={LAUREN_RAWR}
+                resizeMode="contain"
+                style={{ width: portraitW, height: portraitH }}
+              />
+            </Animated.View>
+          </>
+        ) : null}
       </View>
     </Modal>
   );
@@ -114,48 +126,30 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(2, 8, 16, 0.72)',
-    justifyContent: 'flex-end',
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingBottom: 24,
   },
   leftPanel: {
     position: 'absolute',
-    left: 0,
-    bottom: 24,
-    overflow: 'hidden',
-    paddingLeft: 2,
+    left: 4,
+    bottom: 20,
+    alignItems: 'flex-start',
+    gap: 6,
   },
   rightPanel: {
     position: 'absolute',
-    right: 0,
-    bottom: 24,
-    overflow: 'hidden',
-    paddingRight: 2,
-  },
-  leftRow: {
-    flexDirection: 'row',
+    right: 4,
+    bottom: 20,
     alignItems: 'flex-end',
+    gap: 6,
   },
-  rightRow: {
-    flexDirection: 'row',
+  bubbleLeft: {
+    alignItems: 'flex-start',
+    gap: 4,
+    maxWidth: 140,
+  },
+  bubbleRight: {
     alignItems: 'flex-end',
-    justifyContent: 'flex-end',
-  },
-  copy: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    paddingBottom: 28,
-    paddingRight: 8,
-    gap: 8,
-  },
-  copyRight: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    alignItems: 'flex-end',
-    paddingBottom: 28,
-    paddingLeft: 8,
-    gap: 8,
+    gap: 4,
+    maxWidth: 140,
   },
   name: {
     fontFamily: 'IBMPlexMonoBold',
@@ -163,18 +157,17 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
   },
   yellChip: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(2, 10, 18, 0.92)',
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1.5,
   },
   yell: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',
-    fontSize: fs(42),
-    letterSpacing: 3,
-    lineHeight: fs(44),
+    fontSize: fs(34),
+    letterSpacing: 2,
+    lineHeight: fs(36),
   },
 });

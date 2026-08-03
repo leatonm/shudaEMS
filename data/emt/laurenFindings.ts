@@ -154,8 +154,7 @@ export function buildLaurenExchange(
       return {
         studentLine: 'Medic enroute to the scene.',
         laurenLines: [
-          'Medic is rolling to your location.',
-          'If you need them later, they will arrive sooner.',
+          `Medic is enroute — about ${call.distanceMiles} minutes away.`,
         ],
       };
     case 'resource_als_standby':
@@ -163,34 +162,38 @@ export function buildLaurenExchange(
         studentLine: 'Medic standing by.',
         laurenLines: [
           'Medic is standing by.',
-          'They can be brought in faster if you upgrade them later.',
+          'If you need them later, they will arrive sooner.',
         ],
       };
     case 'resource_pd_enroute':
       return {
         studentLine: 'Law enroute to the scene.',
         laurenLines: [
-          'Law is enroute.',
-          'They will be closer if you need them again later.',
+          `Law is enroute — about ${call.distanceMiles} minutes away.`,
         ],
       };
     case 'resource_pd_standby':
       return {
         studentLine: 'Law standing by.',
-        laurenLines: ['Law is standing by.'],
+        laurenLines: [
+          'Law is standing by.',
+          'If you need them later, they will arrive sooner.',
+        ],
       };
     case 'resource_fire_enroute':
       return {
         studentLine: 'Fire enroute to the scene.',
         laurenLines: [
-          'Fire is enroute.',
-          'They will arrive sooner if requested again later.',
+          `Fire is enroute — about ${call.distanceMiles} minutes away.`,
         ],
       };
     case 'resource_fire_standby':
       return {
         studentLine: 'Fire standing by.',
-        laurenLines: ['Fire is standing by.'],
+        laurenLines: [
+          'Fire is standing by.',
+          'If you need them later, they will arrive sooner.',
+        ],
       };
     case 'traffic_control':
       return {
@@ -470,6 +473,14 @@ export function buildLaurenExchange(
         studentLine: "I'd like to select equipment before arrival.",
         laurenLines: [
           'Consider airway bag, oxygen, monitor, and any call-specific gear.',
+        ],
+      };
+    case 'ask_unclear':
+      return {
+        studentLine: '…',
+        laurenLines: [
+          "I didn't catch a clear action there.",
+          'Try something like a vital, BSI, scene safety, or an intervention.',
         ],
       };
     case 'review_protocols':

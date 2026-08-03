@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Image,
   type ImageSourcePropType,
   Modal,
-  Pressable,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -18,15 +17,16 @@ import { theme } from '@/constants/theme';
 import {
   type AlsFlashMode,
   type ResourceCrew,
-  leeAlsLines,
   resourceCallsign,
+  resourceEnrouteLines,
+  leeAlsLines,
 } from '@/lib/characterDialogue';
 
 interface ResourceFlashProps {
   visible: boolean;
   crew: ResourceCrew;
   mode?: AlsFlashMode;
-  /** Acknowledge the short radio flash. */
+  /** Acknowledge / clear after the flash (auto for enroute). */
   onConfirm: () => void;
 }
 
@@ -36,94 +36,128 @@ const CREW_ACCENT: Record<ResourceCrew, string> = {
   pd: theme.colors.emsBlue,
 };
 
-/** Right-side resource flash — Lee for ALS; Fire/PD text-only until art lands. */
+const HOLD_MS = 2000;
+const EXIT_MS = 200;
+
+function linesFor(crew: ResourceCrew, mode: AlsFlashMode): string[] {
+  if (mode === 'enroute') return resourceEnrouteLines(crew);
+  return leeAlsLines('cancel');
+}
+
+/**
+ * Right-side resource radio flash.
+ * Enroute: auto "Copy. / En route." then slides out — no tap required.
+ */
 export function ResourceFlash({
   visible,
   crew,
   mode = 'enroute',
   onConfirm,
 }: ResourceFlashProps) {
-  const [lines, setLines] = useState<string[]>([]);
-  const [flashKey, setFlashKey] = useState(0);
+  const [shown, setShown] = useState<{
+    crew: ResourceCrew;
+    mode: AlsFlashMode;
+    lines: string[];
+  } | null>(null);
+  const [panelIn, setPanelIn] = useState(false);
+  const onConfirmRef = useRef(onConfirm);
+  onConfirmRef.current = onConfirm;
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { width, height } = useWindowDimensions();
-  const portraitH = Math.min(280, Math.round(height * 0.42));
+
+  const portraitH = Math.min(300, Math.round(height * 0.44));
   const portraitW = Math.round(portraitH * (560 / 705));
   const textPad = Math.round(portraitH * 0.12);
   const panelW = Math.min(440, Math.round(width * 0.94));
-  const cancel = mode === 'cancel';
-  const accent = CREW_ACCENT[crew];
+  const accent = shown ? CREW_ACCENT[shown.crew] : CREW_ACCENT[crew];
   const image: ImageSourcePropType | null =
-    crew === 'als' ? Characters.lee.image : null;
+    shown?.crew === 'als' ? Characters.lee.image : null;
 
   useEffect(() => {
-    if (!visible) return;
-    if (crew === 'als') {
-      setLines(leeAlsLines(mode));
-    } else if (cancel) {
-      setLines(
-        crew === 'fire'
-          ? ['Engine copy.', 'Standing down.']
-          : ['PD copy.', "We're clear."]
-      );
-    } else {
-      setLines(
-        crew === 'fire'
-          ? ['Engine copy.', 'En route.']
-          : ['PD copy.', 'En route.']
-      );
+    const clearTimers = () => {
+      if (holdTimer.current) clearTimeout(holdTimer.current);
+      if (exitTimer.current) clearTimeout(exitTimer.current);
+      holdTimer.current = null;
+      exitTimer.current = null;
+    };
+
+    if (!visible) {
+      clearTimers();
+      setPanelIn(false);
+      exitTimer.current = setTimeout(() => setShown(null), EXIT_MS);
+      return () => clearTimers();
     }
-    setFlashKey((k) => k + 1);
+
+    clearTimers();
+    const next = { crew, mode, lines: linesFor(crew, mode) };
+    setShown(next);
+    setPanelIn(true);
+
+    // Enroute auto-acks — no COPY tap.
+    if (mode === 'enroute') {
+      holdTimer.current = setTimeout(() => {
+        setPanelIn(false);
+        exitTimer.current = setTimeout(() => {
+          setShown(null);
+          onConfirmRef.current();
+        }, EXIT_MS);
+      }, HOLD_MS);
+    }
+
+    return () => clearTimers();
   }, [visible, mode, crew]);
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={() => {}}>
-      <View style={styles.backdrop}>
-        <Animated.View
-          key={flashKey}
-          entering={FadeInRight.springify().damping(16).stiffness(160)}
-          exiting={FadeOutRight.duration(160)}
-          style={[styles.panel, { width: panelW }]}
-        >
-          <LinearGradient
-            colors={['transparent', 'rgba(2, 8, 16, 0.55)', 'rgba(2, 8, 16, 0.9)']}
-            locations={[0, 0.3, 1]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-          />
-          <View style={styles.row}>
-            <View style={[styles.copy, { paddingBottom: image ? textPad : 12 }]}>
-              <View style={[styles.callsignChip, { borderColor: accent, backgroundColor: `${accent}22` }]}>
-                <Text style={[styles.callsign, { color: accent }]}>
-                  {resourceCallsign(crew)}
-                </Text>
-              </View>
-              {lines.map((line, i) => (
-                <Animated.View
-                  key={`${flashKey}-${line}-${i}`}
-                  entering={FadeIn.delay(100 + i * 180)}
-                  style={styles.lineChip}
+    <Modal visible={!!shown} transparent animationType="none" onRequestClose={onConfirm}>
+      <View style={styles.backdrop} pointerEvents="box-none">
+        {panelIn && shown ? (
+          <Animated.View
+            key={`${shown.crew}-${shown.mode}`}
+            entering={FadeInRight.springify().damping(16).stiffness(160)}
+            exiting={FadeOutRight.duration(EXIT_MS)}
+            style={[styles.panel, { width: panelW }]}
+          >
+            <LinearGradient
+              colors={['transparent', 'rgba(2, 8, 16, 0.55)', 'rgba(2, 8, 16, 0.9)']}
+              locations={[0, 0.3, 1]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
+            <View style={styles.row}>
+              <View style={[styles.copy, { paddingBottom: image ? textPad : 12 }]}>
+                <View
+                  style={[
+                    styles.callsignChip,
+                    { borderColor: accent, backgroundColor: `${accent}22` },
+                  ]}
                 >
-                  <Text style={styles.line}>{line}</Text>
-                </Animated.View>
-              ))}
-
-              <Animated.View entering={FadeIn.delay(420)}>
-                <Pressable style={[styles.ackBtn, { borderColor: accent }]} onPress={onConfirm}>
-                  <Text style={[styles.ackText, { color: accent }]}>COPY</Text>
-                </Pressable>
-              </Animated.View>
+                  <Text style={[styles.callsign, { color: accent }]}>
+                    {resourceCallsign(shown.crew)}
+                  </Text>
+                </View>
+                {shown.lines.map((line, i) => (
+                  <Animated.View
+                    key={`${shown.crew}-${i}-${line}`}
+                    entering={FadeIn.delay(80 + i * 140)}
+                    style={styles.lineChip}
+                  >
+                    <Text style={styles.line}>{line}</Text>
+                  </Animated.View>
+                ))}
+              </View>
+              {image ? (
+                <Image
+                  source={image}
+                  resizeMode="contain"
+                  style={{ width: portraitW, height: portraitH }}
+                />
+              ) : null}
             </View>
-            {image ? (
-              <Image
-                source={image}
-                resizeMode="contain"
-                style={{ width: portraitW, height: portraitH }}
-              />
-            ) : null}
-          </View>
-        </Animated.View>
+          </Animated.View>
+        ) : null}
       </View>
     </Modal>
   );
@@ -149,7 +183,7 @@ export function AlsFlash(props: {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(2, 8, 16, 0.78)',
+    backgroundColor: 'rgba(2, 8, 16, 0.55)',
     justifyContent: 'flex-end',
     alignItems: 'flex-end',
     paddingBottom: 20,
@@ -199,18 +233,5 @@ const styles = StyleSheet.create({
     lineHeight: fs(21),
     fontWeight: '700',
     textAlign: 'right',
-  },
-  ackBtn: {
-    marginTop: 4,
-    borderWidth: 1.5,
-    borderRadius: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 11,
-    backgroundColor: 'rgba(2, 10, 18, 0.85)',
-  },
-  ackText: {
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(13),
-    letterSpacing: 1.4,
   },
 });

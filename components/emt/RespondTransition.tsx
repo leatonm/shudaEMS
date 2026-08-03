@@ -1,6 +1,6 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef } from 'react';
 import { Image, Modal, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
   FadeIn,
@@ -21,7 +21,7 @@ import { Characters } from '@/constants/characters';
 import { fs } from '@/constants/layout';
 import { theme } from '@/constants/theme';
 
-const DRIVE_MS = 2700;
+const DRIVE_MS = 3200;
 
 /**
  * Full-screen flare when the student hits RESPOND —
@@ -44,9 +44,10 @@ export function RespondTransition({
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
-  const ambulanceW = Math.round(width * 1.65);
+  const ambulanceW = Math.round(Math.min(width * 0.92, 340));
   const ambulanceH = Math.round(ambulanceW * 0.58);
-  const roadTop = height * 0.38;
+  // Keep the road lower so top-left CAD notes don't cover the pass-by.
+  const roadTop = height * 0.52;
 
   useEffect(() => {
     if (!visible) {
@@ -204,7 +205,7 @@ export function RespondTransition({
           </View>
         </Animated.View>
 
-        <View style={styles.stage}>
+        <View style={styles.stage} pointerEvents="none">
           <Animated.View entering={FadeInDown.delay(40).springify().damping(16)} style={styles.copyBlock}>
             <Text style={styles.kicker}>DISPATCH ACK · CHANNEL 1</Text>
             <Text style={styles.unit}>{unit}</Text>
@@ -334,24 +335,26 @@ const styles = StyleSheet.create({
     right: 0,
   },
   copyBlock: {
-    marginTop: 56,
-    paddingHorizontal: 22,
-    alignItems: 'center',
-    gap: 6,
+    position: 'absolute',
+    top: 44,
+    left: 14,
+    maxWidth: 220,
+    alignItems: 'flex-start',
+    gap: 4,
     zIndex: 5,
   },
   kicker: {
     color: theme.colors.emsBlue,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(10),
-    letterSpacing: 2,
+    fontSize: fs(9),
+    letterSpacing: 1.6,
   },
   unit: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',
-    fontSize: fs(52),
-    letterSpacing: 1.5,
-    lineHeight: fs(54),
+    fontSize: fs(36),
+    letterSpacing: 1.2,
+    lineHeight: fs(38),
     textShadowColor: 'rgba(0, 229, 255, 0.35)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 12,
@@ -359,59 +362,60 @@ const styles = StyleSheet.create({
   line: {
     color: theme.colors.accentLight,
     fontFamily: 'IBMPlexMono',
-    fontSize: fs(14),
-    letterSpacing: 0.6,
-    marginTop: 2,
+    fontSize: fs(12),
+    letterSpacing: 0.5,
+    marginTop: 1,
   },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 12,
+    gap: 6,
+    marginTop: 8,
     borderWidth: 1.5,
     borderColor: theme.colors.critical,
     borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     backgroundColor: 'rgba(255, 45, 85, 0.12)',
   },
   liveDot: {
-    width: 8,
-    height: 8,
+    width: 7,
+    height: 7,
     borderRadius: 4,
     backgroundColor: theme.colors.critical,
   },
   status: {
     color: theme.colors.critical,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(12),
-    letterSpacing: 1.6,
+    fontSize: fs(10),
+    letterSpacing: 1.4,
   },
   radioStack: {
     width: '100%',
-    marginTop: 16,
-    gap: 8,
+    marginTop: 10,
+    gap: 6,
   },
   radioBeat: {
-    backgroundColor: 'rgba(5, 12, 20, 0.92)',
+    backgroundColor: 'rgba(5, 12, 20, 0.88)',
     borderLeftWidth: 3,
     borderLeftColor: theme.colors.accent,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 1,
   },
   radioLabel: {
     color: theme.colors.accent,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(9),
-    letterSpacing: 1.4,
+    fontSize: fs(8),
+    letterSpacing: 1.2,
   },
   radioText: {
     color: theme.colors.text,
     fontFamily: 'IBMPlexMono',
-    fontSize: fs(12),
-    letterSpacing: 0.3,
+    fontSize: fs(11),
+    letterSpacing: 0.2,
+    lineHeight: fs(14),
   },
   road: {
     position: 'absolute',
@@ -434,7 +438,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     position: 'absolute',
-    bottom: 44,
+    bottom: 28,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -443,7 +447,7 @@ const styles = StyleSheet.create({
   footerText: {
     color: theme.colors.textMuted,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(10),
-    letterSpacing: 1.4,
+    fontSize: fs(9),
+    letterSpacing: 1.2,
   },
 });

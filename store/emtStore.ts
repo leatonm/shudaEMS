@@ -58,6 +58,8 @@ export interface LaurenFlashItem {
   choices?: Array<{ id: string; label: string; actionId: string }>;
   /** Coach = full; Standard = small gesture; Exam = minimal. */
   gesture?: 'full' | 'gesture' | 'minimal';
+  /** Auto-dismiss without OK (e.g. enroute ETA before unit radio flash). */
+  autoDismiss?: boolean;
 }
 
 type ResourceStage = 'enroute' | 'standby';
@@ -744,9 +746,23 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       ? applyVitals(state.vitals, fx.vitalsPatch)
       : state.vitals;
 
-    const nextCompleted = state.completedActions.includes(actionId)
-      ? state.completedActions
-      : [...state.completedActions, actionId];
+    const nextCompleted = (() => {
+      let list = state.completedActions.includes(actionId)
+        ? [...state.completedActions]
+        : [...state.completedActions, actionId];
+      // Enroute also counts as the matching Resources menu request.
+      const stage = /^resource_(als|fire|pd)_enroute$/.exec(actionId);
+      if (stage) {
+        const requestId =
+          stage[1] === 'als'
+            ? 'request_als'
+            : stage[1] === 'fire'
+              ? 'request_fire'
+              : 'request_pd';
+        if (!list.includes(requestId)) list = [...list, requestId];
+      }
+      return list;
+    })();
 
     const nextAbcde = fx.abcdeCompleted ?? state.abcdeCompleted;
 
@@ -805,12 +821,14 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
         : [...state.laurenFlashQueue];
 
     if (exchange.laurenLines.length) {
+      const enrouteEta = /^resource_(als|fire|pd)_enroute$/.test(actionId);
       baseQueue.push({
         id: `flash-${actionId}-${at}`,
         // Button clicks already show the ask — Lauren popup is reply-only.
         lines: exchange.laurenLines,
         choices: exchange.followUps,
         gesture: laurenGestureLevel(state.difficulty),
+        autoDismiss: enrouteEta,
       });
     }
 

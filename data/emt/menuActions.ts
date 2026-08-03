@@ -150,6 +150,16 @@ export function resolveMenuAction(
   const already = ctx.completedActions.includes(actionId);
   const label = catalogName(actionId);
 
+  if (actionId === 'ask_unclear') {
+    return {
+      label: 'Ask',
+      message: 'No matching action — Lauren asked for clarification.',
+      scoreDelta: 0,
+      severity: 'neutral',
+      skill: 'communication',
+    };
+  }
+
   if (actionId === 'begin_handoff') {
     const ready = !!ctx.transportPriority && !!ctx.destination;
     return {
@@ -248,13 +258,15 @@ export function resolveMenuAction(
       label: `${crew.toUpperCase()} ${mode}`,
       message:
         mode === 'enroute'
-          ? `${crew.toUpperCase()} staged enroute — will arrive sooner if needed later.`
-          : `${crew.toUpperCase()} standing by.`,
+          ? `${crew.toUpperCase()} enroute — about ${ctx.call.distanceMiles} minutes away.`
+          : `${crew.toUpperCase()} standing by — if you need them later, they will arrive sooner.`,
       scoreDelta: already ? 0 : 8,
       severity: 'good',
       skill: crew === 'als' ? 'communication' : 'scene_safety',
       safetyActions,
       treatments,
+      // Unit radio flash after Lauren's ETA — enroute only.
+      resourceFlash: mode === 'enroute' ? crew : undefined,
     };
   }
 

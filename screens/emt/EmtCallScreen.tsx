@@ -22,7 +22,6 @@ import {
   type ActionMenuNode,
   type ActionMenuRoot,
 } from '@/data/emt/actionMenu';
-import { showActionTips } from '@/data/emt/difficulty';
 import { getNremtStage } from '@/data/emt/nremtFlow';
 import type { EmtCall } from '@/data/emt/types';
 import { useEmtStore } from '@/store/emtStore';
@@ -58,8 +57,7 @@ export default function EmtCallScreen() {
   const [askText, setAskText] = useState('');
   const [rawrVisible, setRawrVisible] = useState(false);
   const [elapsed, setElapsed] = useState('00:00');
-  const [cadExpanded, setCadExpanded] = useState(true);
-  const tips = showActionTips(difficulty);
+  const [cadExpanded, setCadExpanded] = useState(false);
 
   const activeLauren = laurenFlashQueue[0] ?? null;
 
@@ -155,13 +153,15 @@ export default function EmtCallScreen() {
   const interpretAsk = () => {
     const q = askText.trim().toLowerCase();
     if (!q) return;
-    // Easter egg — case ignored via toLowerCase above
-    if (q === 'the world rawr') {
+
+    // Easter egg — "rawr" or "the world rawr"
+    if (/\brawr\b/.test(q)) {
       setAskOpen(false);
       setAskText('');
       setRawrVisible(true);
       return;
     }
+
     const map: Array<[RegExp, string]> = [
       [/blood pressure|bp\b/, 'vital_bp'],
       [/pulse(?! ox)|heart rate|\bhr\b/, 'vital_pulse'],
@@ -186,11 +186,12 @@ export default function EmtCallScreen() {
       [/reassess|update/, 'patient_update'],
     ];
     const hit = map.find(([re]) => re.test(q));
+    setAskText('');
     if (hit) {
       act(hit[1]);
       return;
     }
-    if (tips) act('consider_resources');
+    act('ask_unclear');
   };
 
   const priorityColor = priorityColors[call.priority] ?? theme.colors.emsBlue;
@@ -306,14 +307,6 @@ export default function EmtCallScreen() {
                 </>
               ) : (
                 <View style={styles.subMenu}>
-                  <PressScale
-                    onPress={() => {
-                      if (path.length) setPath((p) => p.slice(0, -1));
-                      else setRoot(null);
-                    }}
-                  >
-                    <Text style={styles.back}>‹ BACK</Text>
-                  </PressScale>
                   <Text style={styles.prompt}>{breadcrumb}</Text>
                   {nodes.map((node) => (
                     <PressScale
@@ -343,11 +336,33 @@ export default function EmtCallScreen() {
 
         {onCall ? (
           <View style={styles.bottomBar}>
-            <ShiftButton
-              label={stageInfo.advanceLabel}
-              onPress={advanceNremtStage}
-              accentColor={theme.colors.emsBlue}
-            />
+            <View style={styles.bottomRow}>
+              <PressScale
+                disabled={!root}
+                onPress={() => {
+                  if (!root) return;
+                  if (path.length) setPath((p) => p.slice(0, -1));
+                  else setRoot(null);
+                }}
+                style={[styles.menuBackBtn, !root && styles.menuBackBtnInactive]}
+              >
+                <Text
+                  style={[
+                    styles.menuBackText,
+                    !root && styles.menuBackTextInactive,
+                  ]}
+                >
+                  ‹ BACK
+                </Text>
+              </PressScale>
+              <View style={styles.advanceWrap}>
+                <ShiftButton
+                  label={stageInfo.advanceLabel}
+                  onPress={advanceNremtStage}
+                  accentColor={theme.colors.emsBlue}
+                />
+              </View>
+            </View>
           </View>
         ) : null}
       </View>
@@ -431,134 +446,136 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.background },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   muted: { color: theme.colors.textMuted },
-  shell: { flex: 1, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 8 },
+  shell: { flex: 1, paddingHorizontal: 10, paddingTop: 4, paddingBottom: 6 },
   cadStrip: {
     backgroundColor: 'rgba(8,18,28,0.92)',
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1.5,
-    padding: 12,
-    marginBottom: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 6,
   },
   cadTop: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   cadUnit: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',
-    fontSize: fs(24),
+    fontSize: fs(18),
     letterSpacing: 0.8,
     flex: 1,
   },
   cadPriority: {
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(12),
+    fontSize: fs(11),
     letterSpacing: 1,
   },
   cadElapsed: {
     color: theme.colors.textMuted,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(11),
+    fontSize: fs(10),
   },
-  cadToggle: { color: theme.colors.textMuted, fontSize: fs(14) },
+  cadToggle: { color: theme.colors.textMuted, fontSize: fs(12) },
   cadComplaint: {
     color: theme.colors.text,
-    fontSize: fs(15),
-    lineHeight: fs(20),
+    fontSize: fs(13),
+    lineHeight: fs(17),
     fontWeight: '700',
   },
-  cadMeta: { marginTop: 8, gap: 4 },
+  cadMeta: { marginTop: 6, gap: 2 },
   cadMetaText: {
     color: theme.colors.textMuted,
-    fontSize: fs(12),
-    lineHeight: fs(16),
+    fontSize: fs(11),
+    lineHeight: fs(15),
   },
   cadMetaMuted: {
     color: theme.colors.textMuted,
-    fontSize: fs(11),
-    marginTop: 4,
+    fontSize: fs(10),
+    marginTop: 2,
     opacity: 0.85,
   },
   status: {
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: 12,
-    padding: 10,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
     backgroundColor: theme.colors.surface,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   statusTitle: {
     color: theme.colors.textMuted,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(9),
-    letterSpacing: 1.3,
-    marginBottom: 8,
+    fontSize: fs(8),
+    letterSpacing: 1.1,
+    marginBottom: 5,
   },
-  statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
   chip: {
     backgroundColor: theme.colors.backgroundAlt,
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    minWidth: 64,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    minWidth: 52,
   },
   chipUnknown: { opacity: 0.75 },
   chipLabel: {
     color: theme.colors.textMuted,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(9),
+    fontSize: fs(8),
   },
   chipValue: {
     color: theme.colors.text,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(15),
-    marginTop: 2,
+    fontSize: fs(12),
+    marginTop: 1,
   },
-  chipValueUnknown: { color: theme.colors.textMuted, fontSize: fs(13) },
+  chipValueUnknown: { color: theme.colors.textMuted, fontSize: fs(11) },
   phaseScroll: { flex: 1 },
-  phaseContent: { paddingBottom: 12 },
-  phaseBlock: { gap: 8 },
+  phaseContent: { paddingBottom: 8 },
+  phaseBlock: { gap: 6 },
   prompt: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',
-    fontSize: fs(24),
-    letterSpacing: 0.6,
+    fontSize: fs(18),
+    letterSpacing: 0.5,
     marginBottom: 2,
   },
-  rootGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  rootGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   rootChip: {
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
     minWidth: '46%',
     flexGrow: 1,
-    gap: 4,
+    gap: 2,
   },
   askChip: { borderColor: theme.colors.emsBlue },
   rootChipText: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',
-    fontSize: fs(20),
+    fontSize: fs(17),
   },
   rootBlurb: {
     color: theme.colors.textMuted,
-    fontSize: fs(11),
-    lineHeight: fs(14),
+    fontSize: fs(10),
+    lineHeight: fs(13),
   },
   actionBtn: {
     backgroundColor: theme.colors.surface,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -569,24 +586,18 @@ const styles = StyleSheet.create({
   },
   actionLabel: {
     color: theme.colors.text,
-    fontSize: fs(15),
+    fontSize: fs(14),
     fontWeight: '700',
     flex: 1,
   },
   doneMark: {
     color: theme.colors.success,
-    fontSize: fs(16),
+    fontSize: fs(15),
     fontWeight: '800',
   },
-  more: { color: theme.colors.emsBlue, fontSize: fs(18) },
-  back: {
-    color: theme.colors.emsBlue,
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(12),
-    marginBottom: 4,
-  },
-  subMenu: { gap: 6 },
-  followUps: { gap: 6 },
+  more: { color: theme.colors.emsBlue, fontSize: fs(16) },
+  subMenu: { gap: 5 },
+  followUps: { gap: 5 },
   askBox: { gap: 8, marginTop: 4 },
   askInput: {
     borderWidth: 1,
@@ -602,7 +613,39 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
-    gap: 6,
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 8,
+  },
+  menuBackBtn: {
+    minWidth: 88,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.emsBlue,
+    backgroundColor: theme.colors.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    marginBottom: theme.spacing.sm,
+  },
+  menuBackBtnInactive: {
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    opacity: 0.45,
+  },
+  menuBackText: {
+    color: theme.colors.emsBlue,
+    fontFamily: 'IBMPlexMonoBold',
+    fontSize: fs(13),
+    letterSpacing: 1,
+  },
+  menuBackTextInactive: {
+    color: theme.colors.textMuted,
+  },
+  advanceWrap: {
+    flex: 1,
   },
   bottomHint: {
     color: theme.colors.textMuted,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Image,
   Modal,
@@ -24,6 +24,8 @@ export interface LaurenFlashPayload {
   choices?: Array<{ id: string; label: string; actionId: string }>;
   /** Coach = full; Standard = small gesture; Exam = minimal. */
   gesture?: 'full' | 'gesture' | 'minimal';
+  /** Auto-dismiss without requiring OK. */
+  autoDismiss?: boolean;
 }
 
 interface LaurenFlashProps {
@@ -32,109 +34,179 @@ interface LaurenFlashProps {
   onChoose?: (actionId: string) => void;
 }
 
-/** Darkened slide-in — Lauren delivers findings / patient updates. Tap OK to continue. */
+const EXIT_MS = 200;
+const AUTO_HOLD_MS = 2200;
+
+/**
+ * Darkened slide-in — Lauren delivers findings / patient updates.
+ * Content is snapshotted while open so dismiss never flashes the next reply.
+ */
 export function LaurenFlash({ flash, onConfirm, onChoose }: LaurenFlashProps) {
-  const visible = !!flash;
-  const [flashKey, setFlashKey] = useState(0);
+  const [shown, setShown] = useState<LaurenFlashPayload | null>(null);
+  const [panelIn, setPanelIn] = useState(false);
+  const leavingRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onConfirmRef = useRef(onConfirm);
+  onConfirmRef.current = onConfirm;
   const { width, height } = useWindowDimensions();
-  const gesture = flash?.gesture ?? 'full';
+
+  const gesture = shown?.gesture ?? 'full';
   const compact = gesture !== 'full';
   const portraitH = Math.min(
-    compact ? 200 : 300,
-    Math.round(height * (compact ? 0.28 : 0.44))
+    compact ? 240 : 360,
+    Math.round(height * (compact ? 0.34 : 0.52))
   );
   const portraitW = Math.round(portraitH * (560 / 858));
   const textPad = Math.round(portraitH * (compact ? 0.06 : 0.1));
-  const panelW = Math.min(440, Math.round(width * 0.94));
+  const panelW = Math.min(460, Math.round(width * 0.94));
   const accent = theme.colors.emsBlue;
-  const choices = flash?.choices ?? [];
+  const choices = shown?.choices ?? [];
+  const autoDismiss = Boolean(shown?.autoDismiss) && choices.length === 0;
 
   useEffect(() => {
-    if (!visible) return;
-    setFlashKey((k) => k + 1);
-  }, [visible, flash?.id]);
+    if (flash) {
+      if (leavingRef.current) return;
+      if (!shown || shown.id !== flash.id) {
+        setShown(flash);
+        setPanelIn(true);
+      }
+      return;
+    }
+    // Parent cleared the flash (e.g. another overlay took over).
+    if (shown && !leavingRef.current) {
+      leavingRef.current = true;
+      setPanelIn(false);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        setShown(null);
+        leavingRef.current = false;
+      }, EXIT_MS);
+    }
+  }, [flash, shown]);
+
+  useEffect(() => {
+    if (!shown || !autoDismiss || leavingRef.current) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      if (leavingRef.current) return;
+      leavingRef.current = true;
+      setPanelIn(false);
+      timerRef.current = setTimeout(() => {
+        leavingRef.current = false;
+        setShown(null);
+        onConfirmRef.current();
+      }, EXIT_MS);
+    }, AUTO_HOLD_MS);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [shown, autoDismiss]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const closeThen = (after: () => void) => {
+    if (leavingRef.current || !shown) return;
+    leavingRef.current = true;
+    setPanelIn(false);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      leavingRef.current = false;
+      setShown(null);
+      after();
+    }, EXIT_MS);
+  };
+
+  const modalVisible = !!shown;
 
   return (
     <Modal
-      visible={visible}
+      visible={modalVisible}
       transparent
-      animationType="fade"
+      animationType="none"
       onRequestClose={() => {
-        if (!choices.length) onConfirm();
+        if (!choices.length) closeThen(onConfirm);
       }}
     >
       <View style={styles.backdrop}>
-        <Animated.View
-          key={flashKey}
-          entering={FadeInRight.springify().damping(16).stiffness(160)}
-          exiting={FadeOutRight.duration(160)}
-          style={[styles.panel, { width: panelW }]}
-        >
-          <LinearGradient
-            colors={['transparent', 'rgba(2, 8, 16, 0.55)', 'rgba(2, 8, 16, 0.92)']}
-            locations={[0, 0.28, 1]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-          />
-          <View style={styles.row}>
-            <View style={[styles.copy, { paddingBottom: textPad }]}>
-              <View style={[styles.callsignChip, { borderColor: accent }]}>
-                <Text style={[styles.callsign, { color: accent }]}>
-                  {Characters.lauren.name.toUpperCase()} · {Characters.lauren.shortRole}
-                </Text>
-              </View>
-
-              {flash?.studentLine ? (
-                <Animated.View entering={FadeIn.delay(60)} style={styles.youChip}>
-                  <Text style={styles.youLabel}>YOU</Text>
-                  <Text style={styles.youText}>{flash.studentLine}</Text>
-                </Animated.View>
-              ) : null}
-
-              {(flash?.lines ?? []).map((line, i) => (
-                <Animated.View
-                  key={`${flashKey}-${i}`}
-                  entering={FadeIn.delay(120 + i * 160)}
-                  style={styles.lineChip}
-                >
-                  <Text style={styles.line}>{line}</Text>
-                </Animated.View>
-              ))}
-
-              {choices.length > 0 ? (
-                <Animated.View entering={FadeIn.delay(360)} style={styles.choiceCol}>
-                  {choices.map((choice) => (
-                    <Pressable
-                      key={choice.id}
-                      style={[styles.choiceBtn, { borderColor: accent }]}
-                      onPress={() => onChoose?.(choice.actionId)}
-                    >
-                      <Text style={[styles.choiceText, { color: accent }]}>
-                        {choice.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </Animated.View>
-              ) : (
-                <Animated.View entering={FadeIn.delay(360)}>
-                  <Pressable
-                    style={[styles.ackBtn, { borderColor: accent }]}
-                    onPress={onConfirm}
-                  >
-                    <Text style={[styles.ackText, { color: accent }]}>OK</Text>
-                  </Pressable>
-                </Animated.View>
-              )}
-            </View>
-            <Image
-              source={Characters.lauren.image}
-              resizeMode="contain"
-              style={{ width: portraitW, height: portraitH }}
+        {panelIn && shown ? (
+          <Animated.View
+            key={shown.id}
+            entering={FadeInRight.springify().damping(16).stiffness(160)}
+            exiting={FadeOutRight.duration(EXIT_MS)}
+            style={[styles.panel, { width: panelW }]}
+          >
+            <LinearGradient
+              colors={['transparent', 'rgba(2, 8, 16, 0.55)', 'rgba(2, 8, 16, 0.92)']}
+              locations={[0, 0.28, 1]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
             />
-          </View>
-        </Animated.View>
+            <View style={styles.row}>
+              <View style={[styles.copy, { paddingBottom: textPad }]}>
+                <View style={[styles.callsignChip, { borderColor: accent }]}>
+                  <Text style={[styles.callsign, { color: accent }]}>
+                    {Characters.lauren.name.toUpperCase()} · {Characters.lauren.shortRole}
+                  </Text>
+                </View>
+
+                {shown.studentLine ? (
+                  <Animated.View entering={FadeIn.delay(60)} style={styles.youChip}>
+                    <Text style={styles.youLabel}>YOU</Text>
+                    <Text style={styles.youText}>{shown.studentLine}</Text>
+                  </Animated.View>
+                ) : null}
+
+                {shown.lines.map((line, i) => (
+                  <Animated.View
+                    key={`${shown.id}-${i}`}
+                    entering={FadeIn.delay(120 + i * 160)}
+                    style={styles.lineChip}
+                  >
+                    <Text style={styles.line}>{line}</Text>
+                  </Animated.View>
+                ))}
+
+                {choices.length > 0 ? (
+                  <Animated.View entering={FadeIn.delay(360)} style={styles.choiceCol}>
+                    {choices.map((choice) => (
+                      <Pressable
+                        key={choice.id}
+                        style={[styles.choiceBtn, { borderColor: accent }]}
+                        onPress={() =>
+                          closeThen(() => onChoose?.(choice.actionId))
+                        }
+                      >
+                        <Text style={[styles.choiceText, { color: accent }]}>
+                          {choice.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </Animated.View>
+                ) : autoDismiss ? null : (
+                  <Animated.View entering={FadeIn.delay(360)}>
+                    <Pressable
+                      style={[styles.ackBtn, { borderColor: accent }]}
+                      onPress={() => closeThen(onConfirm)}
+                    >
+                      <Text style={[styles.ackText, { color: accent }]}>OK</Text>
+                    </Pressable>
+                  </Animated.View>
+                )}
+              </View>
+              <Image
+                source={Characters.lauren.image}
+                resizeMode="contain"
+                style={{ width: portraitW, height: portraitH }}
+              />
+            </View>
+          </Animated.View>
+        ) : null}
       </View>
     </Modal>
   );

@@ -35,6 +35,7 @@ interface ShiftButtonProps {
   disabled?: boolean;
   accentColor?: string;
   index?: number;
+  style?: object;
 }
 
 export function ShiftButton({
@@ -44,6 +45,7 @@ export function ShiftButton({
   disabled = false,
   accentColor,
   index = 0,
+  style,
 }: ShiftButtonProps) {
   const tint =
     variant === 'primary'
@@ -62,6 +64,7 @@ export function ShiftButton({
         variant === 'primary' ? styles.primary : styles.secondary,
         tint,
         disabled && styles.disabled,
+        style,
       ]}
     >
       <Text
@@ -114,7 +117,7 @@ const styles = StyleSheet.create({
   },
   button: {
     borderRadius: theme.radius.md,
-    paddingVertical: theme.spacing.md,
+    paddingVertical: 12,
     paddingHorizontal: theme.spacing.lg,
     alignItems: 'center',
     marginBottom: theme.spacing.sm,

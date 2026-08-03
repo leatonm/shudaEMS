@@ -16,6 +16,8 @@ import { categoryColor, theme } from '@/constants/theme';
 import { useEmtStore } from '@/store/emtStore';
 import { useProgressStore } from '@/store/progressStore';
 
+const DEBRIEF_BG = require('../../assets/images/transport.png');
+
 export default function EmtDebriefScreen() {
   const router = useRouter();
   const result = useEmtStore((s) => s.result);
@@ -46,6 +48,7 @@ export default function EmtDebriefScreen() {
   if (!result || !call) {
     return (
       <SafeAreaView style={styles.safe}>
+        <AppBackdrop source={DEBRIEF_BG} tone="danger" />
         <View style={styles.centered}>
           <Text style={styles.muted}>No debrief available.</Text>
           <ShiftButton label="HOME" onPress={handleHome} />
@@ -60,7 +63,7 @@ export default function EmtDebriefScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <AppBackdrop tone={passed ? 'success' : 'danger'} />
+      <AppBackdrop source={DEBRIEF_BG} tone={passed ? 'success' : 'danger'} />
       <ScreenScroll>
         <Animated.Text entering={enterUp(0)} style={styles.header}>
           Debrief

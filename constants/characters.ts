@@ -17,6 +17,13 @@ export const Characters = {
     shortRole: 'ALS',
     image: require('../assets/characters/medic.png') as ImageSourcePropType,
   },
+  ambulance: {
+    id: 'ambulance',
+    name: 'Ambulance',
+    title: 'Unit',
+    shortRole: 'EMS',
+    image: require('../assets/characters/ambulance.png') as ImageSourcePropType,
+  },
   // Fire + Law: add images under assets/characters, then wire ResourceFlash
   // the same way as AlsFlash (enroute / cancel radio lines already stubbed).
 } as const;

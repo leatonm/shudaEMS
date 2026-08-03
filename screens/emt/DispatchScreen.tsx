@@ -1,8 +1,10 @@
+import { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
 
+import { RespondTransition } from '@/components/emt/RespondTransition';
 import { AppBackdrop } from '@/components/ui/AppBackdrop';
 import { ShiftButton } from '@/components/ui/ShiftUI';
 import { enterUp } from '@/components/ui/motion';
@@ -16,6 +18,14 @@ export default function DispatchScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const call = useEmtStore((s) => s.call);
   const acknowledgeDispatch = useEmtStore((s) => s.acknowledgeDispatch);
+  const [transitioning, setTransitioning] = useState(false);
+
+  const finishRespond = useCallback(() => {
+    if (!call) return;
+    acknowledgeDispatch();
+    // Replace dispatch so Back from the call returns to Difficulty.
+    router.replace(`/emt/call/${call.id}` as Href);
+  }, [acknowledgeDispatch, call, router]);
 
   if (!call || call.id !== id) {
     return (
@@ -30,12 +40,6 @@ export default function DispatchScreen() {
 
   const priorityColor = priorityColors[call.priority] ?? theme.colors.emsBlue;
   const catColor = categoryColor(call.category);
-
-  const respond = () => {
-    acknowledgeDispatch();
-    // Replace dispatch so Back from the call returns to Difficulty.
-    router.replace(`/emt/call/${call.id}` as Href);
-  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
@@ -82,11 +86,18 @@ export default function DispatchScreen() {
           <Text style={styles.hint}>Acknowledge and begin response.</Text>
           <ShiftButton
             label="RESPOND"
-            onPress={respond}
+            onPress={() => setTransitioning(true)}
+            disabled={transitioning}
             accentColor={theme.colors.emsBlue}
           />
         </View>
       </View>
+
+      <RespondTransition
+        visible={transitioning}
+        unit={call.unit}
+        onComplete={finishRespond}
+      />
     </SafeAreaView>
   );
 }

@@ -136,7 +136,7 @@ export default function HomeScreen() {
                       <Text style={[styles.rowTitle, { color: accent }]}>
                         {homeCategoryLabel(cat.id)}
                       </Text>
-                      <Text style={styles.rowExamples} numberOfLines={1}>
+                      <Text style={styles.rowExamples} numberOfLines={2}>
                         {cat.examples}
                       </Text>
                     </View>
@@ -421,24 +421,24 @@ const styles = StyleSheet.create({
     gap: 8,
     borderRadius: 12,
     borderWidth: 1.5,
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingLeft: 8,
     paddingRight: 6,
     overflow: 'hidden',
-    minHeight: 64,
+    minHeight: 72,
   },
   rowRandom: {
     borderColor: theme.colors.border,
   },
   rowIcon: {
-    width: 36,
-    height: 36,
+    width: 34,
+    height: 34,
   },
   rowCopy: {
     flex: 1,
     minWidth: 0,
     justifyContent: 'center',
-    paddingRight: 2,
+    paddingRight: 4,
   },
   rowTitle: {
     color: theme.colors.text,
@@ -451,12 +451,13 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
     fontSize: fs(11),
     lineHeight: fs(14),
-    marginTop: 1,
+    marginTop: 2,
     fontWeight: '500',
+    flexShrink: 1,
   },
   rowMascot: {
-    width: 52,
-    height: 52,
+    width: 44,
+    height: 44,
   },
   rowChevron: {
     width: 12,

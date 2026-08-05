@@ -150,21 +150,28 @@ export default function HomeScreen() {
                 </PressScale>
               );
             })}
-          </ScrollView>
 
-          <PressScale onPress={() => pickCategory(null)} style={[styles.rowOuter, styles.randomOuter]}>
-            <LinearGradient
-              colors={['rgba(20,28,36,0.98)', 'rgba(8,14,20,0.99)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.rowRandom, styles.rowRandomCompact]}
+            <PressScale
+              onPress={() => pickCategory(null)}
+              style={[styles.rowOuter, styles.randomOuter]}
             >
-              <Image source={Icons.random} style={styles.randomIcon} resizeMode="contain" />
-              <Text style={styles.randomTitle}>RANDOM</Text>
-              <Text style={styles.randomSub}>Surprise me!</Text>
-              <Image source={Icons.arrowRight} style={styles.rowChevron} />
-            </LinearGradient>
-          </PressScale>
+              <LinearGradient
+                colors={['rgba(20,28,36,0.98)', 'rgba(8,14,20,0.99)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.rowRandom, styles.rowRandomCompact]}
+              >
+                <Image
+                  source={Icons.random}
+                  style={styles.randomIcon}
+                  resizeMode="contain"
+                />
+                <Text style={styles.randomTitle}>RANDOM</Text>
+                <Text style={styles.randomSub}>Surprise me!</Text>
+                <Image source={Icons.arrowRight} style={styles.rowChevron} />
+              </LinearGradient>
+            </PressScale>
+          </ScrollView>
         </View>
 
         <View style={styles.bottomBlock}>
@@ -403,7 +410,8 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: 6,
-    paddingBottom: 4,
+    paddingBottom: 8,
+    flexGrow: 0,
   },
   rowOuter: {
     borderRadius: 12,
@@ -421,7 +429,7 @@ const styles = StyleSheet.create({
     minHeight: 72,
   },
   randomOuter: {
-    marginTop: 6,
+    marginTop: 2,
   },
   rowRandom: {
     borderColor: theme.colors.border,

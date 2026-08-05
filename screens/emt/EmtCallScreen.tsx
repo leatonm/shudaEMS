@@ -26,13 +26,10 @@ import {
   type ActionMenuNode,
   type ActionMenuRoot,
 } from '@/data/emt/actionMenu';
-import { showCallTimer } from '@/data/emt/difficulty';
+import { showCallTimer, isPracticeMode } from '@/data/emt/difficulty';
+import { getSoftConsiderations } from '@/data/emt/laurenCoach';
 import { getNremtStage } from '@/data/emt/nremtFlow';
-import {
-  getStageFocus,
-  recommendedRootForStage,
-  rootRoleBlurb,
-} from '@/data/emt/stageGuide';
+import { recommendedRootForStage } from '@/data/emt/stageGuide';
 import type { EmtCall } from '@/data/emt/types';
 import { useEmtStore } from '@/store/emtStore';
 
@@ -71,6 +68,7 @@ export default function EmtCallScreen() {
   const revealedVitals = useEmtStore((s) => s.revealedVitals);
   const pendingFollowUps = useEmtStore((s) => s.pendingFollowUps);
   const completedActions = useEmtStore((s) => s.completedActions);
+  const treatments = useEmtStore((s) => s.treatments);
   const performMenuAction = useEmtStore((s) => s.performMenuAction);
   const advanceNremtStage = useEmtStore((s) => s.advanceNremtStage);
   const clearFollowUps = useEmtStore((s) => s.clearFollowUps);
@@ -241,25 +239,19 @@ export default function EmtCallScreen() {
     phase === 'history';
   const stageInfo = getNremtStage(nremtStage, call.category);
   const catColor = categoryColor(call.category);
-  const stageFocus = getStageFocus(nremtStage, call, completedActions);
   const recommendedRoot = recommendedRootForStage(nremtStage);
-
-  const runQuickAction = (qa: {
-    label: string;
-    actionId?: string;
-    openRoot?: ActionMenuRoot;
-    openPath?: string[];
-  }) => {
-    // Jump to the folder that owns this option so it is visible.
-    if (qa.openRoot) {
-      setRoot(qa.openRoot);
-      setPath(qa.openPath ?? []);
-      setAskOpen(false);
-    }
-    if (qa.actionId) {
-      act(qa.actionId);
-    }
-  };
+  const practice = isPracticeMode(difficulty);
+  const softTips =
+    practice && onCall
+      ? getSoftConsiderations({
+          completedActions,
+          treatments,
+          nremtStage,
+          activeRoot: askOpen ? 'ask' : root,
+          call,
+          vitals,
+        })
+      : [];
 
   const selectRoot = (id: ActionMenuRoot) => {
     setRoot(id);
@@ -282,26 +274,24 @@ export default function EmtCallScreen() {
         />
 
         <LinearGradient
-          colors={['rgba(0,229,255,0.12)', 'rgba(8,18,28,0.92)']}
+          colors={['rgba(0,229,255,0.1)', 'rgba(8,18,28,0.92)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.status}
         >
           <View style={styles.statusHeader}>
-            <Text style={styles.statusTitle}>
-              NREMT · {stageInfo.title.toUpperCase()}
+            <Text style={styles.statusTitle} numberOfLines={1}>
+              {stageInfo.title.toUpperCase()}
             </Text>
             {showTimer ? (
               <View style={styles.timerChip}>
-                <LiveDot color={theme.colors.critical} size={6} />
+                <LiveDot color={theme.colors.critical} size={5} />
                 <Text style={[styles.timerText, { color: theme.colors.critical }]}>
                   {elapsed}
                 </Text>
               </View>
             ) : (
-              <View style={styles.practiceChip}>
-                <Text style={styles.practiceChipText}>PRACTICE</Text>
-              </View>
+              <Text style={styles.practiceChipText}>PRACTICE</Text>
             )}
           </View>
           <View style={styles.statusRow}>
@@ -339,6 +329,77 @@ export default function EmtCallScreen() {
           </View>
         </LinearGradient>
 
+        {/* Always-horizontal menu strip — same whether a folder is open or not */}
+        {onCall ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.menuStrip}
+            contentContainerStyle={styles.rootTabs}
+          >
+            {ACTION_MENU_ROOTS.map((item) => {
+              const accent = ROOT_ACCENTS[item.id];
+              const active = root === item.id;
+              const recommended = item.id === recommendedRoot;
+              return (
+                <PressScale
+                  key={item.id}
+                  onPress={() => selectRoot(item.id)}
+                  style={styles.rootTabOuter}
+                >
+                  <View
+                    style={[
+                      styles.rootTab,
+                      { borderColor: accent },
+                      active ? { backgroundColor: `${accent}28` } : null,
+                      recommended && !active ? styles.rootTabGuide : null,
+                    ]}
+                  >
+                    <Image
+                      source={ROOT_ICONS[item.id]}
+                      style={styles.rootTabIcon}
+                      resizeMode="contain"
+                    />
+                    <Text style={[styles.rootTabText, { color: accent }]}>
+                      {item.label}
+                    </Text>
+                  </View>
+                </PressScale>
+              );
+            })}
+            <PressScale
+              onPress={() => setAskOpen((v) => !v)}
+              style={styles.rootTabOuter}
+            >
+              <View
+                style={[
+                  styles.rootTab,
+                  { borderColor: ROOT_ACCENTS.ask },
+                  askOpen ? { backgroundColor: `${ROOT_ACCENTS.ask}22` } : null,
+                ]}
+              >
+                <Image
+                  source={ROOT_ICONS.ask}
+                  style={styles.rootTabIcon}
+                  resizeMode="contain"
+                />
+                <Text style={[styles.rootTabText, { color: ROOT_ACCENTS.ask }]}>Ask</Text>
+              </View>
+            </PressScale>
+          </ScrollView>
+        ) : null}
+
+        {onCall && practice && softTips.length > 0 ? (
+          <View style={styles.coachWhisper} accessibilityRole="text">
+            <Text style={styles.coachWhisperKicker}>COACH</Text>
+            {softTips.map((tip) => (
+              <Text key={tip} style={styles.coachWhisperText}>
+                {tip}
+              </Text>
+            ))}
+          </View>
+        ) : null}
+
         <ScrollView
           style={styles.phaseScroll}
           contentContainerStyle={styles.phaseContent}
@@ -346,57 +407,6 @@ export default function EmtCallScreen() {
         >
           {onCall ? (
             <View style={styles.phaseBlock}>
-              <View style={styles.focusBanner} pointerEvents="box-none">
-                <LinearGradient
-                  colors={tintGradient(theme.colors.emsBlue)}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.focusInner, { borderColor: theme.colors.emsBlue }]}
-                >
-                  <Text style={styles.focusKicker}>GUIDE · {stageFocus.title.toUpperCase()}</Text>
-                  <Text style={styles.focusHint}>{stageFocus.hint}</Text>
-                  <Text style={styles.focusAdvance}>{stageFocus.advanceHint}</Text>
-                </LinearGradient>
-              </View>
-
-              {stageFocus.quickActions.length > 0 ? (
-                <View style={styles.quickWrap}>
-                  <Text style={styles.quickLabel}>SUGGESTED (OPTIONAL)</Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.quickRow}
-                  >
-                    {stageFocus.quickActions.map((qa) => {
-                      const isFolder = Boolean(qa.openRoot) && !qa.actionId;
-                      return (
-                        <PressScale
-                          key={`${qa.label}-${qa.actionId ?? qa.openRoot}-${(qa.openPath ?? []).join('.')}`}
-                          onPress={() => runQuickAction(qa)}
-                          style={styles.quickChipOuter}
-                        >
-                          <View
-                            style={[
-                              styles.quickChip,
-                              isFolder ? styles.quickChipFolder : null,
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.quickChipText,
-                                isFolder ? styles.quickChipFolderText : null,
-                              ]}
-                            >
-                              {isFolder ? `${qa.label} ›` : qa.label}
-                            </Text>
-                          </View>
-                        </PressScale>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-              ) : null}
-
               {pendingFollowUps.length > 0 ? (
                 <View style={styles.followUps}>
                   <Text style={styles.prompt}>How do you want to handle this?</Text>
@@ -419,138 +429,15 @@ export default function EmtCallScreen() {
                 </View>
               ) : null}
 
-              {!root ? (
-                <>
-                  <Text style={styles.prompt}>Choose a menu</Text>
-                  <View style={styles.rootGrid}>
-                    {ACTION_MENU_ROOTS.map((item) => {
-                      const accent = ROOT_ACCENTS[item.id];
-                      const recommended = item.id === recommendedRoot;
-                      const blurb = rootRoleBlurb(item.id, nremtStage) || item.blurb;
-                      return (
-                        <PressScale
-                          key={item.id}
-                          onPress={() => selectRoot(item.id)}
-                          style={styles.rootOuter}
-                        >
-                          <LinearGradient
-                            colors={tintGradient(accent)}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={[
-                              styles.rootChip,
-                              { borderColor: accent },
-                              recommended ? styles.rootChipHot : null,
-                            ]}
-                          >
-                            {recommended ? (
-                              <Text style={[styles.rootBadge, { color: accent }]}>GUIDE</Text>
-                            ) : null}
-                            <Image
-                              source={ROOT_ICONS[item.id]}
-                              style={styles.rootIcon}
-                              resizeMode="contain"
-                            />
-                            <Text style={[styles.rootChipText, { color: accent }]}>
-                              {item.label}
-                            </Text>
-                            <Text style={styles.rootBlurb}>{blurb}</Text>
-                          </LinearGradient>
-                        </PressScale>
-                      );
-                    })}
-                  </View>
-
-                  <View style={styles.compactRow}>
-                    <PressScale
-                      onPress={() => setAskOpen((v) => !v)}
-                      style={styles.compactOuter}
-                    >
-                      <LinearGradient
-                        colors={tintGradient(ROOT_ACCENTS.ask)}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={[
-                          styles.compactChip,
-                          { borderColor: ROOT_ACCENTS.ask },
-                          askOpen ? styles.compactChipActive : null,
-                        ]}
-                      >
-                        <Image
-                          source={ROOT_ICONS.ask}
-                          style={styles.compactIcon}
-                          resizeMode="contain"
-                        />
-                        <Text style={[styles.compactText, { color: ROOT_ACCENTS.ask }]}>
-                          Ask
-                        </Text>
-                      </LinearGradient>
-                    </PressScale>
-                  </View>
-                </>
-              ) : (
+              {root ? (
                 <View style={styles.subMenu}>
-                  {/* Switch menus without going back to the grid first */}
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.rootTabs}
-                  >
-                    {ACTION_MENU_ROOTS.map((item) => {
-                      const accent = ROOT_ACCENTS[item.id];
-                      const active = root === item.id;
-                      const recommended = item.id === recommendedRoot;
-                      return (
-                        <PressScale
-                          key={item.id}
-                          onPress={() => selectRoot(item.id)}
-                          style={styles.rootTabOuter}
-                        >
-                          <View
-                            style={[
-                              styles.rootTab,
-                              { borderColor: accent },
-                              active ? { backgroundColor: `${accent}22` } : null,
-                              recommended && !active ? styles.rootTabGuide : null,
-                            ]}
-                          >
-                            <Text style={[styles.rootTabText, { color: accent }]}>
-                              {item.label}
-                            </Text>
-                            {recommended ? (
-                              <Text style={[styles.rootTabGuideLabel, { color: accent }]}>
-                                guide
-                              </Text>
-                            ) : null}
-                          </View>
-                        </PressScale>
-                      );
-                    })}
-                  </ScrollView>
-
-                  <View style={styles.subHeader}>
-                    <Text style={styles.subBreadcrumb}>{breadcrumb}</Text>
-                    <Text style={styles.subHint}>
-                      {root === 'assessment'
-                        ? 'Impression is on this list. Primary / History / Vitals are folders. Treatment is its own menu.'
-                        : root === 'interventions'
-                          ? 'Life threats (O₂, CPR, bleeding, meds) live here — use anytime.'
-                          : rootRoleBlurb(root, nremtStage)}
-                    </Text>
-                  </View>
+                  <Text style={styles.subBreadcrumb}>{breadcrumb}</Text>
                   {nodes.map((node) => {
                     const done =
                       !!node.actionId && completedActions.includes(node.actionId);
                     const accent = done
                       ? theme.colors.success
                       : ROOT_ACCENTS[root] ?? theme.colors.emsBlue;
-                    const suggestPath =
-                      root === stageFocus.openRoot &&
-                      stageFocus.openPath[0] === node.id &&
-                      path.length === 0;
-                    const suggestLeafHere =
-                      !!node.actionId &&
-                      stageFocus.quickActions.some((q) => q.actionId === node.actionId);
                     return (
                       <PressScale
                         key={node.id}
@@ -561,18 +448,9 @@ export default function EmtCallScreen() {
                           colors={tintGradient(accent)}
                           start={{ x: 0, y: 0 }}
                           end={{ x: 1, y: 1 }}
-                          style={[
-                            styles.actionBtn,
-                            { borderColor: accent },
-                            suggestPath || suggestLeafHere ? styles.actionBtnHot : null,
-                          ]}
+                          style={[styles.actionBtn, { borderColor: accent }]}
                         >
-                          <View style={styles.actionCopy}>
-                            <Text style={styles.actionLabel}>{node.label}</Text>
-                            {suggestPath || suggestLeafHere ? (
-                              <Text style={styles.actionSuggest}>Suggested</Text>
-                            ) : null}
-                          </View>
+                          <Text style={styles.actionLabel}>{node.label}</Text>
                           {node.children?.length ? (
                             <Image
                               source={Icons.arrowRight}
@@ -591,6 +469,10 @@ export default function EmtCallScreen() {
                     );
                   })}
                 </View>
+              ) : (
+                <Text style={styles.emptyMenus}>
+                  Pick a menu above — Size-Up, Assessment, Treatment, Resources, or Transport.
+                </Text>
               )}
             </View>
           ) : null}
@@ -842,255 +724,149 @@ const styles = StyleSheet.create({
   status: {
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: 12,
+    borderRadius: 10,
     paddingHorizontal: 8,
-    paddingVertical: 7,
-    marginBottom: 6,
+    paddingVertical: 4,
+    marginBottom: 4,
     overflow: 'hidden',
   },
   statusHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 3,
   },
   statusTitle: {
     color: theme.colors.textMuted,
     fontFamily: 'IBMPlexMonoBold',
     fontSize: fs(8),
-    letterSpacing: 1.1,
+    letterSpacing: 1,
+    flex: 1,
+    marginRight: 8,
   },
   timerChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
     borderWidth: 1,
     borderColor: theme.colors.critical,
-    borderRadius: 8,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     backgroundColor: 'rgba(255,45,85,0.12)',
   },
   timerText: {
     color: theme.colors.critical,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(10),
-    letterSpacing: 0.8,
-  },
-  practiceChip: {
-    borderWidth: 1,
-    borderColor: theme.colors.emsBlue,
-    borderRadius: 8,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    backgroundColor: theme.colors.cadGlow,
+    fontSize: fs(9),
+    letterSpacing: 0.6,
   },
   practiceChipText: {
     color: theme.colors.emsBlue,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(9),
-    letterSpacing: 1,
+    fontSize: fs(8),
+    letterSpacing: 0.8,
   },
-  statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
+  statusRow: { flexDirection: 'row', flexWrap: 'nowrap', gap: 4 },
   chip: {
     backgroundColor: 'rgba(5,12,20,0.7)',
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    paddingHorizontal: 7,
-    paddingVertical: 4,
-    minWidth: 52,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    minWidth: 40,
+    flexGrow: 1,
+    flexBasis: 0,
   },
   chipUnknown: { opacity: 0.7 },
   chipLabel: {
     color: theme.colors.textMuted,
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(8),
+    fontSize: fs(7),
+    letterSpacing: 0.5,
   },
   chipValue: {
     fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(12),
-    marginTop: 1,
+    fontSize: fs(11),
+    marginTop: 0,
   },
-  chipValueUnknown: { color: theme.colors.textMuted, fontSize: fs(11) },
-  phaseScroll: { flex: 1 },
-  phaseContent: { paddingBottom: 8 },
-  phaseBlock: { gap: 8 },
-  focusBanner: { borderRadius: 12 },
-  focusInner: {
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    gap: 4,
-    overflow: 'hidden',
+  chipValueUnknown: { color: theme.colors.textMuted, fontSize: fs(10) },
+  menuStrip: {
+    flexGrow: 0,
+    marginBottom: 4,
   },
-  focusKicker: {
-    color: theme.colors.emsBlue,
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(9),
-    letterSpacing: 1.2,
+  coachWhisper: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,197,49,0.35)',
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,197,49,0.08)',
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    marginBottom: 6,
+    gap: 2,
   },
-  focusHint: {
-    color: theme.colors.text,
-    fontSize: fs(13),
-    lineHeight: fs(18),
-    fontWeight: '600',
-  },
-  focusAdvance: {
-    color: theme.colors.textMuted,
-    fontFamily: 'IBMPlexMono',
-    fontSize: fs(10),
-    letterSpacing: 0.3,
-    marginTop: 2,
-  },
-  quickWrap: { gap: 4 },
-  quickLabel: {
-    color: theme.colors.textMuted,
+  coachWhisperKicker: {
+    color: theme.colors.accent,
     fontFamily: 'IBMPlexMonoBold',
     fontSize: fs(8),
     letterSpacing: 1.1,
+    marginBottom: 1,
   },
-  quickRow: { gap: 6, paddingRight: 8 },
-  quickChipOuter: { borderRadius: 999 },
-  quickChip: {
-    borderWidth: 1,
-    borderColor: theme.colors.emsBlue,
-    backgroundColor: 'rgba(0,229,255,0.1)',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+  coachWhisperText: {
+    color: theme.colors.text,
+    fontSize: fs(12),
+    lineHeight: fs(16),
+    fontWeight: '500',
   },
-  quickChipFolder: {
-    borderColor: theme.colors.accent,
-    backgroundColor: 'rgba(255,197,49,0.1)',
+  rootTabs: {
+    gap: 5,
+    paddingVertical: 2,
+    paddingRight: 8,
   },
-  quickChipText: {
-    color: theme.colors.emsBlue,
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(10),
+  rootTabOuter: { borderRadius: 8 },
+  rootTab: {
+    borderWidth: 1.5,
+    borderRadius: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    minWidth: 72,
+    alignItems: 'center',
+    gap: 1,
+    backgroundColor: 'rgba(8,18,28,0.88)',
+  },
+  rootTabGuide: {
+    borderStyle: 'dashed',
+  },
+  rootTabIcon: { width: 16, height: 16 },
+  rootTabText: {
+    fontFamily: 'BebasNeue',
+    fontSize: fs(12),
+    letterSpacing: 0.3,
+  },
+  emptyMenus: {
+    color: theme.colors.textMuted,
+    fontSize: fs(12),
+    lineHeight: fs(17),
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  subBreadcrumb: {
+    color: theme.colors.text,
+    fontFamily: 'BebasNeue',
+    fontSize: fs(16),
     letterSpacing: 0.4,
+    marginBottom: 4,
   },
-  quickChipFolderText: {
-    color: theme.colors.accent,
-  },
+  phaseScroll: { flex: 1 },
+  phaseContent: { paddingBottom: 8 },
+  phaseBlock: { gap: 8 },
   prompt: {
     color: theme.colors.text,
     fontFamily: 'BebasNeue',
     fontSize: fs(18),
     letterSpacing: 0.5,
     marginBottom: 2,
-  },
-  rootTabs: {
-    gap: 6,
-    paddingVertical: 2,
-    paddingRight: 8,
-  },
-  rootTabOuter: { borderRadius: 10 },
-  rootTab: {
-    borderWidth: 1.5,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    minWidth: 88,
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: 'rgba(8,18,28,0.88)',
-  },
-  rootTabGuide: {
-    borderStyle: 'dashed',
-  },
-  rootTabIcon: { width: 18, height: 18 },
-  rootTabText: {
-    fontFamily: 'BebasNeue',
-    fontSize: fs(14),
-    letterSpacing: 0.4,
-  },
-  rootTabGuideLabel: {
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(8),
-    letterSpacing: 0.6,
-  },
-  emptyMenus: {
-    color: theme.colors.textMuted,
-    fontSize: fs(12),
-    lineHeight: fs(17),
-    marginTop: 4,
-  },
-  subBreadcrumb: {
-    color: theme.colors.text,
-    fontFamily: 'BebasNeue',
-    fontSize: fs(18),
-    letterSpacing: 0.5,
-  },
-  rootGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  rootOuter: {
-    width: '48%',
-    flexGrow: 1,
-    maxWidth: '49%',
-    borderRadius: 12,
-  },
-  rootChip: {
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 9,
-    gap: 2,
-    overflow: 'hidden',
-    minHeight: 72,
-  },
-  rootChipHot: {
-    borderWidth: 2,
-    shadowColor: theme.colors.emsBlue,
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  rootBadge: {
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(8),
-    letterSpacing: 1,
-    marginBottom: 1,
-  },
-  rootIcon: { width: 20, height: 20, marginBottom: 1 },
-  rootChipText: {
-    fontFamily: 'BebasNeue',
-    fontSize: fs(16),
-    letterSpacing: 0.4,
-  },
-  rootBlurb: {
-    color: theme.colors.textMuted,
-    fontSize: fs(9),
-    lineHeight: fs(12),
-  },
-  compactRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginTop: 2,
-  },
-  compactOuter: {
-    flex: 1,
-    borderRadius: 10,
-  },
-  compactChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1.5,
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    minHeight: 40,
-    overflow: 'hidden',
-  },
-  compactChipActive: {
-    backgroundColor: 'rgba(139,243,255,0.12)',
-  },
-  compactIcon: { width: 18, height: 18 },
-  compactText: {
-    fontFamily: 'BebasNeue',
-    fontSize: fs(16),
-    letterSpacing: 0.4,
   },
   actionOuter: { borderRadius: 10 },
   actionBtn: {
@@ -1103,31 +879,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     overflow: 'hidden',
   },
-  actionBtnHot: {
-    borderWidth: 2,
-    borderColor: theme.colors.emsBlue,
-  },
-  actionCopy: { flex: 1, gap: 2, paddingRight: 8 },
   actionLabel: {
     color: theme.colors.text,
     fontSize: fs(14),
     fontWeight: '700',
   },
-  actionSuggest: {
-    color: theme.colors.emsBlue,
-    fontFamily: 'IBMPlexMonoBold',
-    fontSize: fs(9),
-    letterSpacing: 0.6,
-  },
   moreIcon: { width: 12, height: 12, opacity: 0.8 },
   doneIcon: { width: 16, height: 16 },
   subMenu: { gap: 6 },
-  subHeader: { gap: 4, marginBottom: 2 },
-  subHint: {
-    color: theme.colors.textMuted,
-    fontSize: fs(11),
-    lineHeight: fs(15),
-  },
   followUps: { gap: 6 },
   askDock: {
     gap: 6,

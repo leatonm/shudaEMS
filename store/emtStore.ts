@@ -548,20 +548,60 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
     }
 
     const coach = showPhaseCoaching(state.difficulty);
+    const transportReady = !!state.transportPriority && !!state.destination;
 
-    if (!next || next.id === 'report') {
-      // Verbal report / transfer of care
+    // Entering the report board — stay on the call so they can use Transport.
+    // Handoff opens once destination + mode are set (or they press HAND OFF).
+    if (next?.id === 'report') {
       const reportLines = coach
         ? [
             earlyAdvance
               ? 'You are advancing with gaps on the skills sheet — that will show in debrief.'
               : 'Primary board is complete enough to report.',
-            'Deliver your verbal report and transfer of care.',
+            'Use Transport: Stay and Play or Load and Go, then Transport for destination and mode.',
+            'Handoff opens when both destination and mode are set.',
           ]
-        : ['Transfer of care.'];
+        : [
+            'Use Transport for destination and mode — handoff opens when both are set.',
+          ];
+
+      if (transportReady) {
+        set({
+          phase: 'handoff',
+          nremtStage: 'report',
+          riskScore,
+          totalScore,
+          skillScores,
+          timeline,
+          sceneEntered: true,
+          instructorLog: [
+            ...state.instructorLog,
+            {
+              id: `advance-report-${at}`,
+              role: 'lauren',
+              text: 'Destination and mode are set — time for your handoff.',
+              atMs: at,
+            },
+          ],
+          laurenFlashQueue: [
+            ...state.laurenFlashQueue,
+            {
+              id: `flash-advance-${at}`,
+              lines: [
+                'Destination and transport mode are set.',
+                'Deliver your verbal handoff.',
+              ],
+            },
+          ],
+          completedActions: state.completedActions.includes('begin_handoff')
+            ? state.completedActions
+            : [...state.completedActions, 'begin_handoff'],
+        });
+        return;
+      }
 
       set({
-        phase: 'handoff',
+        phase: 'on_scene',
         nremtStage: 'report',
         riskScore,
         totalScore,
@@ -586,6 +626,57 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
               },
             ]
           : state.laurenFlashQueue,
+      });
+      return;
+    }
+
+    // Last stage HAND OFF button — open verbal report (warn if dest/mode missing).
+    if (!next) {
+      const reportLines = transportReady
+        ? ['You arrive at the emergency department. Deliver your verbal handoff.']
+        : [
+            'Arriving without a clear destination or transport mode.',
+            'Deliver your handoff anyway — gaps will show in debrief.',
+          ];
+
+      set({
+        phase: 'handoff',
+        nremtStage: 'report',
+        riskScore: transportReady ? riskScore : riskScore + 8,
+        totalScore: transportReady ? totalScore : totalScore - 4,
+        skillScores: transportReady
+          ? skillScores
+          : applySkill(skillScores, 'transport', -4),
+        timeline: transportReady
+          ? timeline
+          : pushTimeline(timeline, {
+              phase: 'transport',
+              actionId: 'begin_handoff',
+              label: 'Hand off incomplete plan',
+              message: 'Handoff started without destination and/or mode.',
+              scoreDelta: -4,
+              severity: 'warn',
+              skill: 'transport',
+              flowMiss: true,
+              startedAt: state.startedAt,
+            }),
+        sceneEntered: true,
+        instructorLog: [
+          ...state.instructorLog,
+          {
+            id: `advance-handoff-${at}`,
+            role: 'lauren',
+            text: reportLines[0],
+            atMs: at,
+          },
+        ],
+        laurenFlashQueue: [
+          ...state.laurenFlashQueue,
+          {
+            id: `flash-handoff-${at}`,
+            lines: reportLines,
+          },
+        ],
         completedActions: state.completedActions.includes('begin_handoff')
           ? state.completedActions
           : [...state.completedActions, 'begin_handoff'],
@@ -796,6 +887,9 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
               : 'request_pd';
         if (!list.includes(requestId)) list = [...list, requestId];
       }
+      if (fx.beginHandoff && !list.includes('begin_handoff')) {
+        list = [...list, 'begin_handoff'];
+      }
       return list;
     })();
 
@@ -864,6 +958,16 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
         choices: exchange.followUps,
         gesture: laurenGestureLevel(state.difficulty),
         autoDismiss: enrouteEta,
+      });
+    }
+
+    if (fx.beginHandoff && actionId !== 'begin_handoff') {
+      baseQueue.push({
+        id: `flash-handoff-${at}`,
+        lines: [
+          'Destination and transport mode are set.',
+          'You arrive at the emergency department. Deliver your verbal handoff.',
+        ],
       });
     }
 

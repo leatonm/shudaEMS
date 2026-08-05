@@ -95,8 +95,12 @@ const PRIORITY_MAP: Record<string, TransportPriority> = {
   priority_emergency: 'emergency',
   priority_urgent: 'urgent',
   priority_non_urgent: 'non_urgent',
-  load_and_go: 'emergency',
-  stay_and_play: 'non_urgent',
+};
+
+const PRIORITY_LABEL: Record<TransportPriority, string> = {
+  emergency: 'lights & sirens',
+  urgent: 'urgent (no lights)',
+  non_urgent: 'regular traffic',
 };
 
 export interface MenuActionResult {
@@ -160,13 +164,35 @@ export function resolveMenuAction(
     };
   }
 
+  if (actionId === 'stay_and_play') {
+    return {
+      label: 'Stay and Play',
+      message:
+        'Staying on scene to finish indicated care before transport. Keep working ABCs and treatments here.',
+      scoreDelta: already ? 0 : 6,
+      severity: 'good',
+      skill: 'transport',
+    };
+  }
+
+  if (actionId === 'load_and_go') {
+    return {
+      label: 'Load and Go',
+      message:
+        'Packaging for transport — continue assessment and interventions en route. Next: pick destination and mode under Transport.',
+      scoreDelta: already ? 0 : 8,
+      severity: 'good',
+      skill: 'transport',
+    };
+  }
+
   if (actionId === 'begin_handoff') {
     const ready = !!ctx.transportPriority && !!ctx.destination;
     return {
       label: 'Arrive at ED',
       message: ready
         ? 'You arrive at the emergency department. Prepare your handoff.'
-        : 'You pull up without a clear destination / priority — still, handoff begins.',
+        : 'You pull up without a clear destination / mode — still, handoff begins.',
       scoreDelta: ready ? 8 : -4,
       severity: ready ? 'good' : 'warn',
       skill: 'transport',
@@ -178,15 +204,21 @@ export function resolveMenuAction(
   if (DEST_MAP[actionId]) {
     const dest = DEST_MAP[actionId];
     const correct = dest === ctx.call.correctDestination;
+    const modeReady = !!ctx.transportPriority;
     return {
       label: `Destination: ${dest.replace(/_/g, ' ')}`,
-      message: correct
-        ? 'Appropriate receiving facility selected.'
-        : 'Destination logged — verify specialty capability on debrief.',
+      message: modeReady
+        ? correct
+          ? 'Receiving facility set. Arriving at the ED — deliver your handoff.'
+          : 'Destination logged. Arriving at the ED — deliver your handoff.'
+        : correct
+          ? 'Appropriate receiving facility selected. Choose transport mode next.'
+          : 'Destination logged — choose transport mode next.',
       scoreDelta: correct ? 14 : 2,
       severity: correct ? 'good' : 'warn',
       skill: 'transport',
       destination: dest,
+      beginHandoff: modeReady,
       flowMiss: !correct,
     };
   }
@@ -194,15 +226,21 @@ export function resolveMenuAction(
   if (PRIORITY_MAP[actionId]) {
     const priority = PRIORITY_MAP[actionId];
     const correct = priority === ctx.call.correctTransportPriority;
+    const destReady = !!ctx.destination;
     return {
-      label: `Transport mode: ${priority}`,
-      message: correct
-        ? 'Transport priority matches patient acuity.'
-        : 'Priority recorded — acuity match reviewed after the call.',
+      label: `Transport mode: ${PRIORITY_LABEL[priority]}`,
+      message: destReady
+        ? correct
+          ? 'Mode matches acuity. Arriving at the ED — deliver your handoff.'
+          : 'Mode recorded. Arriving at the ED — deliver your handoff.'
+        : correct
+          ? 'Transport mode matches patient acuity. Choose hospital destination next.'
+          : 'Mode recorded — choose hospital destination next.',
       scoreDelta: correct ? 12 : 2,
       severity: correct ? 'good' : 'warn',
       skill: 'transport',
       transportPriority: priority,
+      beginHandoff: destReady,
       flowMiss: !correct,
     };
   }

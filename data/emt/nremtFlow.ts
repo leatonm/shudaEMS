@@ -116,12 +116,12 @@ export const NREMT_MEDICAL_STAGES: NremtStageInfo[] = [
   {
     id: 'report',
     title: 'Verbal Report',
-    advanceLabel: 'TRANSFER OF CARE',
-    phase: 'handoff',
+    advanceLabel: 'HAND OFF',
+    phase: 'on_scene',
     enterLines: [
-      'Deliver your verbal report and transfer of care.',
+      'Set destination and transport mode under Transport, then deliver your verbal handoff.',
     ],
-    expectedActions: ['begin_handoff', 'verbal_handoff', 'notify_hospital'],
+    expectedActions: ['load_and_go', 'stay_and_play', 'verbal_handoff', 'begin_handoff'],
   },
 ];
 

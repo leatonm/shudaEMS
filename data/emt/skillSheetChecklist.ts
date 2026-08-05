@@ -61,6 +61,7 @@ export const NREMT_SKILL_SHEET: SkillSheetItem[] = [
       'load_and_go',
       'stay_and_play',
       'priority_emergency',
+      'priority_urgent',
       'priority_non_urgent',
       'dest_pci_capable',
       'dest_stroke_center',

@@ -151,6 +151,22 @@ export const EMT_ACTIONS: Record<string, EmtAction> = {
     principle: 'universal',
     emtScope: true,
   },
+  stay_and_play: {
+    id: 'stay_and_play',
+    name: 'Stay and Play',
+    description: 'Remain on scene to complete indicated care before transport',
+    category: 'transport',
+    principle: 'universal',
+    emtScope: true,
+  },
+  load_and_go: {
+    id: 'load_and_go',
+    name: 'Load and Go',
+    description: 'Package and leave — continue care and reassessment en route',
+    category: 'transport',
+    principle: 'universal',
+    emtScope: true,
+  },
   cpr: {
     id: 'cpr',
     name: 'Start CPR',

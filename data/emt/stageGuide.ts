@@ -236,11 +236,11 @@ export function getStageFocus(
     case 'report':
       return {
         title: 'Verbal Report',
-        hint: 'Transport menu — notify hospital and transfer care when ready.',
+        hint: 'Transport menu — Stay and Play or Load and Go, then Transport for destination and mode. Handoff opens when both are set.',
         openRoot: 'transport',
         openPath: [],
-        advanceHint: 'Hand off when your report is ready',
-        quickActions: undones(['notify_hospital', 'begin_handoff'], done),
+        advanceHint: 'Set destination + mode to hand off',
+        quickActions: undones(['stay_and_play', 'load_and_go'], done),
       };
   }
 }
@@ -333,6 +333,6 @@ export function rootRoleBlurb(root: ActionMenuRoot, stageId: NremtStage): string
   if (root === 'resources') return 'ALS · Law · Fire';
   if (root === 'scene') return 'Safety & size-up';
   if (root === 'assessment') return 'Exam · history · vitals';
-  if (root === 'transport') return 'Priority · destination';
+  if (root === 'transport') return 'Stay · load · destination';
   return '';
 }

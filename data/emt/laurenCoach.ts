@@ -64,9 +64,20 @@ const TRANSPORT_ACTIONS = new Set([
   'set_priority_emergency',
   'set_priority_urgent',
   'set_priority_non_urgent',
+  'priority_emergency',
+  'priority_urgent',
+  'priority_non_urgent',
+  'stay_and_play',
+  'load_and_go',
   'rapid_transport',
   'begin_handoff',
   'notify_hospital',
+  'dest_trauma_center',
+  'dest_stroke_center',
+  'dest_pci_capable',
+  'dest_pediatric_ed',
+  'dest_closest_ed',
+  'dest_labor_delivery',
 ]);
 
 const PATIENT_CONTACT_ACTIONS = new Set([
@@ -176,19 +187,22 @@ export function phaseEnterGuide(stage: NremtStage, call: EmtCall): string[] {
       ];
     case 'report':
       return [
-        'Verbal report and transfer of care.',
-        'Clear, concise, and in order — what you found, what you did, what they need next.',
+        'Transport decisions and verbal handoff.',
+        'Stay and Play or Load and Go, then Transport for destination and mode — handoff opens when both are set.',
       ];
   }
 }
 
 /**
- * One brief coach line after an action — priority first, then order.
- * Allowed actions still proceed; Lauren only comments.
+ * One brief coach line after an action — priority first, then order / soft next.
+ * Allowed actions still proceed.
+ * Priority → Lauren popup. Order / soft next → quiet strip + debrief note.
  */
 export function coachAfterAction(ctx: CoachContext): {
   tip: string | null;
   note: CoachNote | null;
+  /** Soft tips stay off Lauren's modal. */
+  softOnly: boolean;
 } {
   const priority = priorityTip(ctx);
   if (priority) {
@@ -200,6 +214,7 @@ export function coachAfterAction(ctx: CoachContext): {
         text: priority,
         actionId: ctx.actionId,
       },
+      softOnly: false,
     };
   }
 
@@ -213,10 +228,25 @@ export function coachAfterAction(ctx: CoachContext): {
         text: order,
         actionId: ctx.actionId,
       },
+      softOnly: true,
     };
   }
 
-  return { tip: null, note: null };
+  const softNext = softNextTip(ctx);
+  if (softNext) {
+    return {
+      tip: softNext,
+      note: {
+        id: `phase-${ctx.actionId}-${softNext.slice(0, 24)}`,
+        kind: 'phase',
+        text: softNext,
+        actionId: ctx.actionId,
+      },
+      softOnly: true,
+    };
+  }
+
+  return { tip: null, note: null, softOnly: true };
 }
 
 function priorityTip(ctx: CoachContext): string | null {
@@ -327,19 +357,23 @@ function priorityTip(ctx: CoachContext): string | null {
     }
   }
 
-  // --- Soft next-step after good size-up pieces (not big hints) ---
+  // --- Soft next-step after good size-up pieces lives in softNextTip ---
+  return null;
+}
+
+function softNextTip(ctx: CoachContext): string | null {
+  const { actionId, call, vitals } = ctx;
   if (actionId === 'don_ppe') {
-    return 'Good. Next: is the scene safe to work?';
+    return 'Consider scene safety next — is it safe to work?';
   }
   if (actionId === 'verbalize_scene_safe' && call.hazards.length === 0) {
-    return 'Next: patients, MOI or NOI, and whether you need more resources.';
+    return 'Consider patients, MOI or NOI, and whether you need more resources.';
   }
   if (actionId === 'general_impression') {
     return isArrestPriority(call, vitals)
-      ? 'Unresponsive impression — move to ABCs and pulse check fast.'
-      : 'Next: responsiveness, chief complaint / life threats, then ABCs.';
+      ? 'Consider ABCs and a pulse check next — unresponsive impression.'
+      : 'Consider responsiveness, life threats, then ABCs.';
   }
-
   return null;
 }
 
@@ -353,7 +387,7 @@ function orderTip(ctx: CoachContext): string | null {
     PATIENT_CONTACT_ACTIONS.has(actionId) &&
     actionId !== 'don_ppe'
   ) {
-    return "I'll allow it — BSI still belongs before patient contact. Build the habit.";
+    return 'Consider BSI / PPE before patient contact — build the habit even when you skip ahead.';
   }
 
   // Treating / assessing deep during size-up
@@ -365,7 +399,7 @@ function orderTip(ctx: CoachContext): string | null {
       actionId === 'aspirin' ||
       actionId === 'nitroglycerin')
   ) {
-    return 'Noted — finish size-up (PPE, safety, patients, MOI/NOI) so the board stays clean.';
+    return 'Consider finishing size-up first (PPE, safety, patients, MOI/NOI) before deep care.';
   }
 
   // Full SAMPLE before ABCs on primary
@@ -374,7 +408,7 @@ function orderTip(ctx: CoachContext): string | null {
     HISTORY_ACTIONS.has(actionId) &&
     !(done('airway') && done('breathing') && done('circulation'))
   ) {
-    return 'Allowed — but life threats on primary come before a full SAMPLE.';
+    return 'Consider ABCs / life threats on primary before a full SAMPLE.';
   }
 
   // Destination / priority too early
@@ -382,15 +416,111 @@ function orderTip(ctx: CoachContext): string | null {
     (nremtStage === 'scene_sizeup' || nremtStage === 'primary_survey') &&
     TRANSPORT_ACTIONS.has(actionId)
   ) {
-    return 'Destination can wait until primary threats are addressed.';
+    return 'Consider wrapping primary threats before locking destination and mode.';
   }
 
   // Vitals stage but chasing history again
   if (nremtStage === 'vitals' && HISTORY_ACTIONS.has(actionId)) {
-    return 'You can — just do not skip acting on critical vitals you already have.';
+    return 'Consider acting on critical vitals you already have before more history.';
   }
 
   return null;
+}
+
+export type SoftCoachRoot = 'scene' | 'assessment' | 'interventions' | 'resources' | 'transport' | 'ask' | null;
+
+/**
+ * Quiet Practice coaching — optional "Consider…" lines based on gaps.
+ * Never blocks free choice; mistakes still count on the skills sheet / debrief.
+ */
+export function getSoftConsiderations(ctx: {
+  completedActions: string[];
+  treatments: string[];
+  nremtStage: NremtStage;
+  activeRoot: SoftCoachRoot;
+  call: EmtCall;
+  vitals: EmtVitals;
+}): string[] {
+  const done = (id: string) => hasDone(ctx.completedActions, ctx.treatments, id);
+  const tips: string[] = [];
+  const push = (tip: string) => {
+    if (tips.length >= 2) return;
+    if (!tips.includes(tip)) tips.push(tip);
+  };
+
+  const sizeUpThin =
+    !done('don_ppe') ||
+    !done('verbalize_scene_safe') ||
+    (!done('declare_moi') && !done('declare_noi') && !done('assess_moi'));
+
+  const leftSizeUpEarly =
+    ctx.nremtStage !== 'scene_sizeup' ||
+    ctx.activeRoot === 'assessment' ||
+    ctx.activeRoot === 'interventions' ||
+    ctx.activeRoot === 'transport';
+
+  // Jumping into assessment / treatment / transport without size-up pieces
+  if (leftSizeUpEarly || ctx.activeRoot === 'assessment' || ctx.activeRoot === 'interventions') {
+    if (!done('don_ppe')) {
+      push('Consider BSI / PPE before patient contact.');
+    }
+    if (!done('verbalize_scene_safe')) {
+      push('Consider a quick scene size-up — is it safe to work?');
+    }
+    if (
+      !done('count_patients') &&
+      !done('declare_moi') &&
+      !done('declare_noi') &&
+      !done('assess_moi')
+    ) {
+      push('Consider patients, MOI or NOI, and whether you need more help.');
+    } else if (!done('declare_moi') && !done('declare_noi') && !done('assess_moi')) {
+      push('Consider stating MOI or NOI so your size-up is complete.');
+    }
+    if (
+      ctx.call.hazards.length > 0 &&
+      !done('request_pd') &&
+      !done('request_fire') &&
+      !done('stage_away') &&
+      !done('enter_scene')
+    ) {
+      push('Consider hazards — Law, Fire, or staging away if it is not safe yet.');
+    }
+  }
+
+  // In assessment without ABCs while chasing history / secondary
+  if (ctx.activeRoot === 'assessment' || ctx.nremtStage === 'history') {
+    if (!(done('airway') && done('breathing') && done('circulation')) && done('general_impression')) {
+      push('Consider airway, breathing, and circulation before a long history.');
+    }
+  }
+
+  // Treatment before primary threats
+  if (ctx.activeRoot === 'interventions') {
+    if (!done('general_impression') && !done('airway') && !done('circulation')) {
+      push('Consider a rapid primary impression / ABCs before interventions.');
+    }
+    if (isArrestPriority(ctx.call, ctx.vitals) && !done('cpr') && !done('aed')) {
+      push('Consider CPR and AED first if there is no pulse.');
+    }
+  }
+
+  // Transport early
+  if (ctx.activeRoot === 'transport' && sizeUpThin) {
+    push('Consider finishing size-up and primary threats before transport decisions.');
+  } else if (
+    ctx.activeRoot === 'transport' &&
+    !(done('airway') && done('breathing') && done('circulation'))
+  ) {
+    push('Consider addressing life threats on primary before destination and mode.');
+  }
+
+  // Default gentle nudge early on scene menu
+  if (ctx.activeRoot === 'scene' && !done('don_ppe') && tips.length === 0) {
+    push('Consider starting with BSI, then scene safety.');
+  }
+
+  return tips;
 }
 
 /** Deduplicate coach notes for debrief (keep first occurrence of similar text). */

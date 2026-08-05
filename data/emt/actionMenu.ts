@@ -27,7 +27,7 @@ export const ACTION_MENU_ROOTS: Array<{
   { id: 'assessment', label: 'Assessment', skill: 'assessment', blurb: 'Primary · history · vitals' },
   { id: 'interventions', label: 'Treatment', skill: 'treatment', blurb: 'Fix life threats here' },
   { id: 'resources', label: 'Resources', skill: 'communication', blurb: 'ALS · Law · Fire' },
-  { id: 'transport', label: 'Transport', skill: 'transport', blurb: 'Priority · destination' },
+  { id: 'transport', label: 'Transport', skill: 'transport', blurb: 'Stay · load · destination' },
 ];
 
 export const ACTION_MENUS: Record<ActionMenuRoot, ActionMenuNode[]> = {
@@ -148,30 +148,55 @@ export const ACTION_MENUS: Record<ActionMenuRoot, ActionMenuNode[]> = {
     { id: 'res_als', label: 'Medic / Paramedic', actionId: 'request_als' },
   ],
   transport: [
-    { id: 'tp_stay', label: 'Stay and Play', actionId: 'stay_and_play' },
-    { id: 'tp_load', label: 'Load and Go', actionId: 'load_and_go' },
     {
-      id: 'tp_dest',
-      label: 'Destination Type',
-      children: [
-        { id: 'dest_pci', label: 'PCI Center', actionId: 'dest_pci_capable' },
-        { id: 'dest_stroke', label: 'Stroke Center', actionId: 'dest_stroke_center' },
-        { id: 'dest_trauma', label: 'Level I Trauma', actionId: 'dest_trauma_center' },
-        { id: 'dest_peds', label: 'Pediatric Hospital', actionId: 'dest_pediatric_ed' },
-        { id: 'dest_community', label: 'Community Hospital', actionId: 'dest_closest_ed' },
-        { id: 'dest_ld', label: 'Labor & Delivery', actionId: 'dest_labor_delivery' },
-      ],
+      id: 'tp_stay',
+      label: 'Stay and Play',
+      actionId: 'stay_and_play',
     },
     {
-      id: 'tp_mode',
-      label: 'Transport Mode',
+      id: 'tp_load',
+      label: 'Load and Go',
+      actionId: 'load_and_go',
+    },
+    {
+      id: 'tp_go',
+      label: 'Transport',
       children: [
-        { id: 'mode_routine', label: 'Routine', actionId: 'priority_non_urgent' },
-        { id: 'mode_ls', label: 'Lights and Sirens', actionId: 'priority_emergency' },
+        {
+          id: 'tp_dest',
+          label: 'Hospital Destination',
+          children: [
+            { id: 'dest_pci', label: 'PCI Center', actionId: 'dest_pci_capable' },
+            { id: 'dest_stroke', label: 'Stroke Center', actionId: 'dest_stroke_center' },
+            { id: 'dest_trauma', label: 'Level I Trauma', actionId: 'dest_trauma_center' },
+            { id: 'dest_peds', label: 'Pediatric Hospital', actionId: 'dest_pediatric_ed' },
+            { id: 'dest_community', label: 'Community Hospital', actionId: 'dest_closest_ed' },
+            { id: 'dest_ld', label: 'Labor & Delivery', actionId: 'dest_labor_delivery' },
+          ],
+        },
+        {
+          id: 'tp_mode',
+          label: 'Transport Mode',
+          children: [
+            {
+              id: 'mode_routine',
+              label: 'Regular Traffic',
+              actionId: 'priority_non_urgent',
+            },
+            {
+              id: 'mode_urgent',
+              label: 'Urgent (no lights)',
+              actionId: 'priority_urgent',
+            },
+            {
+              id: 'mode_ls',
+              label: 'Lights and Sirens',
+              actionId: 'priority_emergency',
+            },
+          ],
+        },
       ],
     },
-    { id: 'tp_notify', label: 'Hospital Notification', actionId: 'notify_hospital' },
-    { id: 'tp_handoff', label: 'Transfer of Care', actionId: 'begin_handoff' },
   ],
 };
 

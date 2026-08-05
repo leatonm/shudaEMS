@@ -466,6 +466,22 @@ export function buildLaurenExchange(
         studentLine: "I'd like to give a radio report / notify the hospital.",
         laurenLines: ['Hospital is notified. Continue your report.'],
       };
+    case 'stay_and_play':
+      return {
+        studentLine: "I'm going to stay and play — finish care on scene.",
+        laurenLines: [
+          'Understood. Stay on scene and wrap up indicated care here.',
+          'When you are ready to leave, open Transport and set destination and mode.',
+        ],
+      };
+    case 'load_and_go':
+      return {
+        studentLine: "I'm going to load and go — continue care en route.",
+        laurenLines: [
+          'Packaging for transport. Keep assessing and treating on the way.',
+          'Next: open Transport and choose destination and mode.',
+        ],
+      };
     case 'begin_handoff':
       return {
         studentLine: "I'd like to begin hospital handoff.",
@@ -560,7 +576,7 @@ export function withCoachTips(
     return { exchange, coachNote: null };
   }
 
-  const { tip, note } = coachAfterAction({
+  const { tip, note, softOnly } = coachAfterAction({
     actionId,
     call,
     vitals: ctx.vitals,
@@ -575,12 +591,16 @@ export function withCoachTips(
     return { exchange, coachNote: null };
   }
 
+  // Order / phase tips stay off Lauren's popup — quiet strip handles them.
+  if (softOnly) {
+    return { exchange, coachNote: note };
+  }
+
   return {
     exchange: {
       ...exchange,
       // One brief coach line — never bury the factual finding.
       laurenLines: [...exchange.laurenLines, tip],
-      // Do not inject tip buttons that click for the player.
       followUps: exchange.followUps,
     },
     coachNote: note,

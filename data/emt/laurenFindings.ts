@@ -220,6 +220,7 @@ export function buildLaurenExchange(
         laurenLines: [
           'You move to the patient.',
           call.patientSummary,
+          'Hands-on assessment and treatment skills belong from here.',
         ],
       };
     case 'deescalate':
@@ -622,6 +623,7 @@ export function withCoachTips(
     nremtStage: NremtStage;
     completedActions: string[];
     treatments: string[];
+    sceneEntered?: boolean;
   }
 ): { exchange: LaurenExchange; coachNote: CoachNote | null } {
   // Hazard scene-safety tips stay (factual risk + soft next move).
@@ -653,6 +655,7 @@ export function withCoachTips(
     nremtStage: ctx.nremtStage,
     completedActions: ctx.completedActions,
     treatments: ctx.treatments,
+    sceneEntered: ctx.sceneEntered,
   });
 
   if (!tip) {

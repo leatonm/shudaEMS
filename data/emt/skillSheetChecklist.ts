@@ -9,7 +9,7 @@ export interface SkillSheetItem {
 
 export const NREMT_SKILL_SHEET: SkillSheetItem[] = [
   { id: 'ppe', label: 'PPE / BSI', actionIds: ['don_ppe'] },
-  { id: 'scene', label: 'Scene Safety', actionIds: ['verbalize_scene_safe', 'scan_hazards'] },
+  { id: 'scene', label: 'Scene Safety', actionIds: ['verbalize_scene_safe', 'scan_hazards', 'enter_scene'] },
   { id: 'patients', label: 'Number of Patients', actionIds: ['count_patients'] },
   {
     id: 'resources',

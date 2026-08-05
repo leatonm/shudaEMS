@@ -126,6 +126,7 @@ export function getStageFocus(
           'assess_moi',
           'consider_resources',
           'c_spine',
+          'enter_scene',
         ],
         done
       );
@@ -134,7 +135,7 @@ export function getStageFocus(
         hint: nextSizeUpHint(done, call.category, coverage.missing),
         openRoot: 'scene',
         openPath: [],
-        advanceHint: 'When ready → MAKE PATIENT CONTACT (bottom)',
+        advanceHint: 'When ready → MAKE PATIENT CONTACT (menu or bottom)',
         quickActions: quick.slice(0, 6),
       };
     }
@@ -289,7 +290,7 @@ function nextSizeUpHint(
   if (!done.has('c_spine') && (category === 'trauma' || category === 'mci')) {
     return 'Size-Up: Consider C-spine if the mechanism warrants it.';
   }
-  return 'Size-up looks solid — use the bottom button for patient contact when ready.';
+  return 'Size-up looks solid — Make Patient Contact next (Size-Up menu or bottom button).';
 }
 
 export function recommendedRootForStage(stageId: NremtStage): ActionMenuRoot {

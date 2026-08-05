@@ -53,8 +53,8 @@ export const EMT_ACTIONS: Record<string, EmtAction> = {
   },
   enter_scene: {
     id: 'enter_scene',
-    name: 'Enter Scene Now',
-    description: 'Move to patient contact immediately',
+    name: 'Make Patient Contact',
+    description: 'Approach the patient after size-up — required before hands-on assessment and treatment',
     category: 'scene_safety',
     principle: 'universal',
     emtScope: true,

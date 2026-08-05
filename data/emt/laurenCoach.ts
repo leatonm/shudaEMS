@@ -20,6 +20,8 @@ export interface CoachContext {
   nremtStage: NremtStage;
   completedActions: string[];
   treatments: string[];
+  /** True once the student has approached the patient. */
+  sceneEntered?: boolean;
 }
 
 const HISTORY_ACTIONS = new Set([
@@ -394,6 +396,11 @@ function softNextTip(ctx: CoachContext): string | null {
   if (actionId === 'verbalize_scene_safe' && call.hazards.length === 0) {
     return 'Consider patients, MOI or NOI, and whether you need more resources.';
   }
+  if (actionId === 'enter_scene') {
+    return prefersRapidAssessment(call, vitals)
+      ? 'Patient contact made — consider a Rapid Assessment next.'
+      : 'Patient contact made — consider Rapid or Focused Assessment next.';
+  }
   if (actionId === 'general_impression') {
     return isArrestPriority(call, vitals)
       ? 'Consider ABCs and a pulse check next — unresponsive impression.'
@@ -413,8 +420,19 @@ function softNextTip(ctx: CoachContext): string | null {
 }
 
 function orderTip(ctx: CoachContext): string | null {
-  const { actionId, completedActions, treatments, nremtStage } = ctx;
+  const { actionId, completedActions, treatments, nremtStage, sceneEntered } = ctx;
   const done = (id: string) => hasDone(completedActions, treatments, id);
+  const contacted = Boolean(sceneEntered) || done('enter_scene');
+
+  // Hands-on skills before patient contact — allow, but remind
+  if (
+    !contacted &&
+    PATIENT_CONTACT_ACTIONS.has(actionId) &&
+    actionId !== 'enter_scene' &&
+    actionId !== 'don_ppe'
+  ) {
+    return 'Consider making patient contact first — finish size-up, then approach the patient before hands-on skills.';
+  }
 
   // PPE before patient contact — allow, but comment
   if (
@@ -475,6 +493,7 @@ export function getSoftConsiderations(ctx: {
   activeRoot: SoftCoachRoot;
   call: EmtCall;
   vitals: EmtVitals;
+  sceneEntered?: boolean;
 }): string[] {
   const done = (id: string) => hasDone(ctx.completedActions, ctx.treatments, id);
   const tips: string[] = [];
@@ -483,13 +502,25 @@ export function getSoftConsiderations(ctx: {
     if (!tips.includes(tip)) tips.push(tip);
   };
 
+  const contacted = Boolean(ctx.sceneEntered) || done('enter_scene');
   const arrest = isArrestPriority(ctx.call, ctx.vitals);
   const trauma = ctx.call.category === 'trauma' || ctx.call.category === 'mci';
+  const usingContactMenus =
+    ctx.activeRoot === 'assessment' || ctx.activeRoot === 'interventions';
+
+  // Hands-on menus before patient contact — highest soft priority
+  if (!contacted && usingContactMenus) {
+    push(
+      'Consider making patient contact first — Size-Up → Make Patient Contact (or the bottom button), then use these skills.'
+    );
+  }
 
   // Call-type flow coaching (soft path — never locks menus)
   if (arrest) {
     if (!done('don_ppe') || !done('verbalize_scene_safe')) {
-      push('Arrest path: BSI and scene safety, then Rapid Assessment → CPR / AED.');
+      push('Arrest path: BSI and scene safety, then patient contact → Rapid → CPR / AED.');
+    } else if (!contacted) {
+      push('Arrest path: make patient contact next, then Rapid Assessment → CPR / AED.');
     } else if (
       !done('rapid_assessment') &&
       !(done('airway') && done('circulation'))
@@ -502,7 +533,9 @@ export function getSoftConsiderations(ctx: {
     }
   } else if (trauma) {
     if (!done('don_ppe') || !done('verbalize_scene_safe')) {
-      push('Trauma path: BSI, scene safety, then Rapid Assessment for life threats.');
+      push('Trauma path: BSI, scene safety, then patient contact → Rapid Assessment.');
+    } else if (!contacted) {
+      push('Trauma path: make patient contact next, then Rapid Assessment for life threats.');
     } else if (
       !done('rapid_assessment') &&
       !done('focused_assessment') &&
@@ -518,7 +551,9 @@ export function getSoftConsiderations(ctx: {
       push('Trauma path: if bleeding is life-threatening, treat it when you find it.');
     }
   } else if (!done('don_ppe')) {
-    push('Medical path: start with BSI, then scene size-up, then Rapid or Focused assessment.');
+    push('Medical path: start with BSI, then scene size-up, then patient contact.');
+  } else if (!contacted && ctx.activeRoot === 'scene') {
+    push('Medical path: when size-up is enough, Make Patient Contact — then Rapid or Focused assessment.');
   }
 
   const sizeUpThin =
@@ -526,11 +561,26 @@ export function getSoftConsiderations(ctx: {
     !done('verbalize_scene_safe') ||
     (!done('declare_moi') && !done('declare_noi') && !done('assess_moi'));
 
+  const sizeUpStarted = done('don_ppe') || done('verbalize_scene_safe');
   const leftSizeUpEarly =
     ctx.nremtStage !== 'scene_sizeup' ||
     ctx.activeRoot === 'assessment' ||
     ctx.activeRoot === 'interventions' ||
     ctx.activeRoot === 'transport';
+
+  // Ready for contact but still on size-up
+  if (
+    tips.length < 2 &&
+    !contacted &&
+    sizeUpStarted &&
+    done('don_ppe') &&
+    done('verbalize_scene_safe') &&
+    (ctx.activeRoot === 'scene' || ctx.activeRoot === null || ctx.nremtStage === 'scene_sizeup')
+  ) {
+    push(
+      'Consider Make Patient Contact next — then Assessment / Treatment skills that need the patient.'
+    );
+  }
 
   // Jumping into assessment / treatment / transport without size-up pieces
   if (
@@ -564,9 +614,10 @@ export function getSoftConsiderations(ctx: {
     }
   }
 
-  // In assessment — nudge Rapid vs Focused, not every ABC click
+  // In assessment — nudge Rapid vs Focused (after contact)
   if (
     tips.length < 2 &&
+    contacted &&
     (ctx.activeRoot === 'assessment' || ctx.nremtStage === 'primary_survey')
   ) {
     const hasPrimaryPass =
@@ -583,7 +634,7 @@ export function getSoftConsiderations(ctx: {
   }
 
   // Treatment before primary threats
-  if (tips.length < 2 && ctx.activeRoot === 'interventions') {
+  if (tips.length < 2 && contacted && ctx.activeRoot === 'interventions') {
     if (
       !done('rapid_assessment') &&
       !done('focused_assessment') &&
@@ -600,7 +651,9 @@ export function getSoftConsiderations(ctx: {
 
   // Transport / disposition
   if (tips.length < 2 && ctx.activeRoot === 'transport') {
-    if (sizeUpThin) {
+    if (!contacted) {
+      push('Consider patient contact and primary care before transport decisions.');
+    } else if (sizeUpThin) {
       push('Consider finishing size-up and primary threats before transport decisions.');
     } else if (!(done('airway') && done('breathing') && done('circulation'))) {
       push('Consider addressing life threats on primary before destination and mode.');

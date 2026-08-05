@@ -69,6 +69,7 @@ export default function EmtCallScreen() {
   const pendingFollowUps = useEmtStore((s) => s.pendingFollowUps);
   const completedActions = useEmtStore((s) => s.completedActions);
   const treatments = useEmtStore((s) => s.treatments);
+  const sceneEntered = useEmtStore((s) => s.sceneEntered);
   const performMenuAction = useEmtStore((s) => s.performMenuAction);
   const advanceNremtStage = useEmtStore((s) => s.advanceNremtStage);
   const clearFollowUps = useEmtStore((s) => s.clearFollowUps);
@@ -254,6 +255,7 @@ export default function EmtCallScreen() {
           activeRoot: askOpen ? 'ask' : root,
           call,
           vitals,
+          sceneEntered,
         })
       : [];
 

@@ -867,6 +867,7 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
         nremtStage: state.nremtStage,
         completedActions: state.completedActions,
         treatments: state.treatments,
+        sceneEntered: state.sceneEntered,
       });
       exchange = coached.exchange;
       if (coached.coachNote) {

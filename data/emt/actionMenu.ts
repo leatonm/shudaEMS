@@ -25,7 +25,7 @@ export const ACTION_MENU_ROOTS: Array<{
   skill: SkillCategory;
   blurb: string;
 }> = [
-  { id: 'scene', label: 'Size-Up', skill: 'scene_safety', blurb: 'PPE · safety · patients' },
+  { id: 'scene', label: 'Size-Up', skill: 'scene_safety', blurb: 'PPE · safety · contact' },
   { id: 'assessment', label: 'Assessment', skill: 'assessment', blurb: 'Rapid · focused · vitals' },
   { id: 'interventions', label: 'Treatment', skill: 'treatment', blurb: 'Fix life threats here' },
   { id: 'resources', label: 'Resources', skill: 'communication', blurb: 'ALS · Law · Fire' },
@@ -40,6 +40,12 @@ export const ACTION_MENUS: Record<ActionMenuRoot, ActionMenuNode[]> = {
     { id: 'moi_noi', label: 'MOI or NOI', actionId: 'assess_moi' },
     { id: 'add_resources', label: 'Additional Resources', actionId: 'consider_resources' },
     { id: 'cspine', label: 'C-Spine Precautions', actionId: 'c_spine' },
+    {
+      id: 'patient_contact',
+      label: 'Make Patient Contact',
+      tip: 'Approach the patient after size-up — then Assessment / Treatment',
+      actionId: 'enter_scene',
+    },
   ],
   assessment: [
     {

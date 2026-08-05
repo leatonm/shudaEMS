@@ -20,6 +20,7 @@ import {
   withCoachTips,
 } from '@/data/emt/laurenFindings';
 import {
+  getWrapUpHints,
   phaseEnterGuide,
   uniqueCoachNotes,
 } from '@/data/emt/laurenCoach';
@@ -151,6 +152,8 @@ interface EmtStore {
   nremtStage: NremtStage;
   /** Practice coaching comments collected for debrief review. */
   coachNotes: CoachNote[];
+  /** Vitals snapshot from the last reassessment (for change lines). */
+  lastReassessVitals: EmtVitals | null;
 
   setDifficulty: (difficulty: EmtDifficulty) => void;
   setPendingCategory: (category: CallCategory | null) => void;
@@ -170,6 +173,8 @@ interface EmtStore {
   tickPhysio: () => void;
   setHandoffText: (text: string) => void;
   submitHandoff: () => void;
+  /** Stay and Play confirmed — grade without ED handoff. */
+  finishOnScene: () => void;
   chooseNext: (choiceId: string) => void;
   undoChoice: (choiceId: string) => void;
   goBack: () => void;
@@ -318,6 +323,7 @@ const emptyState = {
   moiNoiCall: null as 'moi' | 'noi' | null,
   nremtStage: 'scene_sizeup' as NremtStage,
   coachNotes: [] as CoachNote[],
+  lastReassessVitals: null as EmtVitals | null,
 };
 
 export const useEmtStore = create<EmtStore>((set, get) => ({
@@ -761,6 +767,98 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
     }
 
     let exchange = buildLaurenExchange(actionId, state.call, state.vitals);
+
+    // Stay and Play — wrap-up prompt with optional miss hints (does not end yet).
+    if (actionId === 'stay_and_play') {
+      const hints = getWrapUpHints({
+        call: state.call,
+        vitals: state.vitals,
+        completedActions: state.completedActions,
+        treatments: state.treatments,
+        abcdeCompleted: state.abcdeCompleted,
+      });
+      exchange = {
+        studentLine: "I'm going to stay and play — wrap up on scene.",
+        laurenLines: [
+          'Stay and Play ends the call on scene — no hospital transport.',
+          'Anything else you want to do for the patient before we grade?',
+          ...hints,
+        ],
+        followUps: [
+          {
+            id: 'keep_working',
+            label: 'Keep working',
+            actionId: 'continue_care_wrap',
+          },
+          {
+            id: 'end_scene',
+            label: 'End on scene & grade',
+            actionId: 'confirm_stay_and_play',
+          },
+        ],
+      };
+    }
+
+    // Repeatable reassessment — show changes since last check.
+    if (actionId === 'reassessment') {
+      const n =
+        state.completedActions.filter((id) => id === 'reassessment').length + 1;
+      const prev = state.lastReassessVitals;
+      const changes: string[] = [];
+      if (prev) {
+        if (prev.hr !== state.vitals.hr) {
+          changes.push(`HR ${prev.hr} → ${state.vitals.hr}`);
+        }
+        if (prev.rr !== state.vitals.rr) {
+          changes.push(`RR ${prev.rr} → ${state.vitals.rr}`);
+        }
+        if (prev.spo2 !== state.vitals.spo2) {
+          changes.push(`SpO₂ ${prev.spo2}% → ${state.vitals.spo2}%`);
+        }
+        if (prev.bp !== state.vitals.bp) {
+          changes.push(`BP ${prev.bp} → ${state.vitals.bp}`);
+        }
+        if (prev.mentalStatus !== state.vitals.mentalStatus) {
+          changes.push(
+            `Mental status ${prev.mentalStatus} → ${state.vitals.mentalStatus}`
+          );
+        }
+      }
+      exchange = {
+        studentLine: "I'd like to reassess the patient.",
+        laurenLines: [
+          `Reassessment #${n}: mental status ${state.vitals.mentalStatus}.`,
+          `Vitals now: BP ${state.vitals.bp}, HR ${state.vitals.hr}, RR ${state.vitals.rr}, SpO₂ ${state.vitals.spo2}%.`,
+          changes.length
+            ? `Change since last check: ${changes.join('; ')}.`
+            : n === 1
+              ? 'Baseline reassessment logged — reassess again after interventions to watch for change.'
+              : 'No major change since your last reassessment.',
+          'You can reassess as often as you need.',
+        ],
+        reveal: ['hr', 'rr', 'spo2', 'bp'],
+      };
+    }
+
+    if (actionId === 'continue_care_wrap') {
+      exchange = {
+        studentLine: "I'll keep working.",
+        laurenLines: [
+          'Sounds good. Reassess, treat life threats, then Stay and Play or Transport when you are ready.',
+        ],
+      };
+    }
+
+    if (actionId === 'confirm_stay_and_play') {
+      exchange = {
+        studentLine: "I'm ending care on scene — Stay and Play.",
+        laurenLines: [
+          'Disposition logged: stayed on scene.',
+          'Closing the call for your debrief.',
+        ],
+      };
+    }
+
     let newCoachNotes = state.coachNotes;
     if (showLaurenSuggestions(state.difficulty)) {
       const coached = withCoachTips(actionId, state.call, exchange, {
@@ -873,9 +971,17 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       : state.vitals;
 
     const nextCompleted = (() => {
-      let list = state.completedActions.includes(actionId)
-        ? [...state.completedActions]
-        : [...state.completedActions, actionId];
+      let list = [...state.completedActions];
+      // Wrap-up prompt is not a disposition yet.
+      if (fx.wrapUp) {
+        return list;
+      }
+      // Reassessment is repeatable — always log another pass.
+      if (actionId === 'reassessment') {
+        list = [...list, 'reassessment'];
+      } else if (!list.includes(actionId)) {
+        list = [...list, actionId];
+      }
       // Enroute also counts as the matching Resources menu request.
       const stage = /^resource_(als|fire|pd)_enroute$/.exec(actionId);
       if (stage) {
@@ -890,6 +996,9 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       if (fx.beginHandoff && !list.includes('begin_handoff')) {
         list = [...list, 'begin_handoff'];
       }
+      for (const granted of fx.grantActions ?? []) {
+        if (!list.includes(granted)) list = [...list, granted];
+      }
       return list;
     })();
 
@@ -899,6 +1008,8 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
     let pendingPhysio = [...state.pendingPhysio];
     if (
       actionId === 'general_impression' ||
+      actionId === 'rapid_assessment' ||
+      actionId === 'focused_assessment' ||
       actionId === 'don_ppe' ||
       actionId === 'verbalize_scene_safe' ||
       actionId === 'oxygen' ||
@@ -1013,7 +1124,13 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       resourceStaging,
       moiNoiCall,
       coachNotes: newCoachNotes,
+      lastReassessVitals:
+        actionId === 'reassessment' ? { ...vitals } : state.lastReassessVitals,
     });
+
+    if (fx.endOnScene) {
+      get().finishOnScene();
+    }
   },
 
   clearPendingResourceFlash: () => set({ pendingResourceFlash: null }),
@@ -1079,6 +1196,49 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       totalScore: result.totalScore,
       result,
       phase: 'debrief',
+    });
+  },
+
+  finishOnScene: () => {
+    const state = get();
+    if (!state.call || !state.vitals || state.result) return;
+    if (state.phase === 'debrief') return;
+
+    const completedActions = state.completedActions.includes('stay_and_play')
+      ? state.completedActions
+      : [...state.completedActions, 'stay_and_play'];
+
+    const result = resolveEmtRun({
+      call: state.call,
+      difficulty: state.difficulty,
+      timeline: state.timeline,
+      skillScores: state.skillScores,
+      totalScore: state.totalScore,
+      finalVitals: state.vitals,
+      safetyActions: state.safetyActions,
+      abcdeCompleted: state.abcdeCompleted,
+      treatments: state.treatments,
+      transportPriority: state.transportPriority,
+      destination: state.destination,
+      enteredUnsafe: state.enteredUnsafe,
+      completedActions,
+      coachNotes: state.coachNotes,
+      onSceneDisposition: true,
+    });
+
+    useProgressStore.getState().recordCompletedRun({
+      result,
+      category: state.call.category,
+      difficulty: state.difficulty,
+    });
+
+    set({
+      completedActions,
+      skillScores: result.skillScores,
+      totalScore: result.totalScore,
+      result,
+      phase: 'debrief',
+      laurenFlashQueue: [],
     });
   },
 

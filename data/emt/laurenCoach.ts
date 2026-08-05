@@ -82,6 +82,8 @@ const TRANSPORT_ACTIONS = new Set([
 
 const PATIENT_CONTACT_ACTIONS = new Set([
   'general_impression',
+  'rapid_assessment',
+  'focused_assessment',
   'assess_loc',
   'chief_complaint',
   'airway',
@@ -117,6 +119,29 @@ export function isArrestPriority(call: EmtCall, vitals: EmtVitals): boolean {
   if (call.archetypeId === 'cardiac_arrest') return true;
   if (call.recommendedTreatment.includes('cpr') && vitals.hr === 0) return true;
   if (vitals.hr === 0 && vitals.rr === 0) return true;
+  return false;
+}
+
+/** Prefer Rapid Assessment for critical / unresponsive presentations. */
+export function prefersRapidAssessment(call: EmtCall, vitals: EmtVitals): boolean {
+  if (isArrestPriority(call, vitals)) return true;
+  const ms = vitals.mentalStatus.toLowerCase();
+  if (
+    ms.includes('unresponsive') ||
+    ms.includes('unconscious') ||
+    ms.includes('pulseless') ||
+    ms.includes('responds to pain') ||
+    /\b(u|p)\b/.test(ms)
+  ) {
+    return true;
+  }
+  if (vitals.hr === 0 || vitals.rr === 0 || vitals.spo2 < 85) return true;
+  if (call.category === 'trauma' && call.correctTransportPriority === 'emergency') {
+    return true;
+  }
+  if (call.priority === 1 && call.correctTransportPriority === 'emergency') {
+    return true;
+  }
   return false;
 }
 
@@ -157,7 +182,7 @@ export function phaseEnterGuide(stage: NremtStage, call: EmtCall): string[] {
     case 'primary_survey':
       return [
         'This is the Primary Survey — patient contact.',
-        'Open Assessment → Primary (xABC). Find life threats as you go.',
+        'Open Assessment → Rapid Assessment (critical / unresponsive) or Focused Assessment (more stable).',
         isArrestPriority(call, call.vitals)
           ? 'If there is no pulse: CPR and AED under Treatment — do not stack vitals first.'
           : 'Treat life threats under Treatment as you find them. The bottom button advances when you are ready.',
@@ -374,6 +399,16 @@ function softNextTip(ctx: CoachContext): string | null {
       ? 'Consider ABCs and a pulse check next — unresponsive impression.'
       : 'Consider responsiveness, life threats, then ABCs.';
   }
+  if (actionId === 'rapid_assessment') {
+    return isArrestPriority(call, vitals)
+      ? 'Rapid primary done — if there is no pulse, start CPR and get the AED.'
+      : 'Rapid primary done — treat life threats, then vitals or transport as indicated.';
+  }
+  if (actionId === 'focused_assessment') {
+    return prefersRapidAssessment(call, vitals)
+      ? 'Consider whether a Rapid Assessment still belongs — this patient may be more critical than a focused exam covers.'
+      : 'Focused exam done — consider vitals and SAMPLE / OPQRST next.';
+  }
   return null;
 }
 
@@ -448,6 +483,44 @@ export function getSoftConsiderations(ctx: {
     if (!tips.includes(tip)) tips.push(tip);
   };
 
+  const arrest = isArrestPriority(ctx.call, ctx.vitals);
+  const trauma = ctx.call.category === 'trauma' || ctx.call.category === 'mci';
+
+  // Call-type flow coaching (soft path — never locks menus)
+  if (arrest) {
+    if (!done('don_ppe') || !done('verbalize_scene_safe')) {
+      push('Arrest path: BSI and scene safety, then Rapid Assessment → CPR / AED.');
+    } else if (
+      !done('rapid_assessment') &&
+      !(done('airway') && done('circulation'))
+    ) {
+      push('Arrest path: Rapid Assessment next, then CPR and AED under Treatment.');
+    } else if (!done('cpr') && !done('aed')) {
+      push('Arrest path: start CPR and get the AED — do not stack history first.');
+    } else if (!done('request_als') && ctx.activeRoot !== 'resources') {
+      push('Arrest path: keep CPR quality high and get ALS rolling if they are not already.');
+    }
+  } else if (trauma) {
+    if (!done('don_ppe') || !done('verbalize_scene_safe')) {
+      push('Trauma path: BSI, scene safety, then Rapid Assessment for life threats.');
+    } else if (
+      !done('rapid_assessment') &&
+      !done('focused_assessment') &&
+      !done('major_bleeding')
+    ) {
+      push('Trauma path: Rapid Assessment — control bleeding and ABCs before long history.');
+    } else if (
+      (ctx.call.recommendedTreatment.includes('bleeding_control') ||
+        ctx.call.recommendedTreatment.includes('control_bleeding')) &&
+      !done('bleeding_control') &&
+      !done('control_bleeding')
+    ) {
+      push('Trauma path: if bleeding is life-threatening, treat it when you find it.');
+    }
+  } else if (!done('don_ppe')) {
+    push('Medical path: start with BSI, then scene size-up, then Rapid or Focused assessment.');
+  }
+
   const sizeUpThin =
     !done('don_ppe') ||
     !done('verbalize_scene_safe') ||
@@ -460,7 +533,10 @@ export function getSoftConsiderations(ctx: {
     ctx.activeRoot === 'transport';
 
   // Jumping into assessment / treatment / transport without size-up pieces
-  if (leftSizeUpEarly || ctx.activeRoot === 'assessment' || ctx.activeRoot === 'interventions') {
+  if (
+    tips.length < 2 &&
+    (leftSizeUpEarly || ctx.activeRoot === 'assessment' || ctx.activeRoot === 'interventions')
+  ) {
     if (!done('don_ppe')) {
       push('Consider BSI / PPE before patient contact.');
     }
@@ -488,31 +564,59 @@ export function getSoftConsiderations(ctx: {
     }
   }
 
-  // In assessment without ABCs while chasing history / secondary
-  if (ctx.activeRoot === 'assessment' || ctx.nremtStage === 'history') {
-    if (!(done('airway') && done('breathing') && done('circulation')) && done('general_impression')) {
-      push('Consider airway, breathing, and circulation before a long history.');
+  // In assessment — nudge Rapid vs Focused, not every ABC click
+  if (
+    tips.length < 2 &&
+    (ctx.activeRoot === 'assessment' || ctx.nremtStage === 'primary_survey')
+  ) {
+    const hasPrimaryPass =
+      done('rapid_assessment') ||
+      done('focused_assessment') ||
+      (done('airway') && done('breathing') && done('circulation'));
+    if (!hasPrimaryPass) {
+      if (prefersRapidAssessment(ctx.call, ctx.vitals)) {
+        push('Consider a Rapid Assessment — critical or altered patients need a one-pass primary.');
+      } else {
+        push('Consider a Focused Assessment for a stable, responsive patient — or Rapid if they look sick.');
+      }
     }
   }
 
   // Treatment before primary threats
-  if (ctx.activeRoot === 'interventions') {
-    if (!done('general_impression') && !done('airway') && !done('circulation')) {
+  if (tips.length < 2 && ctx.activeRoot === 'interventions') {
+    if (
+      !done('rapid_assessment') &&
+      !done('focused_assessment') &&
+      !done('general_impression') &&
+      !done('airway') &&
+      !done('circulation')
+    ) {
       push('Consider a rapid primary impression / ABCs before interventions.');
     }
-    if (isArrestPriority(ctx.call, ctx.vitals) && !done('cpr') && !done('aed')) {
+    if (arrest && !done('cpr') && !done('aed')) {
       push('Consider CPR and AED first if there is no pulse.');
     }
   }
 
-  // Transport early
-  if (ctx.activeRoot === 'transport' && sizeUpThin) {
-    push('Consider finishing size-up and primary threats before transport decisions.');
-  } else if (
-    ctx.activeRoot === 'transport' &&
-    !(done('airway') && done('breathing') && done('circulation'))
+  // Transport / disposition
+  if (tips.length < 2 && ctx.activeRoot === 'transport') {
+    if (sizeUpThin) {
+      push('Consider finishing size-up and primary threats before transport decisions.');
+    } else if (!(done('airway') && done('breathing') && done('circulation'))) {
+      push('Consider addressing life threats on primary before destination and mode.');
+    } else {
+      push('Stay and Play ends on scene for grading. Load and Go → Transport for destination and mode.');
+    }
+  }
+
+  // Reassess reminder after treatments
+  if (
+    tips.length < 2 &&
+    ctx.activeRoot === 'assessment' &&
+    ctx.treatments.length > 0 &&
+    !ctx.completedActions.includes('reassessment')
   ) {
-    push('Consider addressing life threats on primary before destination and mode.');
+    push('Consider reassessing after interventions — you can reassess as often as you need.');
   }
 
   // Default gentle nudge early on scene menu
@@ -521,6 +625,57 @@ export function getSoftConsiderations(ctx: {
   }
 
   return tips;
+}
+
+/**
+ * Soft miss hints when the student is about to end on scene (Stay and Play).
+ * Optional — they can still end immediately.
+ */
+export function getWrapUpHints(ctx: {
+  call: EmtCall;
+  vitals: EmtVitals;
+  completedActions: string[];
+  treatments: string[];
+  abcdeCompleted: string[];
+}): string[] {
+  const done = (id: string) => hasDone(ctx.completedActions, ctx.treatments, id);
+  const hints: string[] = [];
+  const push = (tip: string) => {
+    if (hints.length >= 2) return;
+    hints.push(tip);
+  };
+
+  if (!done('don_ppe')) push('Missed so far: BSI / PPE.');
+  if (!done('verbalize_scene_safe')) push('Missed so far: scene safety check.');
+  if (
+    !done('rapid_assessment') &&
+    !done('focused_assessment') &&
+    !(done('airway') && done('breathing') && done('circulation'))
+  ) {
+    push(
+      prefersRapidAssessment(ctx.call, ctx.vitals)
+        ? 'Missed so far: a Rapid Assessment / primary ABCs.'
+        : 'Missed so far: Rapid or Focused assessment.'
+    );
+  }
+  if (isArrestPriority(ctx.call, ctx.vitals) && !done('cpr') && !done('aed')) {
+    push('Missed so far: CPR / AED for arrest.');
+  }
+  for (const id of ctx.call.recommendedTreatment.slice(0, 4)) {
+    if (
+      ['oxygen', 'aspirin', 'bleeding_control', 'control_bleeding', 'narcan', 'epinephrine', 'request_als'].includes(
+        id
+      ) &&
+      !done(id)
+    ) {
+      push(`Missed so far: ${id.replace(/_/g, ' ')}.`);
+    }
+  }
+  if (!done('reassessment')) {
+    push('You can still reassess once more before ending — changes matter.');
+  }
+
+  return hints;
 }
 
 /** Deduplicate coach notes for debrief (keep first occurrence of similar text). */

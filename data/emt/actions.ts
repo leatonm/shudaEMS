@@ -151,10 +151,36 @@ export const EMT_ACTIONS: Record<string, EmtAction> = {
     principle: 'universal',
     emtScope: true,
   },
+  rapid_assessment: {
+    id: 'rapid_assessment',
+    name: 'Rapid Assessment',
+    description:
+      'One-pass primary for critical or unresponsive patients — impression, AVPU, ABCs, life threats',
+    category: 'assessment',
+    principle: 'universal',
+    emtScope: true,
+  },
+  focused_assessment: {
+    id: 'focused_assessment',
+    name: 'Focused Assessment',
+    description:
+      'Complaint-focused exam for more stable, responsive patients',
+    category: 'assessment',
+    principle: 'universal',
+    emtScope: true,
+  },
   stay_and_play: {
     id: 'stay_and_play',
     name: 'Stay and Play',
-    description: 'Remain on scene to complete indicated care before transport',
+    description: 'Complete care on scene and end the call without transport',
+    category: 'transport',
+    principle: 'universal',
+    emtScope: true,
+  },
+  confirm_stay_and_play: {
+    id: 'confirm_stay_and_play',
+    name: 'End On Scene',
+    description: 'Confirm stay-and-play disposition and close the call for grading',
     category: 'transport',
     principle: 'universal',
     emtScope: true,

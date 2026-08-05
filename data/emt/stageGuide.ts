@@ -141,16 +141,16 @@ export function getStageFocus(
 
     case 'primary_survey': {
       const quick: StageQuickAction[] = [];
-      // Assessment root first — Impression lives here, NOT inside Primary.
       quick.push(suggestFolder('Assessment', 'assessment', []));
-      if (!done.has('general_impression')) {
-        const leaf = suggestLeaf('general_impression', 'Impression');
-        if (leaf) quick.push(leaf);
-      }
-      quick.push(suggestFolder('Primary (xABC)', 'assessment', ['primary']));
       if (arrest) {
+        const rapid = suggestLeaf('rapid_assessment', 'Rapid Assessment');
+        if (rapid) quick.push(rapid);
         quick.push(suggestFolder('CPR / AED', 'interventions', ['int_cardiac']));
       } else {
+        const focused = suggestLeaf('focused_assessment', 'Focused Assessment');
+        if (focused) quick.push(focused);
+        const rapid = suggestLeaf('rapid_assessment', 'Rapid Assessment');
+        if (rapid) quick.push(rapid);
         quick.push(suggestFolder('Oxygen', 'interventions', ['int_breathing']));
       }
       quick.push(suggestFolder('Treatment', 'interventions', []));
@@ -158,8 +158,8 @@ export function getStageFocus(
       return {
         title: 'Primary Survey',
         hint: arrest
-          ? 'Free pick any menu. Guide: Assessment for Impression + Primary; Treatment → Cardiac for CPR/AED.'
-          : 'Free pick any menu. Guide: Assessment for Impression + Primary (xABC); Treatment for O₂ / bleeding / CPR.',
+          ? 'Free pick any menu. Guide: Assessment → Rapid Assessment, then Treatment → Cardiac for CPR/AED.'
+          : 'Free pick any menu. Guide: Assessment → Focused or Rapid, then Treatment for O₂ / bleeding / CPR.',
         openRoot: 'assessment',
         openPath: [],
         advanceHint: 'When primary is enough → HISTORY TAKING (bottom)',
@@ -184,7 +184,7 @@ export function getStageFocus(
 
     case 'secondary': {
       const quick = [
-        ...undones(['secondary_assessment', 'skin_signs'], done),
+        ...undones(['focused_assessment', 'secondary_assessment', 'skin_signs'], done),
         // cap_refill lives under Assessment → Vitals in the real menu
         suggestFolder('Cap refill ›', 'assessment', ['vitals']),
         // lung_sounds lives under Treatment → Breathing
@@ -222,12 +222,14 @@ export function getStageFocus(
     case 'reassessment':
       return {
         title: 'Reassessment',
-        hint: 'Reassessment is under Assessment. Use Treatment if you still need interventions.',
+        hint: 'Reassess as often as you need — watch for change after interventions. Assessment → Reassess Patient.',
         openRoot: 'assessment',
         openPath: [],
         advanceHint: 'When ready → VERBAL REPORT (bottom)',
         quickActions: dedupeQuick([
-          ...undones(['reassessment'], done),
+          ...(suggestLeaf('reassessment', 'Reassess Patient')
+            ? [suggestLeaf('reassessment', 'Reassess Patient')!]
+            : []),
           suggestFolder('Treatment', 'interventions', []),
           suggestFolder('Transport', 'transport', []),
         ]),
@@ -236,10 +238,10 @@ export function getStageFocus(
     case 'report':
       return {
         title: 'Verbal Report',
-        hint: 'Transport menu — Stay and Play or Load and Go, then Transport for destination and mode. Handoff opens when both are set.',
+        hint: 'Stay and Play ends on scene for grading. Or Load and Go → Transport for destination and mode, then handoff.',
         openRoot: 'transport',
         openPath: [],
-        advanceHint: 'Set destination + mode to hand off',
+        advanceHint: 'Stay and Play or set destination + mode',
         quickActions: undones(['stay_and_play', 'load_and_go'], done),
       };
   }
@@ -313,7 +315,7 @@ export function rootRoleBlurb(root: ActionMenuRoot, stageId: NremtStage): string
         return 'Suggested now · size-up';
       case 'assessment':
         return stageId === 'primary_survey'
-          ? 'Suggested now · primary / ABCs'
+          ? 'Suggested now · Rapid or Focused'
           : stageId === 'history'
             ? 'Suggested now · history'
             : stageId === 'vitals'

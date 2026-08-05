@@ -15,6 +15,8 @@ export interface ActionMenuNode {
   tip?: string;
   children?: ActionMenuNode[];
   alsOnly?: boolean;
+  /** Can be used repeatedly (e.g. reassessment) — UI will not treat as permanently done. */
+  repeatable?: boolean;
 }
 
 export const ACTION_MENU_ROOTS: Array<{
@@ -24,7 +26,7 @@ export const ACTION_MENU_ROOTS: Array<{
   blurb: string;
 }> = [
   { id: 'scene', label: 'Size-Up', skill: 'scene_safety', blurb: 'PPE · safety · patients' },
-  { id: 'assessment', label: 'Assessment', skill: 'assessment', blurb: 'Primary · history · vitals' },
+  { id: 'assessment', label: 'Assessment', skill: 'assessment', blurb: 'Rapid · focused · vitals' },
   { id: 'interventions', label: 'Treatment', skill: 'treatment', blurb: 'Fix life threats here' },
   { id: 'resources', label: 'Resources', skill: 'communication', blurb: 'ALS · Law · Fire' },
   { id: 'transport', label: 'Transport', skill: 'transport', blurb: 'Stay · load · destination' },
@@ -40,20 +42,17 @@ export const ACTION_MENUS: Record<ActionMenuRoot, ActionMenuNode[]> = {
     { id: 'cspine', label: 'C-Spine Precautions', actionId: 'c_spine' },
   ],
   assessment: [
-    { id: 'impression', label: 'General Impression', actionId: 'general_impression' },
     {
-      id: 'primary',
-      label: 'Primary (xABC)',
-      children: [
-        { id: 'avpu', label: 'AVPU / Responsiveness', actionId: 'assess_loc' },
-        { id: 'cc', label: 'Chief Complaint / Life Threats', actionId: 'chief_complaint' },
-        { id: 'aw', label: 'Airway', actionId: 'airway' },
-        { id: 'br', label: 'Breathing', actionId: 'breathing' },
-        { id: 'circ', label: 'Circulation', actionId: 'circulation' },
-        { id: 'dis', label: 'Disability', actionId: 'disability' },
-        { id: 'exp', label: 'Exposure', actionId: 'exposure' },
-        { id: 'bleed', label: 'Major Bleeding', actionId: 'major_bleeding' },
-      ],
+      id: 'rapid',
+      label: 'Rapid Assessment',
+      tip: 'Critical / unresponsive — impression, AVPU, ABCs, life threats',
+      actionId: 'rapid_assessment',
+    },
+    {
+      id: 'focused',
+      label: 'Focused Assessment',
+      tip: 'Stable / responsive — complaint-focused exam',
+      actionId: 'focused_assessment',
     },
     {
       id: 'history',
@@ -85,9 +84,23 @@ export const ACTION_MENUS: Record<ActionMenuRoot, ActionMenuNode[]> = {
         { id: 'v_cap', label: 'Capillary Refill', actionId: 'cap_refill' },
       ],
     },
-    { id: 'focused', label: 'Focused Assessment', actionId: 'secondary_assessment' },
-    { id: 'skin', label: 'Skin Signs', actionId: 'skin_signs' },
-    { id: 'reassess', label: 'Reassessment', actionId: 'reassessment' },
+    {
+      id: 'step_primary',
+      label: 'Step-by-step Primary',
+      children: [
+        { id: 'impression', label: 'General Impression', actionId: 'general_impression' },
+        { id: 'avpu', label: 'AVPU / Responsiveness', actionId: 'assess_loc' },
+        { id: 'cc', label: 'Chief Complaint / Life Threats', actionId: 'chief_complaint' },
+        { id: 'aw', label: 'Airway', actionId: 'airway' },
+        { id: 'br', label: 'Breathing', actionId: 'breathing' },
+        { id: 'circ', label: 'Circulation', actionId: 'circulation' },
+        { id: 'dis', label: 'Disability', actionId: 'disability' },
+        { id: 'exp', label: 'Exposure', actionId: 'exposure' },
+        { id: 'bleed', label: 'Major Bleeding', actionId: 'major_bleeding' },
+        { id: 'skin', label: 'Skin Signs', actionId: 'skin_signs' },
+      ],
+    },
+    { id: 'reassess', label: 'Reassess Patient', actionId: 'reassessment', repeatable: true },
   ],
   interventions: [
     {
@@ -151,11 +164,13 @@ export const ACTION_MENUS: Record<ActionMenuRoot, ActionMenuNode[]> = {
     {
       id: 'tp_stay',
       label: 'Stay and Play',
+      tip: 'End care on scene — wrap up and get graded (no transport)',
       actionId: 'stay_and_play',
     },
     {
       id: 'tp_load',
       label: 'Load and Go',
+      tip: 'Package and continue care en route — then set destination and mode',
       actionId: 'load_and_go',
     },
     {

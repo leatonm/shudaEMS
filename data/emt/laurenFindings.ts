@@ -238,6 +238,49 @@ export function buildLaurenExchange(
           'Appears anxious.',
         ].filter(Boolean) as string[],
       };
+    case 'rapid_assessment': {
+      const arrest =
+        vitals.hr === 0 ||
+        vitals.mentalStatus.toLowerCase().includes('unresponsive') ||
+        vitals.mentalStatus.toLowerCase().includes('pulseless');
+      return {
+        studentLine: "I'd like to do a rapid assessment.",
+        laurenLines: [
+          call.patientSummary,
+          `AVPU / mental status: ${vitals.mentalStatus}.`,
+          finding(call, 'airway') ?? 'Airway assessed.',
+          finding(call, 'breathing') ?? `Breathing: RR ${vitals.rr}.`,
+          finding(call, 'circulation') ?? `Circulation: pulse ${vitals.hr}.`,
+          finding(call, 'disability') ?? `Disability: ${vitals.mentalStatus}.`,
+          finding(call, 'exposure') ?? 'Quick exposure for life threats completed.',
+          arrest
+            ? 'This looks critical — move to CPR / AED if there is no pulse.'
+            : 'Rapid primary complete. Treat life threats, then vitals / transport as indicated.',
+        ].filter(Boolean) as string[],
+        reveal: ['hr', 'rr'],
+        followUps: arrest
+          ? [
+              { id: 'fu_cpr', label: 'Start CPR', actionId: 'cpr' },
+              { id: 'fu_aed', label: 'Apply AED', actionId: 'aed' },
+            ]
+          : undefined,
+      };
+    }
+    case 'focused_assessment':
+      return {
+        studentLine: "I'd like to do a focused assessment.",
+        laurenLines: [
+          call.patientSummary,
+          `Mental status: ${vitals.mentalStatus}.`,
+          `Chief complaint / focus: ${call.dispatch}`,
+          finding(call, 'breathing') ??
+            finding(call, 'circulation') ??
+            finding(call, 'disability') ??
+            'Focused exam findings documented for the complaint.',
+          'Skin signs and system-focused checks completed. Grab vitals and SAMPLE/OPQRST as needed.',
+        ].filter(Boolean) as string[],
+        reveal: ['hr', 'rr'],
+      };
     case 'assess_loc':
       return {
         studentLine: "I'd like to assess level of consciousness — AVPU.",
@@ -458,8 +501,9 @@ export function buildLaurenExchange(
         studentLine: "I'd like to reassess the patient.",
         laurenLines: [
           `Reassessment: mental status ${vitals.mentalStatus}.`,
-          'Obtain fresh vitals if you have not recently.',
+          'You can reassess again anytime to watch for change.',
         ],
+        reveal: ['hr', 'rr', 'spo2', 'bp'],
       };
     case 'notify_hospital':
       return {
@@ -468,11 +512,35 @@ export function buildLaurenExchange(
       };
     case 'stay_and_play':
       return {
-        studentLine: "I'm going to stay and play — finish care on scene.",
+        studentLine: "I'm going to stay and play — wrap up on scene.",
         laurenLines: [
-          'Understood. Stay on scene and wrap up indicated care here.',
-          'When you are ready to leave, open Transport and set destination and mode.',
+          'Stay and Play ends the call on scene — no transport.',
+          'Anything else you want to do for the patient before we grade?',
         ],
+        followUps: [
+          {
+            id: 'keep_working',
+            label: 'Keep working',
+            actionId: 'continue_care_wrap',
+          },
+          {
+            id: 'end_scene',
+            label: 'End on scene & grade',
+            actionId: 'confirm_stay_and_play',
+          },
+        ],
+      };
+    case 'continue_care_wrap':
+      return {
+        studentLine: "I'll keep working.",
+        laurenLines: [
+          'Keep going — reassess or treat, then Stay and Play or Transport when ready.',
+        ],
+      };
+    case 'confirm_stay_and_play':
+      return {
+        studentLine: "I'm ending care on scene — Stay and Play.",
+        laurenLines: ['Disposition logged. Closing the call for your debrief.'],
       };
     case 'load_and_go':
       return {

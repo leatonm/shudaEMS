@@ -88,6 +88,8 @@ export function presentLaurenExchange(
     'resource_pd_standby',
     'resource_fire_enroute',
     'resource_fire_standby',
+    'continue_care_wrap',
+    'confirm_stay_and_play',
   ]);
   const decisions = exchange.followUps?.filter((f) => decisionIds.has(f.actionId));
 

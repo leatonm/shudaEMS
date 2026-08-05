@@ -429,6 +429,8 @@ export function resolveEmtRun(input: {
   difficulty: EmtDifficulty;
   completedActions?: string[];
   coachNotes?: CoachNote[];
+  /** Ended via Stay and Play — no transport destination expected. */
+  onSceneDisposition?: boolean;
 }): EmtRunResult {
   const {
     call,
@@ -445,7 +447,13 @@ export function resolveEmtRun(input: {
     difficulty,
     completedActions = [],
     coachNotes = [],
+    onSceneDisposition = false,
   } = input;
+
+  const stayedOnScene =
+    onSceneDisposition ||
+    completedActions.includes('stay_and_play') ||
+    completedActions.includes('confirm_stay_and_play');
 
   const criticalFails = evaluateCriticalFails({
     call,
@@ -506,7 +514,9 @@ export function resolveEmtRun(input: {
     improveNext.push(`Avoid: ${id.replace(/_/g, ' ')}`);
   }
 
-  if (transportPriority === call.correctTransportPriority) {
+  if (stayedOnScene) {
+    whatWentWell.push('Disposition: completed care on scene (Stay and Play)');
+  } else if (transportPriority === call.correctTransportPriority) {
     whatWentWell.push('Correct transport priority');
   } else {
     improveNext.push(
@@ -514,7 +524,9 @@ export function resolveEmtRun(input: {
     );
   }
 
-  if (destination === call.correctDestination) {
+  if (stayedOnScene) {
+    // No destination expected when care ends on scene.
+  } else if (destination === call.correctDestination) {
     whatWentWell.push('Correct receiving facility type');
   } else {
     improveNext.push(
@@ -574,8 +586,9 @@ export function resolveEmtRun(input: {
       summary =
         'Practice review — critical criteria to drill are listed below. No pass/fail grade on this mode; use Lauren’s coaching and try again.';
     } else if (patientOutcome === 'improved') {
-      summary =
-        'Strong practice run — systematic assessment and timely transport. Keep building that rhythm.';
+      summary = stayedOnScene
+        ? 'Strong practice run — systematic care completed on scene. Keep building that rhythm.'
+        : 'Strong practice run — systematic assessment and timely transport. Keep building that rhythm.';
     } else if (patientOutcome === 'stable') {
       summary =
         'Solid practice — patient cared for. Tighten a few decisions on the next rep.';

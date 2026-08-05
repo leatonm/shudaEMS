@@ -94,6 +94,7 @@ export default function EmtCallScreen() {
 
   useEffect(() => {
     if (phase === 'handoff') router.replace('/emt/handoff' as Href);
+    if (phase === 'debrief') router.replace('/emt/debrief' as Href);
   }, [phase, router]);
 
   // Return to the menu list on board advance — never leave them trapped in a folder.
@@ -211,6 +212,9 @@ export default function EmtCallScreen() {
       [/breathing/, 'breathing'],
       [/circulation|pulse check/, 'circulation'],
       [/impression/, 'general_impression'],
+      [/rapid assess/, 'rapid_assessment'],
+      [/focused assess/, 'focused_assessment'],
+      [/secondary/, 'focused_assessment'],
       [/oxygen|\bo2\b/, 'oxygen'],
       [/aspirin|asa/, 'aspirin'],
       [/nitro/, 'nitroglycerin'],
@@ -434,7 +438,14 @@ export default function EmtCallScreen() {
                   <Text style={styles.subBreadcrumb}>{breadcrumb}</Text>
                   {nodes.map((node) => {
                     const done =
-                      !!node.actionId && completedActions.includes(node.actionId);
+                      !!node.actionId &&
+                      !node.repeatable &&
+                      completedActions.includes(node.actionId);
+                    const reassessPasses =
+                      node.actionId === 'reassessment'
+                        ? completedActions.filter((id) => id === 'reassessment')
+                            .length
+                        : 0;
                     const accent = done
                       ? theme.colors.success
                       : ROOT_ACCENTS[root] ?? theme.colors.emsBlue;
@@ -450,7 +461,10 @@ export default function EmtCallScreen() {
                           end={{ x: 1, y: 1 }}
                           style={[styles.actionBtn, { borderColor: accent }]}
                         >
-                          <Text style={styles.actionLabel}>{node.label}</Text>
+                          <Text style={styles.actionLabel}>
+                            {node.label}
+                            {reassessPasses > 0 ? ` · ×${reassessPasses}` : ''}
+                          </Text>
                           {node.children?.length ? (
                             <Image
                               source={Icons.arrowRight}

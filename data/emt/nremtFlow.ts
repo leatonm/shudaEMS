@@ -56,9 +56,12 @@ export const NREMT_MEDICAL_STAGES: NremtStageInfo[] = [
     phase: 'primary_survey',
     enterLines: [
       'This is the Primary Survey — patient contact.',
-      'Open Assessment → Primary (xABC). Treat life threats under Treatment as you find them.',
+      'Open Assessment → Rapid Assessment (critical / unresponsive) or Focused Assessment (more stable).',
+      'Treat life threats under Treatment as you find them.',
     ],
     expectedActions: [
+      'rapid_assessment',
+      'focused_assessment',
       'general_impression',
       'assess_loc',
       'disability',
@@ -89,7 +92,13 @@ export const NREMT_MEDICAL_STAGES: NremtStageInfo[] = [
       'Secondary assessment.',
       'Assess the affected body part or system for this presentation.',
     ],
-    expectedActions: ['secondary_assessment', 'lung_sounds', 'skin_signs', 'cap_refill'],
+    expectedActions: [
+      'focused_assessment',
+      'secondary_assessment',
+      'lung_sounds',
+      'skin_signs',
+      'cap_refill',
+    ],
   },
   {
     id: 'vitals',
@@ -179,12 +188,19 @@ export function stageCoverage(
     );
   } else if (stage.id === 'primary_survey') {
     buckets.push(
-      ['general_impression'],
-      ['assess_loc', 'disability'],
-      ['chief_complaint'],
-      ['airway'],
-      ['breathing', 'oxygen', 'work_of_breathing'],
-      ['circulation', 'major_bleeding', 'skin_signs', 'cap_refill']
+      ['rapid_assessment', 'focused_assessment', 'general_impression'],
+      ['rapid_assessment', 'focused_assessment', 'assess_loc', 'disability'],
+      ['rapid_assessment', 'focused_assessment', 'chief_complaint'],
+      ['rapid_assessment', 'focused_assessment', 'airway'],
+      ['rapid_assessment', 'focused_assessment', 'breathing', 'oxygen', 'work_of_breathing'],
+      [
+        'rapid_assessment',
+        'focused_assessment',
+        'circulation',
+        'major_bleeding',
+        'skin_signs',
+        'cap_refill',
+      ]
     );
   } else if (stage.id === 'history') {
     buckets.push(['opqrst'], ['sample', 'allergies', 'medications_hx', 'pmh', 'events']);

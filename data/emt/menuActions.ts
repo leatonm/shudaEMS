@@ -1,5 +1,6 @@
 import { EMT_ACTIONS } from '@/data/emt/actions';
 import { evaluateAbcdeStep, evaluateTreatmentAction, hazardsAreCleared } from '@/data/emt/engine';
+import { prefersRapidAssessment } from '@/data/emt/laurenCoach';
 import type {
   AbcdeStep,
   DestinationType,
@@ -121,6 +122,12 @@ export interface MenuActionResult {
   destination?: string | null;
   beginHandoff?: boolean;
   flowMiss?: boolean;
+  /** Stay and Play — prompt before ending on scene. */
+  wrapUp?: boolean;
+  /** Confirmed on-scene disposition — close the call for grading. */
+  endOnScene?: boolean;
+  /** Extra action IDs completed by a one-click bundle (e.g. rapid assessment). */
+  grantActions?: string[];
   /** Resource flash crew */
   resourceFlash?: 'als' | 'fire' | 'pd';
 }
@@ -164,14 +171,135 @@ export function resolveMenuAction(
     };
   }
 
+  if (actionId === 'rapid_assessment') {
+    const grantActions = [
+      'general_impression',
+      'assess_loc',
+      'chief_complaint',
+      'airway',
+      'breathing',
+      'circulation',
+      'disability',
+      'exposure',
+      'major_bleeding',
+    ];
+    const abcdeCompleted = Array.from(
+      new Set<AbcdeStep>([
+        ...ctx.abcdeCompleted,
+        'airway',
+        'breathing',
+        'circulation',
+        'disability',
+        'exposure',
+      ])
+    );
+    const needed = prefersRapidAssessment(ctx.call, ctx.vitals);
+    return {
+      label: 'Rapid Assessment',
+      message: needed
+        ? 'Rapid primary complete — impression, AVPU, ABCs, and life threats covered.'
+        : 'Rapid primary complete. Thorough for a more stable patient — still acceptable.',
+      scoreDelta: already ? 0 : needed ? 22 : 14,
+      severity: 'good',
+      skill: 'assessment',
+      abcdeCompleted,
+      grantActions,
+    };
+  }
+
+  if (actionId === 'focused_assessment') {
+    const grantActions = [
+      'general_impression',
+      'assess_loc',
+      'chief_complaint',
+      'airway',
+      'breathing',
+      'circulation',
+      'secondary_assessment',
+      'skin_signs',
+      'lung_sounds',
+    ];
+    const neededRapid = prefersRapidAssessment(ctx.call, ctx.vitals);
+    const abcdeCompleted = Array.from(
+      new Set<AbcdeStep>([
+        ...ctx.abcdeCompleted,
+        'airway',
+        'breathing',
+        'circulation',
+        'disability',
+      ])
+    );
+    if (neededRapid) {
+      return {
+        label: 'Focused Assessment',
+        message:
+          'Focused exam logged — but this presentation looks critical. A Rapid Assessment still belongs for a one-pass primary.',
+        scoreDelta: already ? 0 : 6,
+        severity: 'warn',
+        skill: 'assessment',
+        abcdeCompleted,
+        grantActions,
+        flowMiss: true,
+      };
+    }
+    return {
+      label: 'Focused Assessment',
+      message:
+        'Focused exam complete — complaint-directed findings covered. Grab vitals and targeted history next.',
+      scoreDelta: already ? 0 : 18,
+      severity: 'good',
+      skill: 'assessment',
+      abcdeCompleted,
+      grantActions,
+    };
+  }
+
+  if (actionId === 'reassessment') {
+    const count =
+      ctx.completedActions.filter((id) => id === 'reassessment').length + 1;
+    return {
+      label: count === 1 ? 'Reassessment' : `Reassessment #${count}`,
+      message:
+        count === 1
+          ? 'Reassessment complete — note mental status and vitals. You can reassess again anytime.'
+          : `Reassessment #${count} — check for change after your interventions.`,
+      scoreDelta: count === 1 ? 8 : count <= 3 ? 3 : 1,
+      severity: 'good',
+      skill: 'assessment',
+    };
+  }
+
   if (actionId === 'stay_and_play') {
     return {
       label: 'Stay and Play',
       message:
-        'Staying on scene to finish indicated care before transport. Keep working ABCs and treatments here.',
-      scoreDelta: already ? 0 : 6,
+        'Stay and Play wraps the call on scene — no transport. Confirm after checking if anything else is needed.',
+      scoreDelta: 0,
+      severity: 'neutral',
+      skill: 'transport',
+      wrapUp: true,
+    };
+  }
+
+  if (actionId === 'confirm_stay_and_play') {
+    return {
+      label: 'End on scene',
+      message: 'Disposition: stayed on scene. Call closed for grading.',
+      scoreDelta: 10,
       severity: 'good',
       skill: 'transport',
+      endOnScene: true,
+      grantActions: ['stay_and_play'],
+    };
+  }
+
+  if (actionId === 'continue_care_wrap') {
+    return {
+      label: 'Continue care',
+      message: 'Keep working — reassess, treat, then Stay and Play or Transport when ready.',
+      scoreDelta: 0,
+      severity: 'neutral',
+      skill: 'assessment',
     };
   }
 

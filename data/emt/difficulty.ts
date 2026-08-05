@@ -10,51 +10,59 @@ export const DIFFICULTY_OPTIONS: Array<{
   description: string;
 }> = [
   {
-    id: 'coach',
-    label: 'Coach',
-    description: 'Lauren offers tips and suggestions during the call.',
-  },
-  {
-    id: 'standard',
-    label: 'Standard',
-    description: 'Brief findings only — no coaching tips mid-call.',
+    id: 'practice',
+    label: 'Practice',
+    description:
+      'Hints, systematic coaching, no clock pressure — learn without pass/fail.',
   },
   {
     id: 'exam',
-    label: 'Exam Mode',
-    description: 'Minimal cues, no hints, NREMT-style critical fails.',
+    label: 'Exam',
+    description: 'Timed run, critical fails, NREMT-style pass/fail.',
   },
 ];
 
+/** Graded pass/fail only on Exam. */
+export function isExamMode(difficulty: EmtDifficulty): boolean {
+  return difficulty === 'exam';
+}
+
+export function isPracticeMode(difficulty: EmtDifficulty): boolean {
+  return difficulty === 'practice';
+}
+
+/** Elapsed call timer — Exam only. */
+export function showCallTimer(difficulty: EmtDifficulty): boolean {
+  return difficulty === 'exam';
+}
+
 export function showActionTips(difficulty: EmtDifficulty): boolean {
-  return difficulty === 'coach';
+  return difficulty === 'practice';
 }
 
 export function showPhaseCoaching(difficulty: EmtDifficulty): boolean {
-  return difficulty === 'coach';
+  return difficulty === 'practice';
 }
 
-/** Lauren may suggest next moves / tip choices (Coach only). */
+/** Lauren may suggest next moves / tip choices (Practice only). */
 export function showLaurenSuggestions(difficulty: EmtDifficulty): boolean {
-  return difficulty === 'coach';
+  return difficulty === 'practice';
 }
 
-/** Standard = short nod; Exam = barely there; Coach = full reply. */
+/** Practice = full coaching replies; Exam = minimal cues. */
 export function laurenGestureLevel(
   difficulty: EmtDifficulty
 ): 'full' | 'gesture' | 'minimal' {
-  if (difficulty === 'coach') return 'full';
-  if (difficulty === 'exam') return 'minimal';
-  return 'gesture';
+  return difficulty === 'practice' ? 'full' : 'minimal';
 }
 
 export function showHazardDetails(difficulty: EmtDifficulty): boolean {
-  return difficulty !== 'exam';
+  return difficulty === 'practice';
 }
 
 /**
  * Shape Lauren’s mid-call reply for the active difficulty.
- * Coach: tips + suggestions. Standard: short factual gesture. Exam: minimal.
+ * Practice: tips + suggestions. Exam: minimal factual cue.
  */
 export function presentLaurenExchange(
   difficulty: EmtDifficulty,
@@ -83,41 +91,24 @@ export function presentLaurenExchange(
   ]);
   const decisions = exchange.followUps?.filter((f) => decisionIds.has(f.actionId));
 
-  if (level === 'minimal') {
-    const first = exchange.laurenLines[0];
-    return {
-      studentLine: exchange.studentLine,
-      laurenLines: first
-        ? [first.length > 72 ? `${first.slice(0, 69)}…` : first]
-        : ['Noted.'],
-      reveal: exchange.reveal,
-      followUps: decisions?.length ? decisions : undefined,
-    };
-  }
-
-  // standard — small gesture: 1–2 factual lines, no tip choices
+  const first = exchange.laurenLines[0];
   return {
     studentLine: exchange.studentLine,
-    laurenLines: exchange.laurenLines.slice(0, 2),
+    laurenLines: first
+      ? [first.length > 72 ? `${first.slice(0, 69)}…` : first]
+      : ['Noted.'],
     reveal: exchange.reveal,
     followUps: decisions?.length ? decisions : undefined,
   };
 }
 
-/** Live feedback during the call — hide answer keys on harder modes. */
+/** Live feedback during the call — hide answer keys on Exam. */
 export function formatLiveFeedback(
   difficulty: EmtDifficulty,
   entry: Pick<TimelineEntry, 'message' | 'severity' | 'scoreDelta'>
 ): { text: string; showSeverity: boolean } {
-  if (difficulty === 'coach') {
+  if (difficulty === 'practice') {
     return { text: entry.message, showSeverity: true };
-  }
-
-  if (difficulty === 'standard') {
-    return {
-      text: entry.message,
-      showSeverity: entry.severity === 'good' || entry.severity === 'bad',
-    };
   }
 
   return { text: '…', showSeverity: false };

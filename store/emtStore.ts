@@ -20,6 +20,10 @@ import {
   withCoachTips,
 } from '@/data/emt/laurenFindings';
 import {
+  phaseEnterGuide,
+  uniqueCoachNotes,
+} from '@/data/emt/laurenCoach';
+import {
   getNremtStage,
   nextNremtStage,
   stageCoverage,
@@ -34,6 +38,7 @@ import {
 import type {
   AbcdeStep,
   CallCategory,
+  CoachNote,
   EmtCall,
   EmtDifficulty,
   EmtPhase,
@@ -56,7 +61,7 @@ export interface LaurenFlashItem {
   lines: string[];
   studentLine?: string;
   choices?: Array<{ id: string; label: string; actionId: string }>;
-  /** Coach = full; Standard = small gesture; Exam = minimal. */
+  /** Practice = full coaching; Exam = minimal. */
   gesture?: 'full' | 'gesture' | 'minimal';
   /** Auto-dismiss without OK (e.g. enroute ETA before unit radio flash). */
   autoDismiss?: boolean;
@@ -144,6 +149,8 @@ interface EmtStore {
   moiNoiCall: 'moi' | 'noi' | null;
   /** NREMT board stage — bottom CTA advances this. */
   nremtStage: NremtStage;
+  /** Practice coaching comments collected for debrief review. */
+  coachNotes: CoachNote[];
 
   setDifficulty: (difficulty: EmtDifficulty) => void;
   setPendingCategory: (category: CallCategory | null) => void;
@@ -310,11 +317,12 @@ const emptyState = {
   resourceStaging: {} as Partial<Record<ResourceCrewKey, ResourceStage>>,
   moiNoiCall: null as 'moi' | 'noi' | null,
   nremtStage: 'scene_sizeup' as NremtStage,
+  coachNotes: [] as CoachNote[],
 };
 
 export const useEmtStore = create<EmtStore>((set, get) => ({
   ...emptyState,
-  difficulty: 'standard',
+  difficulty: 'practice',
 
   setDifficulty: (difficulty) => set({ difficulty }),
 
@@ -359,32 +367,39 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       startedAt: state.startedAt,
     });
 
-    const pendingPhysio: PendingPhysio[] = [
-      {
-        id: `idle-warn-${at}`,
-        fireAtMs: at + 45_000,
-        laurenLines:
-          state.difficulty === 'coach'
-            ? [
-                'Time is moving. Work your size-up, then make patient contact when ready.',
-              ]
-            : ['Time is moving on this call.'],
-        timelineLabel: 'Delay on scene',
-        scoreDelta: -4,
-        skill: 'scene_safety',
-      },
-      {
-        id: `idle-worse-${at}`,
-        fireAtMs: at + 90_000,
-        vitalsPatch: delayedCareVitals(state.call, state.vitals!),
-        laurenLines: [
-          'The patient looks worse than when you arrived.',
-        ],
-        timelineLabel: 'Patient deteriorating',
-        scoreDelta: -10,
-        skill: 'treatment',
-      },
-    ];
+    const pendingPhysio: PendingPhysio[] =
+      state.difficulty === 'practice'
+        ? [
+            {
+              id: `idle-coach-${at}`,
+              fireAtMs: at + 60_000,
+              laurenLines: [
+                'Still working size-up? Take your time — Practice has no clock. When ready: patient contact.',
+              ],
+              timelineLabel: 'Practice nudge',
+              scoreDelta: 0,
+              skill: 'scene_safety',
+            },
+          ]
+        : [
+            {
+              id: `idle-warn-${at}`,
+              fireAtMs: at + 45_000,
+              laurenLines: ['Time is moving on this call.'],
+              timelineLabel: 'Delay on scene',
+              scoreDelta: -4,
+              skill: 'scene_safety',
+            },
+            {
+              id: `idle-worse-${at}`,
+              fireAtMs: at + 90_000,
+              vitalsPatch: delayedCareVitals(state.call, state.vitals!),
+              laurenLines: ['The patient looks worse than when you arrived.'],
+              timelineLabel: 'Patient deteriorating',
+              scoreDelta: -10,
+              skill: 'treatment',
+            },
+          ];
 
     set({
       phase: stage.phase,
@@ -394,8 +409,17 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       instructorLog: [],
       completedActions: [...state.completedActions, 'respond'],
       pendingPhysio,
-      // No MD coaching popup at start — difficulty owns guidance.
-      laurenFlashQueue: [],
+      coachNotes: [],
+      // Practice: Lauren opens Scene Size-Up guidance. Exam: silent arrival.
+      laurenFlashQueue:
+        state.difficulty === 'practice'
+          ? [
+              {
+                id: `flash-arrive-${at}`,
+                lines: phaseEnterGuide('scene_sizeup', state.call),
+              },
+            ]
+          : [],
     });
   },
 
@@ -583,10 +607,10 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
           ...(earlyAdvance
             ? [
                 `You are leaving ${current.title} with gaps (${coverage.done}/${coverage.total}).`,
-                'That can cost you on the skills sheet.',
+                'That can cost you on the skills sheet — we will review it.',
               ]
-            : [`Moving on from ${current.title}.`]),
-          ...next.enterLines,
+            : []),
+          ...phaseEnterGuide(next.id, state.call),
         ]
       : [];
 
@@ -646,8 +670,19 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
     }
 
     let exchange = buildLaurenExchange(actionId, state.call, state.vitals);
+    let newCoachNotes = state.coachNotes;
     if (showLaurenSuggestions(state.difficulty)) {
-      exchange = withCoachTips(actionId, state.call, exchange);
+      const coached = withCoachTips(actionId, state.call, exchange, {
+        vitals: state.vitals,
+        revealedVitals: state.revealedVitals,
+        nremtStage: state.nremtStage,
+        completedActions: state.completedActions,
+        treatments: state.treatments,
+      });
+      exchange = coached.exchange;
+      if (coached.coachNote) {
+        newCoachNotes = uniqueCoachNotes([...state.coachNotes, coached.coachNote]);
+      }
     }
     exchange = presentLaurenExchange(state.difficulty, exchange);
 
@@ -873,6 +908,7 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       laurenFlashQueue: baseQueue,
       resourceStaging,
       moiNoiCall,
+      coachNotes: newCoachNotes,
     });
   },
 
@@ -924,6 +960,7 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
       destination: state.destination,
       enteredUnsafe: state.enteredUnsafe,
       completedActions: [...state.completedActions, 'verbal_handoff'],
+      coachNotes: state.coachNotes,
     });
 
     useProgressStore.getState().recordCompletedRun({
@@ -1220,6 +1257,7 @@ export const useEmtStore = create<EmtStore>((set, get) => ({
         enteredUnsafe,
         difficulty: state.difficulty,
         completedActions: state.completedActions,
+        coachNotes: state.coachNotes,
       });
 
       // Final destination locks the run — no Back from debrief.

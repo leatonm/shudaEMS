@@ -29,7 +29,7 @@ export function laurenWelcomeLines(returning: boolean): { title: string; body: s
   if (returning) {
     return {
       title: 'Welcome back.',
-      body: "Good to see you again. Pick a difficulty and we'll run another call — I'll debrief you after.",
+      body: "Good to see you again. Pick Practice or Exam and we'll run another call — I'll debrief you after.",
     };
   }
   return {
@@ -92,7 +92,23 @@ export function laurenDebriefChat(
       .replace('{s}', result.stars === 1 ? '' : 's'),
   });
 
-  if (result.skillsSheetPass) {
+  if (difficulty === 'practice') {
+    if (result.criticalFails.length === 0) {
+      messages.push({
+        id: 'sheet-pass',
+        label: 'PRACTICE',
+        tone: 'good',
+        text: 'Clean practice run — no critical criteria tripped. Keep that rhythm.',
+      });
+    } else {
+      messages.push({
+        id: 'sheet-coach',
+        label: 'COACHING',
+        tone: 'warn',
+        text: 'Practice mode isn’t graded pass/fail. Let’s treat the critical criteria below as homework — then re-run it.',
+      });
+    }
+  } else if (result.skillsSheetPass) {
     messages.push({
       id: 'sheet-pass',
       label: 'SKILLS SHEET',
@@ -104,10 +120,7 @@ export function laurenDebriefChat(
       id: 'sheet-fail',
       label: 'SKILLS SHEET',
       tone: 'bad',
-      text:
-        difficulty === 'exam'
-          ? 'Skills sheet: FAIL. On Exam, one critical miss ends the run.'
-          : 'Skills sheet: would FAIL a real station. Score is capped so we can still learn.',
+      text: 'Skills sheet: FAIL. On Exam, one critical miss ends the run.',
     });
   }
 
@@ -115,12 +128,12 @@ export function laurenDebriefChat(
     const names = result.criticalFails.map((f) => f.label).join(' · ');
     messages.push({
       id: 'crit',
-      label: 'CRITICAL',
+      label: difficulty === 'practice' ? 'DRILL THESE' : 'CRITICAL',
       tone: 'bad',
       text:
         result.criticalFails.length === 1
-          ? `Critical fail: ${names}. Open the full report for the detail.`
-          : `${result.criticalFails.length} critical fails: ${names}. Full report has each one.`,
+          ? `Critical criteria: ${names}. Open the full report for the detail.`
+          : `${result.criticalFails.length} critical criteria: ${names}. Full report has each one.`,
     });
   }
 
@@ -135,6 +148,25 @@ export function laurenDebriefChat(
           ? `Flow miss to fix: ${misses[0]}`
           : `${misses.length} flow misses — top one: ${misses[0]}`,
     });
+  }
+
+  // Practice: review mid-call coaching notes (priority / order)
+  if (difficulty === 'practice') {
+    const notes = (result.coachNotes ?? result.debrief.coachNotes ?? []).filter(
+      (n) => n.kind === 'priority' || n.kind === 'order'
+    );
+    if (notes.length > 0) {
+      const top = notes.slice(0, 2);
+      messages.push({
+        id: 'coach-review',
+        label: 'GUIDANCE REVIEW',
+        tone: 'warn',
+        text:
+          top.length === 1
+            ? `During the call I flagged: ${top[0].text}`
+            : `During the call I flagged ${notes.length} moments — starting with: ${top[0].text}`,
+      });
+    }
   }
 
   const well = result.debrief.whatWentWell[0];
@@ -158,11 +190,11 @@ export function laurenDebriefChat(
   }
 
   const closers: Record<LaurenRank, string> = {
-    Outstanding: 'Take the win — then bump difficulty and prove it twice.',
-    'Strong Work': 'One more clean rep, then try Exam when you feel spicy.',
+    Outstanding: 'Take the win — then try Exam when you want the pressure.',
+    'Strong Work': 'One more clean Practice rep, then sit Exam when you feel spicy.',
     'Solid Call': 'Replay this category once more while the rhythm is fresh.',
-    'Needs Polish': "Same category, Coach on — fix those misses, then I'll re-rank you.",
-    'Rebuild Basics': "Stay on Coach for a couple runs. I'll meet you after each one.",
+    'Needs Polish': 'Stay on Practice — fix those misses, then I’ll re-rank you.',
+    'Rebuild Basics': 'Stay on Practice for a couple runs. I’ll meet you after each one.',
   };
 
   messages.push({

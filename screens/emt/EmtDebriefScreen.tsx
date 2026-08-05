@@ -13,6 +13,7 @@ import { StarRating } from '@/components/ui/StarRating';
 import { PopIn, enterUp } from '@/components/ui/motion';
 import { fs } from '@/constants/layout';
 import { categoryColor, theme } from '@/constants/theme';
+import { isExamMode, isPracticeMode } from '@/data/emt/difficulty';
 import { useEmtStore } from '@/store/emtStore';
 import { useProgressStore } from '@/store/progressStore';
 
@@ -58,18 +59,22 @@ export default function EmtDebriefScreen() {
   }
 
   const passed = result.skillsSheetPass;
+  const graded = isExamMode(difficulty);
+  const practice = isPracticeMode(difficulty);
   const accent = categoryColor(call.category);
   const laurenRank = laurenDebriefRankLabel(result, difficulty);
+  const bannerTone = graded ? (passed ? 'success' : 'danger') : 'success';
 
   return (
     <SafeAreaView style={styles.safe}>
-      <AppBackdrop source={DEBRIEF_BG} tone={passed ? 'success' : 'danger'} />
+      <AppBackdrop source={DEBRIEF_BG} tone={bannerTone} />
       <ScreenScroll>
         <Animated.Text entering={enterUp(0)} style={styles.header}>
           Debrief
         </Animated.Text>
         <Animated.Text entering={enterUp(1)} style={styles.subheader}>
-          {result.debrief.title} · {call.category.toUpperCase()} · {difficulty.toUpperCase()}
+          {result.debrief.title} · {call.category.toUpperCase()} ·{' '}
+          {difficulty === 'practice' ? 'PRACTICE' : 'EXAM'}
         </Animated.Text>
 
         <LaurenDebriefChat
@@ -81,22 +86,51 @@ export default function EmtDebriefScreen() {
 
         <PopIn
           delay={140}
-          style={[styles.sheetBanner, passed ? styles.sheetPass : styles.sheetFail]}
+          style={[
+            styles.sheetBanner,
+            practice
+              ? styles.sheetPractice
+              : passed
+                ? styles.sheetPass
+                : styles.sheetFail,
+          ]}
         >
-          <Text style={styles.sheetKicker}>OVERALL SCORE</Text>
-          <Text style={[styles.percentScore, passed ? styles.passText : styles.failText]}>
+          <Text style={styles.sheetKicker}>
+            {practice ? 'PRACTICE REVIEW' : 'OVERALL SCORE'}
+          </Text>
+          <Text
+            style={[
+              styles.percentScore,
+              practice
+                ? styles.practiceText
+                : passed
+                  ? styles.passText
+                  : styles.failText,
+            ]}
+          >
             {result.percentScore}%
           </Text>
-          <Text style={[styles.sheetResult, passed ? styles.passText : styles.failText]}>
-            {passed ? 'PASS' : 'FAIL'}
+          <Text
+            style={[
+              styles.sheetResult,
+              practice
+                ? styles.practiceText
+                : passed
+                  ? styles.passText
+                  : styles.failText,
+            ]}
+          >
+            {practice ? 'COACHING' : passed ? 'PASS' : 'FAIL'}
           </Text>
           <StarRating stars={result.stars} />
           <Text style={styles.sheetHint}>
-            {passed
-              ? 'No critical criteria missed.'
-              : difficulty === 'exam'
-                ? 'Critical fail — automatic exam failure.'
-                : 'Would fail a skills sheet. Score capped for learning.'}
+            {practice
+              ? result.criticalFails.length > 0
+                ? 'Critical criteria flagged for drill — no pass/fail on Practice.'
+                : 'Clean practice run. Build speed, then try Exam.'
+              : passed
+                ? 'No critical criteria missed.'
+                : 'Critical fail — automatic exam failure.'}
           </Text>
         </PopIn>
 
@@ -155,21 +189,47 @@ export default function EmtDebriefScreen() {
               <Text
                 style={[
                   styles.checklistVerdict,
-                  passed ? styles.passText : styles.failText,
+                  practice
+                    ? styles.practiceText
+                    : passed
+                      ? styles.passText
+                      : styles.failText,
                 ]}
               >
-                {passed ? 'PASS' : 'FAIL'}
+                {practice ? 'REVIEW' : passed ? 'PASS' : 'FAIL'}
               </Text>
             </Section>
 
             {result.criticalFails.length > 0 ? (
-              <Section title="Critical criteria" index={4}>
+              <Section
+                title={practice ? 'Critical criteria to drill' : 'Critical criteria'}
+                index={4}
+              >
                 {result.criticalFails.map((fail) => (
                   <View key={fail.id} style={styles.critCard}>
                     <Text style={styles.critLabel}>{fail.label}</Text>
                     <Text style={styles.critDetail}>{fail.detail}</Text>
                   </View>
                 ))}
+              </Section>
+            ) : null}
+
+            {practice && (result.coachNotes?.length ?? 0) > 0 ? (
+              <Section title="Lauren's guidance during the call" index={4}>
+                {(result.coachNotes ?? [])
+                  .filter((n) => n.kind === 'priority' || n.kind === 'order')
+                  .map((note) => (
+                    <Bullet
+                      key={note.id}
+                      icon={note.kind === 'priority' ? '!' : '→'}
+                      color={
+                        note.kind === 'priority'
+                          ? theme.colors.critical
+                          : theme.colors.warning
+                      }
+                      text={note.text}
+                    />
+                  ))}
               </Section>
             ) : null}
 
@@ -361,6 +421,10 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.successGlow,
     borderColor: theme.colors.success,
   },
+  sheetPractice: {
+    backgroundColor: theme.colors.cadGlow,
+    borderColor: theme.colors.emsBlue,
+  },
   sheetFail: {
     backgroundColor: theme.colors.dangerGlow,
     borderColor: theme.colors.critical,
@@ -379,6 +443,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   passText: { color: theme.colors.success },
+  practiceText: { color: theme.colors.emsBlue },
   failText: { color: theme.colors.critical },
   sheetHint: {
     color: theme.colors.textMuted,

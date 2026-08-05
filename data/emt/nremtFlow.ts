@@ -39,6 +39,7 @@ export const NREMT_MEDICAL_STAGES: NremtStageInfo[] = [
       'Scene safety, patients, MOI or NOI, resources, and C-spine as needed.',
     ],
     expectedActions: [
+      'don_ppe',
       'verbalize_scene_safe',
       'count_patients',
       'assess_moi',
@@ -54,9 +55,8 @@ export const NREMT_MEDICAL_STAGES: NremtStageInfo[] = [
     advanceLabel: 'HISTORY TAKING',
     phase: 'primary_survey',
     enterLines: [
-      'Primary survey / resuscitation.',
-      'General impression, responsiveness, chief complaint and life threats, then airway, breathing, and circulation.',
-      'Treat life threats as you find them.',
+      'This is the Primary Survey — patient contact.',
+      'Open Assessment → Primary (xABC). Treat life threats under Treatment as you find them.',
     ],
     expectedActions: [
       'general_impression',
@@ -158,6 +158,7 @@ export function stageCoverage(
   const buckets: string[][] = [];
   if (stage.id === 'scene_sizeup') {
     buckets.push(
+      ['don_ppe'],
       ['verbalize_scene_safe'],
       ['count_patients'],
       ['assess_moi', 'declare_moi', 'declare_noi'],

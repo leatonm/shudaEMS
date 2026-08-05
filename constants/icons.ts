@@ -43,8 +43,7 @@ export const Icons = {
 } as const;
 
 export const DIFFICULTY_ICONS: Record<EmtDifficulty, ImageSourcePropType> = {
-  coach: Icons.coach,
-  standard: Icons.standard,
+  practice: Icons.coach,
   exam: Icons.exam,
 };
 
@@ -83,7 +82,7 @@ export const HOW_IT_WORKS: Array<{
     n: 2,
     color: '#3B82F6',
     title: 'Choose Mode',
-    body: 'Pick your difficulty — Coach, Standard, or Exam.',
+    body: 'Pick Practice (coaching) or Exam (timed pass/fail).',
     icon: require('../assets/icons/mode.png') as ImageSourcePropType,
   },
   {
@@ -120,19 +119,14 @@ export const DIFFICULTY_CARD_COPY: Record<
   EmtDifficulty,
   { tagline: string; accent: string; glow: string }
 > = {
-  coach: {
-    tagline: 'Hints & explanations',
+  practice: {
+    tagline: 'Hints & systematic coaching',
     accent: '#22F5A8',
     glow: 'rgba(34, 245, 168, 0.22)',
   },
-  standard: {
-    tagline: 'Realistic scenarios',
-    accent: '#00E5FF',
-    glow: 'rgba(0, 229, 255, 0.28)',
-  },
   exam: {
-    tagline: 'No hints, timed',
-    accent: '#B36BFF',
-    glow: 'rgba(179, 107, 255, 0.28)',
+    tagline: 'Timer · critical fails · pass/fail',
+    accent: '#FF2D55',
+    glow: 'rgba(255, 45, 85, 0.22)',
   },
 };

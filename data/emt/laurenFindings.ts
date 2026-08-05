@@ -1,4 +1,13 @@
-import type { EmtCall, EmtVitals } from '@/data/emt/types';
+import type {
+  EmtCall,
+  EmtVitals,
+  RevealedVitals,
+} from '@/data/emt/types';
+import type { NremtStage } from '@/data/emt/nremtFlow';
+import {
+  coachAfterAction,
+  type CoachNote,
+} from '@/data/emt/laurenCoach';
 
 export type RevealedVitalKey =
   | 'bp'
@@ -297,14 +306,22 @@ export function buildLaurenExchange(
       };
     case 'vital_bp':
       return {
-        studentLine: "I'd like to obtain a blood pressure.",
-        laurenLines: [`The patient's blood pressure is ${vitals.bp}.`],
+        studentLine: "I'd like a blood pressure.",
+        laurenLines: [
+          vitals.hr === 0
+            ? 'There is no obtainable blood pressure — the patient is pulseless.'
+            : `Blood pressure is ${vitals.bp}.`,
+        ],
         reveal: ['bp'],
       };
     case 'vital_pulse':
       return {
         studentLine: "I'd like to obtain a pulse.",
-        laurenLines: [`The pulse is ${vitals.hr}.`],
+        laurenLines: [
+          vitals.hr === 0
+            ? 'No pulse. Begin CPR — do not delay for a full vitals panel.'
+            : `The pulse is ${vitals.hr}.`,
+        ],
         reveal: ['hr'],
       };
     case 'vital_rr':
@@ -507,54 +524,65 @@ export function dispatchLaurenLines(call: EmtCall): string[] {
   ];
 }
 
-/** Coach-only tips and suggested next moves (Standard/Exam never call this). */
+/**
+ * Practice-only coaching: one short next-step / priority / order tip.
+ * Does not click for the player — just guides. Exam never calls this.
+ */
 export function withCoachTips(
   actionId: string,
   call: EmtCall,
-  exchange: LaurenExchange
-): LaurenExchange {
+  exchange: LaurenExchange,
+  ctx: {
+    vitals: EmtVitals;
+    revealedVitals: RevealedVitals;
+    nremtStage: NremtStage;
+    completedActions: string[];
+    treatments: string[];
+  }
+): { exchange: LaurenExchange; coachNote: CoachNote | null } {
+  // Hazard scene-safety tips stay (factual risk + soft next move).
   if (actionId === 'verbalize_scene_safe' && call.hazards.length > 0) {
     const hazardTips = call.hazards
       .map((h) => h.coachTip)
       .filter((tip): tip is string => Boolean(tip));
-    return {
+    const base: LaurenExchange = {
       ...exchange,
       laurenLines: [
         ...exchange.laurenLines,
-        ...hazardTips,
-        'If you need help, open Resources and put a unit enroute or on standby.',
-      ],
-      followUps: [
-        { id: 'fu_tip_pd', label: 'Tip: Request Law', actionId: 'request_pd' },
-        { id: 'fu_tip_fire', label: 'Tip: Request Fire', actionId: 'request_fire' },
-        { id: 'fu_tip_stage', label: 'Tip: Stage Away', actionId: 'stage_away' },
+        ...hazardTips.slice(0, 1),
+        'If it is not safe yet, request Law or Fire — or stage away.',
       ],
     };
-  }
-
-  if (actionId === 'count_patients' && call.category === 'mci') {
-    return {
-      ...exchange,
-      laurenLines: [
-        ...exchange.laurenLines,
-        'Tip: Consider additional ambulances from Resources.',
-      ],
-    };
-  }
-
-  if (actionId === 'general_impression') {
-    return {
-      ...exchange,
-      laurenLines: [
-        ...exchange.laurenLines,
-        'Tip: Move into AVPU, chief complaint, and ABCs next.',
-      ],
-    };
+    return { exchange: base, coachNote: null };
   }
 
   if (actionId === 'review_protocols') {
-    return exchange;
+    return { exchange, coachNote: null };
   }
 
-  return exchange;
+  const { tip, note } = coachAfterAction({
+    actionId,
+    call,
+    vitals: ctx.vitals,
+    revealedVitals: ctx.revealedVitals,
+    revealing: exchange.reveal,
+    nremtStage: ctx.nremtStage,
+    completedActions: ctx.completedActions,
+    treatments: ctx.treatments,
+  });
+
+  if (!tip) {
+    return { exchange, coachNote: null };
+  }
+
+  return {
+    exchange: {
+      ...exchange,
+      // One brief coach line — never bury the factual finding.
+      laurenLines: [...exchange.laurenLines, tip],
+      // Do not inject tip buttons that click for the player.
+      followUps: exchange.followUps,
+    },
+    coachNote: note,
+  };
 }

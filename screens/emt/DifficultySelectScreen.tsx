@@ -21,22 +21,16 @@ const OPTIONS: Array<{
   summary: string;
 }> = [
   {
-    id: 'coach',
-    label: 'Coach',
-    badge: 'BEST FOR LEARNING',
-    summary: 'Hints · Lauren tips · Pause anytime',
-  },
-  {
-    id: 'standard',
-    label: 'Standard',
-    badge: 'MOST POPULAR',
-    summary: 'Realistic · Brief findings only',
+    id: 'practice',
+    label: 'Practice',
+    badge: 'COACHING',
+    summary: 'Hints · Systematic flow · No timer · Grow, don’t grade',
   },
   {
     id: 'exam',
     label: 'Exam',
-    badge: 'CHALLENGE YOURSELF',
-    summary: 'NREMT · Timer · Critical fails · Pass/Fail',
+    badge: 'GRADED',
+    summary: 'Timer · Critical fails · Pass / Fail',
   },
 ];
 
@@ -44,7 +38,7 @@ function cardGradient(accent: string): [string, string] {
   return [`${accent}33`, 'rgba(8,18,28,0.98)'];
 }
 
-/** Single-viewport difficulty pick — compact rows like home categories. */
+/** Single-viewport difficulty pick — Practice or Exam. */
 export default function DifficultySelectScreen() {
   const router = useRouter();
   const setDifficulty = useEmtStore((s) => s.setDifficulty);
@@ -68,7 +62,7 @@ export default function DifficultySelectScreen() {
           CHOOSE YOUR EXPERIENCE
         </Animated.Text>
         <Animated.Text entering={enterUp(1)} style={styles.lead}>
-          Same engine. Different coaching.
+          Practice to learn. Exam to prove it.
         </Animated.Text>
 
         <View style={styles.list}>
@@ -102,7 +96,7 @@ export default function DifficultySelectScreen() {
                           </Text>
                         </View>
                       </View>
-                      <Text style={styles.summary} numberOfLines={1}>
+                      <Text style={styles.summary} numberOfLines={2}>
                         {opt.summary}
                       </Text>
                     </View>
@@ -143,7 +137,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textAlign: 'center',
   },
-  list: { gap: 8 },
+  list: { gap: 10 },
   rowOuter: { borderRadius: 12 },
   row: {
     flexDirection: 'row',
@@ -151,13 +145,13 @@ const styles = StyleSheet.create({
     gap: 8,
     borderRadius: 12,
     borderWidth: 1.5,
-    paddingVertical: 8,
+    paddingVertical: 12,
     paddingLeft: 8,
     paddingRight: 6,
     overflow: 'hidden',
-    minHeight: 72,
+    minHeight: 88,
   },
-  icon: { width: 34, height: 34 },
+  icon: { width: 40, height: 40 },
   copy: {
     flex: 1,
     minWidth: 0,
@@ -172,9 +166,9 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: 'BebasNeue',
-    fontSize: fs(22),
+    fontSize: fs(26),
     letterSpacing: 0.6,
-    lineHeight: fs(24),
+    lineHeight: fs(28),
   },
   badge: {
     borderWidth: 1,
@@ -189,8 +183,8 @@ const styles = StyleSheet.create({
   },
   summary: {
     color: theme.colors.textMuted,
-    fontSize: fs(11),
-    lineHeight: fs(14),
+    fontSize: fs(12),
+    lineHeight: fs(16),
     fontWeight: '500',
   },
   chevron: {

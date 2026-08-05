@@ -1,8 +1,7 @@
 import type { CallCategory, EmtDifficulty, EmtRunResult } from '@/data/emt/types';
 
 const DIFFICULTY_MULT: Record<EmtDifficulty, number> = {
-  coach: 1,
-  standard: 1.25,
+  practice: 1,
   exam: 1.5,
 };
 

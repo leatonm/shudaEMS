@@ -22,7 +22,7 @@ export interface LaurenFlashPayload {
   studentLine?: string;
   /** Choices shown instead of OK (MOI/NOI, resources, etc.). */
   choices?: Array<{ id: string; label: string; actionId: string }>;
-  /** Coach = full; Standard = small gesture; Exam = minimal. */
+  /** Practice = full; Exam = minimal. */
   gesture?: 'full' | 'gesture' | 'minimal';
   /** Auto-dismiss without requiring OK. */
   autoDismiss?: boolean;

@@ -36,7 +36,15 @@ export type TransportPriority = 'emergency' | 'urgent' | 'non_urgent';
 
 export type CallCategory = 'medical' | 'trauma' | 'peds' | 'ob' | 'mci';
 
-export type EmtDifficulty = 'coach' | 'standard' | 'exam';
+export type EmtDifficulty = 'practice' | 'exam';
+
+/** Mid-call Lauren coaching note — Practice debrief review. */
+export interface CoachNote {
+  id: string;
+  kind: 'phase' | 'priority' | 'order';
+  text: string;
+  actionId?: string;
+}
 
 /** Agencies already present when you arrive — drives whether to request fire/ALS/PD. */
 export type OnSceneResource = 'fire' | 'als' | 'pd';
@@ -217,6 +225,8 @@ export interface EmtDebrief {
   skillsSheetPass: boolean;
   /** Out-of-order / trap decisions during the walkthrough */
   flowMisses: string[];
+  /** Practice Lauren coaching lines to review */
+  coachNotes: CoachNote[];
 }
 
 export interface SkillScores {
@@ -326,4 +336,6 @@ export interface EmtRunResult {
   skillsSheetPass: boolean;
   /** Official checklist reveal after Lauren’s debrief. */
   skillSheetChecklist: SkillSheetCheck[];
+  /** Practice mid-call coaching lines (empty on Exam). */
+  coachNotes: CoachNote[];
 }

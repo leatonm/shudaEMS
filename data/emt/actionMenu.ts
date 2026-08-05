@@ -23,15 +23,16 @@ export const ACTION_MENU_ROOTS: Array<{
   skill: SkillCategory;
   blurb: string;
 }> = [
-  { id: 'scene', label: 'Size-Up', skill: 'scene_safety', blurb: 'Safety, patients, MOI/NOI' },
-  { id: 'assessment', label: 'Assessment', skill: 'assessment', blurb: 'Impression, primary, vitals' },
-  { id: 'interventions', label: 'Treatment', skill: 'treatment', blurb: 'Airway, O₂, meds, trauma' },
-  { id: 'resources', label: 'Resources', skill: 'communication', blurb: 'Fire, law, medic, air' },
-  { id: 'transport', label: 'Transport', skill: 'transport', blurb: 'Priority, destination, report' },
+  { id: 'scene', label: 'Size-Up', skill: 'scene_safety', blurb: 'PPE · safety · patients' },
+  { id: 'assessment', label: 'Assessment', skill: 'assessment', blurb: 'Primary · history · vitals' },
+  { id: 'interventions', label: 'Treatment', skill: 'treatment', blurb: 'Fix life threats here' },
+  { id: 'resources', label: 'Resources', skill: 'communication', blurb: 'ALS · Law · Fire' },
+  { id: 'transport', label: 'Transport', skill: 'transport', blurb: 'Priority · destination' },
 ];
 
 export const ACTION_MENUS: Record<ActionMenuRoot, ActionMenuNode[]> = {
   scene: [
+    { id: 'ppe', label: 'PPE / BSI', actionId: 'don_ppe' },
     { id: 'scene_safe', label: 'Is the scene safe?', actionId: 'verbalize_scene_safe' },
     { id: 'num_patients', label: 'Number of Patients', actionId: 'count_patients' },
     { id: 'moi_noi', label: 'MOI or NOI', actionId: 'assess_moi' },
@@ -85,6 +86,7 @@ export const ACTION_MENUS: Record<ActionMenuRoot, ActionMenuNode[]> = {
       ],
     },
     { id: 'focused', label: 'Focused Assessment', actionId: 'secondary_assessment' },
+    { id: 'skin', label: 'Skin Signs', actionId: 'skin_signs' },
     { id: 'reassess', label: 'Reassessment', actionId: 'reassessment' },
   ],
   interventions: [

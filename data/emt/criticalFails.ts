@@ -198,7 +198,7 @@ export function evaluateCriticalFails(input: CriticalFailInput): CriticalFail[] 
   return fails;
 }
 
-/** Exam = automatic skills-sheet fail. Other modes still flag criteria for teaching. */
+/** Exam = automatic skills-sheet fail. Practice flags criteria for coaching only. */
 export function skillsSheetFailed(
   fails: CriticalFail[],
   difficulty: EmtDifficulty
@@ -232,10 +232,10 @@ export function applyCriticalFailScoring(input: {
     };
   }
 
-  // Coach / Standard: still punish hard, but leave room to learn
+  // Practice: coaching run — no pass/fail grade; still nudge score for misses.
   return {
-    totalScore: Math.max(0, Math.min(totalScore, difficulty === 'coach' ? 70 : 55)),
-    stars: Math.min(input.stars, difficulty === 'coach' ? 2 : 1),
-    skillsSheetPass: false,
+    totalScore: Math.max(0, Math.min(totalScore, 80)),
+    stars: Math.min(input.stars, 4),
+    skillsSheetPass: true,
   };
 }

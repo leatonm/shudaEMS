@@ -13,6 +13,7 @@ import {
 } from '@/data/emt/skillSheetChecklist';
 import type {
   AbcdeStep,
+  CoachNote,
   ConsequenceEffect,
   EmtCall,
   EmtDebrief,
@@ -427,6 +428,7 @@ export function resolveEmtRun(input: {
   enteredUnsafe: boolean;
   difficulty: EmtDifficulty;
   completedActions?: string[];
+  coachNotes?: CoachNote[];
 }): EmtRunResult {
   const {
     call,
@@ -442,6 +444,7 @@ export function resolveEmtRun(input: {
     enteredUnsafe,
     difficulty,
     completedActions = [],
+    coachNotes = [],
   } = input;
 
   const criticalFails = evaluateCriticalFails({
@@ -566,7 +569,21 @@ export function resolveEmtRun(input: {
     .map((e) => e.message);
 
   let summary: string;
-  if (!skillsSheetPass && difficulty === 'exam') {
+  if (difficulty === 'practice') {
+    if (criticalFails.length > 0) {
+      summary =
+        'Practice review — critical criteria to drill are listed below. No pass/fail grade on this mode; use Lauren’s coaching and try again.';
+    } else if (patientOutcome === 'improved') {
+      summary =
+        'Strong practice run — systematic assessment and timely transport. Keep building that rhythm.';
+    } else if (patientOutcome === 'stable') {
+      summary =
+        'Solid practice — patient cared for. Tighten a few decisions on the next rep.';
+    } else {
+      summary =
+        'Tough practice call — review the timeline and critical criteria, then run it again with coaching on.';
+    }
+  } else if (!skillsSheetPass && difficulty === 'exam') {
     summary =
       'SKILLS SHEET: FAIL — one or more NREMT-style critical criteria were missed. Review them below; points do not override critical fails.';
   } else if (!skillsSheetPass) {
@@ -602,6 +619,7 @@ export function resolveEmtRun(input: {
     criticalFails,
     skillsSheetPass,
     flowMisses: [...new Set(flowMisses)],
+    coachNotes,
   };
 
   const normalizedSkills: SkillScores = {
@@ -630,6 +648,7 @@ export function resolveEmtRun(input: {
       ...treatments,
       ...timeline.map((e) => e.actionId),
     ]),
+    coachNotes,
   };
 }
 

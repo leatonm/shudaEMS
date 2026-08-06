@@ -38,6 +38,27 @@
           "resizeMode": "contain",
           "backgroundColor": "#050A12"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow EMT Response Simulator to access your photos so you can set a profile picture.",
+          "cameraPermission": "Allow EMT Response Simulator to use your camera so you can take a profile picture.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Allow EMT Response Simulator to access your contacts so you can text tips and share the app."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#00E5FF",
+          "defaultChannel": "emt-coach-tips"
+        }
       ]
     ],
     "experiments": {

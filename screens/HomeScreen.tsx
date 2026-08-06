@@ -44,6 +44,7 @@ export default function HomeScreen() {
   const clearDailyRunFlag = useProgressStore((s) => s.clearDailyRunFlag);
   const ensureDaily = useProgressStore((s) => s.ensureDaily);
   const daily = useProgressStore((s) => s.daily);
+  const avatarUri = useProgressStore((s) => s.avatarUri);
   const [sheet, setSheet] = useState<'streaks' | 'badges' | 'daily' | null>(null);
   const [howOpen, setHowOpen] = useState(false);
   const [dailyDismissed, setDailyDismissed] = useState(false);
@@ -81,9 +82,22 @@ export default function HomeScreen() {
                 <Text style={styles.brandSub}>SIMULATOR</Text>
               </View>
             </View>
-            <PressScale onPress={() => setSheet('streaks')} style={styles.xpChip}>
-              <XpChip />
-            </PressScale>
+            <View style={styles.headerActions}>
+              <PressScale onPress={() => setSheet('streaks')} style={styles.xpChip}>
+                <XpChip />
+              </PressScale>
+              <PressScale
+                onPress={() => router.push('/emt/settings')}
+                style={styles.avatarBtn}
+                accessibilityLabel="Profile and settings"
+              >
+                <Image
+                  source={avatarUri ? { uri: avatarUri } : Icons.userAvatar}
+                  style={styles.avatar}
+                  resizeMode="cover"
+                />
+              </PressScale>
+            </View>
           </View>
 
           {showDailyBanner ? (
@@ -345,6 +359,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1.4,
     marginTop: -2,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   xpChip: {
     backgroundColor: theme.colors.surface,
     borderRadius: 8,
@@ -353,6 +372,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 5,
     minWidth: 64,
+  },
+  avatarBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: theme.colors.emsBlue,
+    overflow: 'hidden',
+    backgroundColor: theme.colors.backgroundAlt,
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
   },
   xpLevel: {
     color: theme.colors.emsBlue,

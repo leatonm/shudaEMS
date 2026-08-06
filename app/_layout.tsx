@@ -12,6 +12,8 @@ import 'react-native-reanimated';
 
 import { CadHeaderTitle } from '@/components/ui/BrandMark';
 import { theme } from '@/constants/theme';
+import { ensureCoachTipSchedule } from '@/lib/coachPings';
+import { useProgressStore } from '@/store/progressStore';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -34,6 +36,22 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [loaded]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const topUp = () => {
+      if (cancelled) return;
+      void ensureCoachTipSchedule(useProgressStore.getState().coachTipsEnabled);
+    };
+    if (useProgressStore.persist.hasHydrated()) {
+      topUp();
+    }
+    const unsub = useProgressStore.persist.onFinishHydration(topUp);
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, []);
 
   if (!loaded) {
     return null;

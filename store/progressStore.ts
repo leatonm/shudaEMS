@@ -45,10 +45,19 @@ interface ProgressState {
   /** True while the active call was started as today's daily challenge. */
   dailyRunActive: boolean;
   lastAward: CompletedRunSummary | null;
+  /** Display name on Settings / future leaderboard. */
+  displayName: string;
+  /** Durable file URI for custom profile photo; null = placeholder. */
+  avatarUri: string | null;
+  /** Local notifications every ~6h with a random coach tip / scenario. */
+  coachTipsEnabled: boolean;
 
   ensureDaily: () => void;
   beginDailyRun: () => CallCategory;
   clearDailyRunFlag: () => void;
+  setDisplayName: (name: string) => void;
+  setAvatarUri: (uri: string | null) => void;
+  setCoachTipsEnabled: (enabled: boolean) => void;
   recordCompletedRun: (input: {
     result: EmtRunResult;
     category: CallCategory;
@@ -120,6 +129,9 @@ export const useProgressStore = create<ProgressState>()(
       daily: freshDaily(),
       dailyRunActive: false,
       lastAward: null,
+      displayName: '',
+      avatarUri: null,
+      coachTipsEnabled: false,
 
       ensureDaily: () => {
         const today = todayKey();
@@ -137,6 +149,12 @@ export const useProgressStore = create<ProgressState>()(
       },
 
       clearDailyRunFlag: () => set({ dailyRunActive: false }),
+
+      setDisplayName: (name) => set({ displayName: name.trim().slice(0, 32) }),
+
+      setAvatarUri: (uri) => set({ avatarUri: uri }),
+
+      setCoachTipsEnabled: (enabled) => set({ coachTipsEnabled: enabled }),
 
       recordCompletedRun: ({ result, category, difficulty }) => {
         const state = get();
@@ -235,6 +253,9 @@ export const useProgressStore = create<ProgressState>()(
         recentRuns: s.recentRuns,
         awardedRunIds: s.awardedRunIds,
         daily: s.daily,
+        displayName: s.displayName,
+        avatarUri: s.avatarUri,
+        coachTipsEnabled: s.coachTipsEnabled,
       }),
     }
   )
